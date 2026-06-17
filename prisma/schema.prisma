@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  OWNER
+  RENTER
+  PROPERTY_MANAGER
+  CONTRACTOR
+  BOARD_MEMBER
+}
+
+enum RentalPolicy {
+  ANYONE
+  FRIENDS_FAMILY_ONLY
+  NOT_RENTING
+}
+
+enum UnitStatus {
+  OWNER_OCCUPIED
+  RENTED
+  AVAILABLE
+  UNAVAILABLE
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum DocumentCategory {
+  MEETING_MINUTES
+  CONTRACT
+  FINANCIAL
+  POLICY
+  OTHER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String?
+  role      Role     @default(RENTER)
+  phone     String?
+  company   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedUnits       UnitOwnership[]
+  leases           Lease[]
+  assignedTickets  TicketAssignment[]
+  contracts        Contract[]
+  submittedTickets TroubleTicket[]   @relation("SubmittedBy")
+  ticketComments   TicketComment[]
+}
+
+model Unit {
+  id          String     @id @default(cuid())
+  number      String     @unique
+  building    String?
+  floor       Int?
+  bedrooms    Int?
+  bathrooms   Float?
+  sqft        Int?
+  description String?
+  status      UnitStatus @default(OWNER_OCCUPIED)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  ownership UnitOwnership?
+  leases    Lease[]
+  tickets   TroubleTicket[]
+}
+
+model UnitOwnership {
+  id           String       @id @default(cuid())
+  unitId       String       @unique
+  ownerId      String
+  rentalPolicy RentalPolicy @default(NOT_RENTING)
+  notes        String?
+  since        DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  unit  Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model Lease {
+  id          String    @id @default(cuid())
+  unitId      String
+  renterId    String
+  startDate   DateTime
+  endDate     DateTime?
+  monthlyRent Float?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  unit   Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  renter User @relation(fields: [renterId], references: [id], onDelete: Cascade)
+}
+
+model TroubleTicket {
+  id            String         @id @default(cuid())
+  unitId        String
+  submittedById String
+  title         String
+  description   String
+  status        TicketStatus   @default(OPEN)
+  priority      TicketPriority @default(MEDIUM)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  resolvedAt    DateTime?
+
+  unit        Unit               @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  submittedBy User               @relation("SubmittedBy", fields: [submittedById], references: [id])
+  assignments TicketAssignment[]
+  comments    TicketComment[]
+}
+
+model TicketAssignment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  contractorId String
+  assignedAt   DateTime @default(now())
+  notes        String?
+
+  ticket     TroubleTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  contractor User          @relation(fields: [contractorId], references: [id])
+}
+
+model TicketComment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket TroubleTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id])
+}
+
+model Document {
+  id           String           @id @default(cuid())
+  title        String
+  category     DocumentCategory @default(OTHER)
+  description  String?
+  fileUrl      String?
+  content      String?
+  uploadedById String
+  meetingId    String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  meeting Meeting? @relation(fields: [meetingId], references: [id])
+}
+
+model Meeting {
+  id        String     @id @default(cuid())
+  title     String
+  date      DateTime
+  location  String?
+  agenda    String?
+  minutes   String?
+  attendees String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  documents Document[]
+}
+
+model Contract {
+  id           String    @id @default(cuid())
+  title        String
+  contractorId String
+  startDate    DateTime
+  endDate      DateTime?
+  amount       Float?
+  description  String?
+  status       String    @default("ACTIVE")
+  fileUrl      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  contractor User @relation(fields: [contractorId], references: [id])
+}
