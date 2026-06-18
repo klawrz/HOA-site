@@ -1,36 +1,30 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
-  Building2,
-  Home,
-  Users,
-  Wrench,
-  FileText,
-  TicketIcon,
-  LayoutDashboard,
-  ChevronRight,
+  Building2, Home, Users, Wrench, FileText,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
 
-type NavItem = {
-  label: string
-  href: string
-  icon: React.ElementType
-}
+type NavItem = { label: string; href: string; icon: React.ElementType }
 
 const navByRole: Record<Role, NavItem[]> = {
+  ACCOUNT_OWNER: [
+    { label: "Dashboard", href: "/dashboard/account", icon: LayoutDashboard },
+    { label: "Units", href: "/dashboard/account/units", icon: Building2 },
+    { label: "Members", href: "/dashboard/account/members", icon: Users },
+  ],
   OWNER: [
     { label: "My Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
-    { label: "My Unit", href: "/dashboard/owner/unit", icon: Home },
     { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2 },
     { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon },
   ],
   RENTER: [
     { label: "My Dashboard", href: "/dashboard/renter", icon: LayoutDashboard },
-    { label: "My Unit", href: "/dashboard/renter/unit", icon: Home },
     { label: "Submit Ticket", href: "/dashboard/renter/tickets/new", icon: TicketIcon },
     { label: "My Tickets", href: "/dashboard/renter/tickets", icon: FileText },
   ],
@@ -43,7 +37,7 @@ const navByRole: Record<Role, NavItem[]> = {
   ],
   CONTRACTOR: [
     { label: "Dashboard", href: "/dashboard/contractor", icon: LayoutDashboard },
-    { label: "My Work Orders", href: "/dashboard/contractor/tickets", icon: TicketIcon },
+    { label: "Work Orders", href: "/dashboard/contractor/tickets", icon: TicketIcon },
     { label: "My Contracts", href: "/dashboard/contractor/contracts", icon: FileText },
   ],
   BOARD_MEMBER: [
@@ -51,11 +45,11 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
     { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
-    { label: "Community", href: "/dashboard/board/community", icon: Building2 },
   ],
 }
 
 const roleLabels: Record<Role, string> = {
+  ACCOUNT_OWNER: "Account Owner",
   OWNER: "Owner Portal",
   RENTER: "Renter Portal",
   PROPERTY_MANAGER: "Manager Portal",
@@ -70,21 +64,14 @@ export function DashboardSidebar({ role }: { role: Role }) {
   return (
     <aside className="w-64 bg-white border-r flex flex-col shrink-0">
       <div className="p-4 border-b">
-        <div className="flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-blue-600" />
-          <div>
-            <p className="font-semibold text-sm">Sunrise HOA</p>
-            <p className="text-xs text-gray-500">{roleLabels[role]}</p>
-          </div>
-        </div>
+        <Image src="/HOPE-logo.png" alt="HOPE" height={36} width={120} className="object-contain" />
+        <p className="text-xs text-gray-400 mt-1">{roleLabels[role]}</p>
       </div>
-
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href))
-
           return (
             <Link
               key={item.href}
@@ -92,7 +79,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                 isActive
-                  ? "bg-blue-50 text-blue-700 font-medium"
+                  ? "bg-gray-900 text-white font-medium"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
@@ -103,10 +90,6 @@ export function DashboardSidebar({ role }: { role: Role }) {
           )
         })}
       </nav>
-
-      <div className="p-3 border-t text-xs text-gray-400 text-center">
-        Sunrise HOA © 2025
-      </div>
     </aside>
   )
 }

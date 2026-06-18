@@ -8,6 +8,7 @@ datasource db {
 }
 
 enum Role {
+  ACCOUNT_OWNER
   OWNER
   RENTER
   PROPERTY_MANAGER
@@ -50,41 +51,83 @@ enum DocumentCategory {
   OTHER
 }
 
+model Organization {
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
+  onboardingComplete Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  members   User[]
+  units     Unit[]
+  invites   Invite[]
+  meetings  Meeting[]
+  documents Document[]
+  contracts Contract[]
+  tickets   TroubleTicket[]
+}
+
+model Invite {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  email      String
+  role       Role
+  orgId      String
+  unitId     String?
+  sentById   String
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  unit   Unit?        @relation(fields: [unitId], references: [id])
+  sentBy User         @relation("SentInvites", fields: [sentById], references: [id])
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String?
   email     String   @unique
   password  String?
-  role      Role     @default(RENTER)
+  role      Role     @default(OWNER)
   phone     String?
   company   String?
+  orgId     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  org              Organization?      @relation(fields: [orgId], references: [id])
+  sentInvites      Invite[]           @relation("SentInvites")
   ownedUnits       UnitOwnership[]
   leases           Lease[]
   assignedTickets  TicketAssignment[]
   contracts        Contract[]
-  submittedTickets TroubleTicket[]   @relation("SubmittedBy")
+  submittedTickets TroubleTicket[]    @relation("SubmittedBy")
   ticketComments   TicketComment[]
 }
 
 model Unit {
   id          String     @id @default(cuid())
-  number      String     @unique
+  orgId       String
+  number      String
   building    String?
   floor       Int?
   bedrooms    Int?
   bathrooms   Float?
   sqft        Int?
   description String?
-  status      UnitStatus @default(OWNER_OCCUPIED)
+  status      UnitStatus @default(AVAILABLE)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  org       Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   ownership UnitOwnership?
   leases    Lease[]
   tickets   TroubleTicket[]
+  invites   Invite[]
+
+  @@unique([orgId, number])
 }
 
 model UnitOwnership {
@@ -118,6 +161,7 @@ model Lease {
 
 model TroubleTicket {
   id            String         @id @default(cuid())
+  orgId         String
   unitId        String
   submittedById String
   title         String
@@ -128,6 +172,7 @@ model TroubleTicket {
   updatedAt     DateTime       @updatedAt
   resolvedAt    DateTime?
 
+  org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   unit        Unit               @relation(fields: [unitId], references: [id], onDelete: Cascade)
   submittedBy User               @relation("SubmittedBy", fields: [submittedById], references: [id])
   assignments TicketAssignment[]
@@ -158,6 +203,7 @@ model TicketComment {
 
 model Document {
   id           String           @id @default(cuid())
+  orgId        String
   title        String
   category     DocumentCategory @default(OTHER)
   description  String?
@@ -168,11 +214,13 @@ model Document {
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
-  meeting Meeting? @relation(fields: [meetingId], references: [id])
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  meeting Meeting?     @relation(fields: [meetingId], references: [id])
 }
 
 model Meeting {
   id        String     @id @default(cuid())
+  orgId     String
   title     String
   date      DateTime
   location  String?
@@ -182,11 +230,13 @@ model Meeting {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   documents Document[]
 }
 
 model Contract {
   id           String    @id @default(cuid())
+  orgId        String
   title        String
   contractorId String
   startDate    DateTime
@@ -198,5 +248,6 @@ model Contract {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  contractor User @relation(fields: [contractorId], references: [id])
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contractor User         @relation(fields: [contractorId], references: [id])
 }

@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { Building2, Users, FileText, Wrench, Shield } from "lucide-react"
@@ -44,34 +45,53 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-full flex flex-col">
-      <header className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-blue-600" />
-          <span className="font-semibold text-lg">Sunrise HOA Portal</span>
-        </div>
-        <div className="flex gap-3">
-          <Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
+        <Image
+          src="/HOPE-logo.png"
+          alt="Sunrise HOA"
+          height={56}
+          width={200}
+          className="object-contain"
+        />
+        <div className="flex items-center gap-3">
+          <Link
+            href="/login"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-4 py-2 rounded-full hover:bg-gray-100"
+          >
             Sign In
           </Link>
-          <Link href="/register" className={cn(buttonVariants())}>
+          <Link
+            href="/register"
+            className="text-sm font-medium bg-gray-900 text-white px-5 py-2 rounded-full hover:bg-gray-700 transition-colors"
+          >
             Register
           </Link>
         </div>
       </header>
 
       <main className="flex-1">
-        <section className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-20 px-6 text-center">
-          <h1 className="text-4xl font-bold mb-4">Welcome to Sunrise HOA</h1>
-          <p className="text-xl text-blue-100 max-w-2xl mx-auto mb-8">
-            A unified portal for owners, renters, property managers, contractors,
-            and board members to manage community life.
-          </p>
-          <Link
-            href="/login"
-            className={cn(buttonVariants({ variant: "secondary", size: "lg" }))}
-          >
-            Sign In to Your Portal
-          </Link>
+        <section className="relative h-[500px] flex items-center justify-center text-white text-center">
+          <Image
+            src="/sampaguita-hero.png"
+            alt="Sunrise HOA community"
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative z-10 px-6 max-w-3xl mx-auto">
+            <h1 className="text-4xl font-bold mb-4">Welcome to Sunrise HOA</h1>
+            <p className="text-xl text-gray-100 max-w-2xl mx-auto mb-8">
+              A unified portal for owners, renters, property managers, contractors,
+              and board members to manage community life.
+            </p>
+            <Link
+              href="/login"
+              className={cn(buttonVariants({ variant: "secondary", size: "lg" }))}
+            >
+              Sign In to Your Portal
+            </Link>
+          </div>
         </section>
 
         <section className="max-w-5xl mx-auto py-16 px-6">

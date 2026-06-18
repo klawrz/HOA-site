@@ -7,7 +7,8 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user
       const isDashboard = nextUrl.pathname.startsWith("/dashboard")
-      if (isDashboard) return isLoggedIn
+      const isOnboarding = nextUrl.pathname.startsWith("/onboarding")
+      if (isDashboard || isOnboarding) return isLoggedIn
       if (isLoggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/register")) {
         return Response.redirect(new URL("/dashboard", nextUrl))
       }

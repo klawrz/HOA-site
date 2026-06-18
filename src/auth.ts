@@ -15,25 +15,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) return null
-
         const user = await db.user.findUnique({
           where: { email: credentials.email as string },
         })
-
         if (!user || !user.password) return null
-
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        )
+        const isValid = await bcrypt.compare(credentials.password as string, user.password)
         if (!isValid) return null
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        }
+        return { id: user.id, name: user.name, email: user.email, role: user.role, orgId: user.orgId }
       },
     }),
   ],
@@ -42,6 +30,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id!
         token.role = (user as { role: string }).role as never
+        token.orgId = (user as { orgId: string | null }).orgId
       }
       return token
     },
@@ -49,11 +38,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as import("@/generated/prisma").Role
+        session.user.orgId = token.orgId as string | null
       }
       return session
     },
   },
-  pages: {
-    signIn: "/login",
-  },
+  pages: { signIn: "/login" },
 })

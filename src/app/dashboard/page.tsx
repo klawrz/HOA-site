@@ -1,7 +1,8 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 
-const roleRedirect = {
+const roleRedirect: Record<string, string> = {
+  ACCOUNT_OWNER: "/dashboard/account",
   OWNER: "/dashboard/owner",
   RENTER: "/dashboard/renter",
   PROPERTY_MANAGER: "/dashboard/property-manager",
@@ -12,7 +13,5 @@ const roleRedirect = {
 export default async function DashboardIndexPage() {
   const session = await auth()
   if (!session) redirect("/login")
-
-  const dest = roleRedirect[session.user.role] ?? "/dashboard/owner"
-  redirect(dest)
+  redirect(roleRedirect[session.user.role] ?? "/dashboard/owner")
 }
