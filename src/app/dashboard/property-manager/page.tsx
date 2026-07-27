@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, Users, Wrench, TicketIcon } from "lucide-react"
+import { formatDateTime } from "@/lib/utils"
+import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
 
 export default async function PropertyManagerDashboard() {
   const session = await auth()
@@ -30,18 +32,6 @@ export default async function PropertyManagerDashboard() {
     orderBy: { createdAt: "desc" },
     take: 6,
   })
-
-  const priorityColor: Record<string, string> = {
-    URGENT: "bg-red-100 text-red-800",
-    HIGH: "bg-orange-100 text-orange-800",
-    MEDIUM: "bg-blue-100 text-blue-800",
-    LOW: "bg-gray-100 text-gray-600",
-  }
-
-  const statusColor: Record<string, string> = {
-    OPEN: "bg-yellow-100 text-yellow-800",
-    IN_PROGRESS: "bg-blue-100 text-blue-800",
-  }
 
   return (
     <div className="space-y-6">
@@ -131,7 +121,7 @@ export default async function PropertyManagerDashboard() {
                   <div className="min-w-0">
                     <p className="font-medium truncate">{t.title}</p>
                     <p className="text-xs text-gray-500">
-                      Unit {t.unit.number} · {t.submittedBy.name ?? t.submittedBy.email}
+                      {t.unit ? `Unit ${t.unit.number}` : scopeLabel[t.scope]} · Submitted by {t.submittedBy.name ?? t.submittedBy.email} on {formatDateTime(t.createdAt)}
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0 ml-3">

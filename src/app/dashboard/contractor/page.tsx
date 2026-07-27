@@ -4,13 +4,8 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketIcon, FileText, CheckCircle2 } from "lucide-react"
 import { UpdateTicketStatusForm } from "./update-status-form"
-
-const priorityColor: Record<string, string> = {
-  URGENT: "bg-red-100 text-red-800",
-  HIGH: "bg-orange-100 text-orange-800",
-  MEDIUM: "bg-blue-100 text-blue-800",
-  LOW: "bg-gray-100 text-gray-600",
-}
+import { formatDateTime } from "@/lib/utils"
+import { priorityColor, scopeLabel } from "@/lib/ticket-styles"
 
 export default async function ContractorDashboard() {
   const session = await auth()
@@ -107,11 +102,11 @@ export default async function ContractorDashboard() {
                       <p className="font-semibold">{a.ticket.title}</p>
                       <p className="text-sm text-gray-500 mt-0.5">{a.ticket.description}</p>
                       <div className="flex gap-3 text-xs text-gray-400 mt-2">
-                        <span>Unit {a.ticket.unit.number}</span>
+                        <span>{a.ticket.unit ? `Unit ${a.ticket.unit.number}` : scopeLabel[a.ticket.scope]}</span>
                         <span>
-                          Reported by {a.ticket.submittedBy.name ?? a.ticket.submittedBy.email}
+                          Reported by {a.ticket.submittedBy.name ?? a.ticket.submittedBy.email} on {formatDateTime(a.ticket.createdAt)}
                         </span>
-                        <span>Assigned {new Date(a.assignedAt).toLocaleDateString()}</span>
+                        <span>Assigned {formatDateTime(a.assignedAt)}</span>
                       </div>
                       {a.notes && (
                         <p className="text-xs text-gray-500 mt-1 italic">Note: {a.notes}</p>

@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Home, TicketIcon, Phone, Mail } from "lucide-react"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
+import { statusColor } from "@/lib/ticket-styles"
 
 export default async function RenterDashboard() {
   const session = await auth()
@@ -28,13 +29,6 @@ export default async function RenterDashboard() {
     orderBy: { createdAt: "desc" },
     take: 5,
   })
-
-  const statusColor: Record<string, string> = {
-    OPEN: "bg-yellow-100 text-yellow-800",
-    IN_PROGRESS: "bg-blue-100 text-blue-800",
-    RESOLVED: "bg-green-100 text-green-800",
-    CLOSED: "bg-gray-100 text-gray-600",
-  }
 
   return (
     <div className="space-y-6">
@@ -137,7 +131,7 @@ export default async function RenterDashboard() {
                   <div>
                     <p className="font-medium">{t.title}</p>
                     <p className="text-xs text-gray-400">
-                      {new Date(t.createdAt).toLocaleDateString()}
+                      {formatDateTime(t.createdAt)}
                     </p>
                   </div>
                   <Badge className={`text-xs ${statusColor[t.status]}`}>

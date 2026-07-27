@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Users, TicketIcon, DollarSign } from "lucide-react"
 import { RentalPolicyForm } from "./rental-policy-form"
+import { priorityColor as sharedPriorityColor, statusColor as sharedStatusColor } from "@/lib/ticket-styles"
+import { formatDateTime } from "@/lib/utils"
 
 function statusBadge(status: string) {
   const map: Record<string, string> = {
@@ -23,23 +25,11 @@ function statusBadge(status: string) {
 }
 
 function ticketBadge(status: string) {
-  const map: Record<string, string> = {
-    OPEN: "bg-yellow-100 text-yellow-800",
-    IN_PROGRESS: "bg-blue-100 text-blue-800",
-    RESOLVED: "bg-green-100 text-green-800",
-    CLOSED: "bg-gray-100 text-gray-600",
-  }
-  return map[status] ?? "bg-gray-100 text-gray-600"
+  return sharedStatusColor[status] ?? "bg-gray-100 text-gray-600"
 }
 
 function priorityBadge(p: string) {
-  const map: Record<string, string> = {
-    LOW: "bg-gray-100 text-gray-600",
-    MEDIUM: "bg-blue-100 text-blue-800",
-    HIGH: "bg-orange-100 text-orange-800",
-    URGENT: "bg-red-100 text-red-800",
-  }
-  return map[p] ?? "bg-gray-100"
+  return sharedPriorityColor[p] ?? "bg-gray-100"
 }
 
 export default async function OwnerDashboard() {
@@ -52,7 +42,7 @@ export default async function OwnerDashboard() {
       unit: {
         include: {
           leases: { where: { isActive: true }, include: { renter: true } },
-          tickets: { orderBy: { createdAt: "desc" }, take: 5 },
+          tickets: { orderBy: { createdAt: "desc" }, take: 5, include: { submittedBy: true } },
         },
       },
     },
@@ -186,7 +176,12 @@ export default async function OwnerDashboard() {
                         key={t.id}
                         className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-2"
                       >
-                        <span className="truncate flex-1 mr-2">{t.title}</span>
+                        <div className="flex-1 min-w-0 mr-2">
+                          <p className="truncate">{t.title}</p>
+                          <p className="text-xs text-gray-400 truncate">
+                            Submitted by {t.submittedBy.name ?? t.submittedBy.email} on {formatDateTime(t.createdAt)}
+                          </p>
+                        </div>
                         <div className="flex gap-1 shrink-0">
                           <Badge className={`text-xs ${priorityBadge(t.priority)}`}>
                             {t.priority}

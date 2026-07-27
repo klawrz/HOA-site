@@ -33,7 +33,7 @@ export function NewTicketForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
-    const result = await submitTicket({ unitId, title, description, priority })
+    const result = await submitTicket({ scope: "UNIT", unitId, title, description, priority })
     setSubmitting(false)
     if (result.success) {
       toast.success("Ticket submitted successfully")
@@ -78,6 +78,7 @@ export function NewTicketForm({
             <SelectItem value="MEDIUM">Medium — needs attention</SelectItem>
             <SelectItem value="HIGH">High — affecting daily use</SelectItem>
             <SelectItem value="URGENT">Urgent — safety or water damage</SelectItem>
+            <SelectItem value="EMERGENCY">Emergency — immediate danger or major damage</SelectItem>
           </SelectContent>
         </Select>
       </div>

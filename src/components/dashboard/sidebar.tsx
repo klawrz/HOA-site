@@ -45,6 +45,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
     { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
+    { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon },
   ],
 }
 

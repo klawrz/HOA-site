@@ -8,9 +8,9 @@ import { TicketManageForm } from "@/app/dashboard/_components/ticket-manage-form
 import { cn, formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
 
-export default async function AllTicketsPage() {
+export default async function BoardTicketsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
   const [tickets, contractors] = await Promise.all([
     db.troubleTicket.findMany({
@@ -29,9 +29,11 @@ export default async function AllTicketsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">All Trouble Tickets</h1>
-          <p className="text-gray-500 mt-1">{tickets.length} total tickets</p>
+          <p className="text-gray-500 mt-1">
+            {tickets.length} total — full HOA oversight. Assign/prioritize authority is limited to common property requests.
+          </p>
         </div>
-        <Link href="/dashboard/property-manager/tickets/new" className={cn(buttonVariants())}>
+        <Link href="/dashboard/board/tickets/new" className={cn(buttonVariants())}>
           New Request
         </Link>
       </div>
@@ -39,6 +41,7 @@ export default async function AllTicketsPage() {
       <div className="space-y-3">
         {tickets.map((t) => {
           const assigned = t.assignments[t.assignments.length - 1]
+          const canManage = t.scope === "COMMON_AREA"
           return (
             <Card key={t.id}>
               <CardContent className="pt-4">
@@ -66,7 +69,7 @@ export default async function AllTicketsPage() {
                       </p>
                     )}
                   </div>
-                  {t.status !== "RESOLVED" && t.status !== "CLOSED" && (
+                  {canManage && t.status !== "RESOLVED" && t.status !== "CLOSED" && (
                     <TicketManageForm
                       ticketId={t.id}
                       contractors={contractors}
