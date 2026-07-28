@@ -69,6 +69,8 @@ model Organization {
   units     Unit[]
   invites   Invite[]
   meetings  Meeting[]
+  pmContracts    PMContract[]
+  pmAccessGrants PMAccessGrant[]
   documents Document[]
   contracts Contract[]
   tickets   TroubleTicket[]
@@ -111,6 +113,8 @@ model User {
   contracts        Contract[]
   submittedTickets TroubleTicket[]    @relation("SubmittedBy")
   ticketComments   TicketComment[]
+  pmMemberships    PMStaffMembership[]
+  createdPMCompanies PropertyManagementCompany[]
 }
 
 model Unit {
@@ -257,4 +261,122 @@ model Contract {
 
   org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   contractor User         @relation(fields: [contractorId], references: [id])
+}
+
+// ------------------------------------------------------------
+// Property Manager structure
+//
+// The PM is a contracted entity (like a supplier) that an HOA
+// engages - PMContract is that vendor relationship. A PM can be a
+// solo individual (no company/staff below) or a company with
+// multiple staff, and a single company can be contracted by more
+// than one HOA. Access for a given staff member on a given HOA is
+// granular per area (PMAccessGrant) rather than a fixed role tier,
+// so span of control can be tailored per person per HOA.
+// ------------------------------------------------------------
+
+model PropertyManagementCompany {
+  id             String   @id @default(cuid())
+  legalName      String
+  registrationId String?
+
+  // General company contact (e.g. main office line/inbox)
+  email String?
+  phone String?
+
+  // Full mailing address
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+
+  // The specific point-of-contact person, not just a company inbox
+  primaryContactName  String?
+  primaryContactEmail String?
+  primaryContactPhone String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy         User                      @relation(fields: [createdById], references: [id])
+  staff             PMStaffMembership[]
+  contracts         PMContract[]
+  emergencyContacts PMEmergencyContact[]
+}
+
+model PMEmergencyContact {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  role      String?
+  phone     String
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  company PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model PMStaffMembership {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  company      PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessGrants PMAccessGrant[]
+
+  @@unique([companyId, userId])
+}
+
+enum PMAccessArea {
+  TICKETS
+  CONTRACTS
+  DOCUMENTS
+  STAFF
+}
+
+enum PMAccessLevel {
+  VIEW
+  MANAGE
+}
+
+model PMAccessGrant {
+  id           String        @id @default(cuid())
+  membershipId String
+  orgId        String
+  area         PMAccessArea
+  level        PMAccessLevel @default(VIEW)
+  createdAt    DateTime      @default(now())
+
+  membership PMStaffMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  org        Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, orgId, area])
+}
+
+enum PMContractStatus {
+  ACTIVE
+  PENDING
+  ENDED
+}
+
+model PMContract {
+  id        String            @id @default(cuid())
+  companyId String
+  orgId     String
+  status    PMContractStatus  @default(ACTIVE)
+  startDate DateTime
+  endDate   DateTime?
+  terms     String?
+  fileUrl   String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  company PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  org     Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }
