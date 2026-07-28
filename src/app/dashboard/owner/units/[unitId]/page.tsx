@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateTime } from "@/lib/utils"
 import { UnitContacts } from "./unit-contacts"
 import { UnitManagers } from "./unit-managers"
+import { UserCog, Phone, Mail } from "lucide-react"
 
 function addressLines(u: {
   addressLine1: string | null
@@ -54,6 +55,31 @@ export default async function UnitDetailPage({
           Owned since {formatDateTime(ownership.since)}
         </p>
       </div>
+
+      {unit.managers.length > 0 && (
+        <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+          <p className="text-xs font-semibold text-teal-800 flex items-center gap-1.5 mb-2">
+            <UserCog className="h-3.5 w-3.5" /> Unit Manager
+          </p>
+          <div className="space-y-2">
+            {unit.managers.map((m) => (
+              <div key={m.id}>
+                <p className="font-semibold text-teal-900">{m.user.name ?? m.user.email}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-teal-800">
+                  {m.user.phone && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3.5 w-3.5" /> {m.user.phone}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3.5 w-3.5" /> {m.user.email}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
