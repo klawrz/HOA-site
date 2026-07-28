@@ -80,6 +80,10 @@ export default async function AccountUnitsPage() {
           <Label>Country</Label>
           <Input name="country" />
         </div>
+        <div className="space-y-1">
+          <Label>Civic Roll Number</Label>
+          <Input name="civicRoll" placeholder="Municipal assessment/civic roll number" />
+        </div>
         <Button type="submit" variant="outline" className="gap-2">
           <Plus className="h-4 w-4" /> Add Unit
         </Button>

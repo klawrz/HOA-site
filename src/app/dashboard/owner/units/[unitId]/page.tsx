@@ -70,6 +70,9 @@ export default async function UnitDetailPage({
           ) : (
             <p className="text-gray-400">No address on file - contact your Property Manager to add one.</p>
           )}
+          {unit.civicRoll && (
+            <p className="text-xs text-gray-400 pt-1">Civic Roll Number: {unit.civicRoll}</p>
+          )}
         </CardContent>
       </Card>
 

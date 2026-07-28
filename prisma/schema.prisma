@@ -129,6 +129,7 @@ model Unit {
   bathrooms   Float?
   sqft        Int?
   description String?
+  civicRoll   String?    // municipal civic/assessment roll number for this unit
   status      UnitStatus @default(AVAILABLE)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt

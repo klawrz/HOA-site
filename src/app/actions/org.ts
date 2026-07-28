@@ -25,6 +25,7 @@ export async function addUnit(formData: FormData) {
       state: (formData.get("state") as string) || null,
       postalCode: (formData.get("postalCode") as string) || null,
       country: (formData.get("country") as string) || null,
+      civicRoll: (formData.get("civicRoll") as string) || null,
       status: "AVAILABLE",
     },
   })
