@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
-import { ContractType, PMAccessArea } from "@/generated/prisma"
+import { BillingPeriod, ContractType, PMAccessArea } from "@/generated/prisma"
 import { revalidatePath } from "next/cache"
 import { resolveFileUrl as resolveUploadedFileUrl } from "@/lib/file-upload"
 
@@ -33,6 +33,10 @@ function readContractFormData(formData: FormData) {
       ? Number(formData.get("reminderDaysBefore"))
       : 30,
     amount: formData.get("amount") ? parseFloat(formData.get("amount") as string) : null,
+    billingPeriod:
+      formData.get("type") === "RECURRING" && formData.get("billingPeriod")
+        ? (formData.get("billingPeriod") as BillingPeriod)
+        : null,
     description: (formData.get("description") as string) || null,
     fileUrl: (formData.get("fileUrl") as string) || null,
   }

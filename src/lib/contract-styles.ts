@@ -21,4 +21,10 @@ export const contractStatusColor: Record<string, string> = {
   TERMINATED: "bg-red-100 text-red-800",
 }
 
+export const billingPeriodLabel: Record<string, string> = {
+  WEEKLY: "week",
+  MONTHLY: "month",
+  YEARLY: "year",
+}
+
 export { getExpiryStatus, expiryStatusConfig } from "@/lib/expiry-status"

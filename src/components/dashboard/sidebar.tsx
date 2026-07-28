@@ -10,7 +10,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
 
-type NavItem = { label: string; href: string; icon: React.ElementType }
+type NavItem = { label: string; href: string; icon: React.ElementType; indent?: boolean }
 
 const navByRole: Record<Role, NavItem[]> = {
   ACCOUNT_OWNER: [
@@ -19,6 +19,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Members", href: "/dashboard/account/members", icon: Users },
     { label: "Property Manager", href: "/dashboard/account/pm", icon: Wrench },
     { label: "Contracts", href: "/dashboard/account/contracts", icon: FileText },
+    { label: "Contractors", href: "/dashboard/account/contractors", icon: Wrench, indent: true },
     { label: "Compliance", href: "/dashboard/account/compliance", icon: ShieldCheck },
   ],
   OWNER: [
@@ -35,11 +36,11 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/property-manager", icon: LayoutDashboard },
     { label: "Unit Availability", href: "/dashboard/property-manager/units", icon: Building2 },
     { label: "Owner Directory", href: "/dashboard/property-manager/owners", icon: Users },
-    { label: "Contractors", href: "/dashboard/property-manager/contractors", icon: Wrench },
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     { label: "Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
     { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
     { label: "Contracts", href: "/dashboard/property-manager/contracts", icon: FileText },
+    { label: "Contractors", href: "/dashboard/property-manager/contractors", icon: Wrench, indent: true },
     { label: "Compliance", href: "/dashboard/property-manager/compliance", icon: ShieldCheck },
   ],
   CONTRACTOR: [
@@ -52,6 +53,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
     { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
+    { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
     { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
     { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon },
   ],
@@ -91,6 +93,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                item.indent && "ml-4 text-[13px]",
                 isActive
                   ? "bg-gray-900 text-white font-medium"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"

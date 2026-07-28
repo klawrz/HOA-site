@@ -9,6 +9,7 @@ import {
   contractTypeLabel,
   contractTypeColor,
   contractStatusColor,
+  billingPeriodLabel,
   getExpiryStatus,
   expiryStatusConfig,
 } from "@/lib/contract-styles"
@@ -23,6 +24,7 @@ type ContractRow = {
   endDate: Date | null
   reminderDaysBefore: number
   amount: number | null
+  billingPeriod: string | null
   description: string | null
   fileUrl: string | null
   contractor: { name: string | null; email: string; company: string | null }
@@ -116,7 +118,17 @@ export function ContractList({
                   </div>
                 </div>
                 <div className="text-right shrink-0 space-y-1">
-                  {c.amount && <p className="font-semibold">${c.amount.toLocaleString()}</p>}
+                  {c.amount && (
+                    <p className="font-semibold">
+                      ${c.amount.toLocaleString()}
+                      {c.billingPeriod && (
+                        <span className="text-xs font-normal text-gray-400">
+                          {" "}
+                          / {billingPeriodLabel[c.billingPeriod]}
+                        </span>
+                      )}
+                    </p>
+                  )}
                   {canManage ? (
                     <select
                       value={c.status}

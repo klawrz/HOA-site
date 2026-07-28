@@ -316,6 +316,14 @@ enum ContractType {
   CRITICAL
 }
 
+// Only meaningful when type is RECURRING - the amount is billed per this
+// interval (e.g. a monthly landscaping fee) rather than a one-off total.
+enum BillingPeriod {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
 model Contract {
   id                 String        @id @default(cuid())
   orgId              String
@@ -328,6 +336,7 @@ model Contract {
   endDate            DateTime?
   reminderDaysBefore Int           @default(30)
   amount             Float?
+  billingPeriod      BillingPeriod?
   description        String?
   status             String        @default("ACTIVE")
   fileUrl            String?

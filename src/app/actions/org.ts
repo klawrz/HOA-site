@@ -60,6 +60,32 @@ export async function updateOrgAddress(formData: FormData) {
   revalidatePath("/")
 }
 
+// Scoped to safe, non-structural fields - role and email carry logic
+// elsewhere (unit ownership, login identity) that a simple edit form
+// shouldn't touch.
+export async function updateMemberContactInfo(
+  memberId: string,
+  data: { name?: string; phone?: string }
+) {
+  const session = await auth()
+  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") return { success: false }
+
+  const member = await db.user.findUnique({ where: { id: memberId } })
+  if (!member || member.orgId !== session.user.orgId) return { success: false }
+
+  await db.user.update({
+    where: { id: memberId },
+    data: {
+      name: data.name || null,
+      phone: data.phone || null,
+    },
+  })
+
+  revalidatePath("/dashboard/account/members")
+  revalidatePath(`/dashboard/account/members/${memberId}`)
+  return { success: true }
+}
+
 export async function completeOnboarding() {
   const session = await auth()
   if (!session?.user.orgId) throw new Error("Unauthorized")

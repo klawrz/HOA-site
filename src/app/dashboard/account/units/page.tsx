@@ -1,12 +1,9 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
-import { Building2, Trash2, Plus } from "lucide-react"
-import { addUnit, deleteUnit } from "@/app/actions/org"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import { Building2, Trash2 } from "lucide-react"
+import { deleteUnit } from "@/app/actions/org"
+import { NewUnitDialog } from "./new-unit-dialog"
 
 const statusColors: Record<string, string> = {
   AVAILABLE: "bg-green-100 text-green-700",
@@ -21,73 +18,24 @@ export default async function AccountUnitsPage() {
 
   const units = await db.unit.findMany({
     where: { orgId: session.user.orgId },
-    include: { ownerships: { where: { isCurrent: true }, include: { owner: true } } },
+    include: {
+      ownerships: { where: { isCurrent: true }, include: { owner: true } },
+      managers: { include: { user: true } },
+    },
     orderBy: { number: "asc" },
   })
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Units</h1>
-        <p className="text-gray-500 text-sm">Manage all units in your HOA.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Units</h1>
+          <p className="text-gray-500 text-sm">
+            {units.length} unit{units.length !== 1 ? "s" : ""} in your HOA.
+          </p>
+        </div>
+        <NewUnitDialog />
       </div>
-
-      <form action={addUnit} className="bg-white border rounded-xl p-5 space-y-4">
-        <h2 className="font-semibold text-sm">Add a Unit</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label>Unit Number *</Label>
-            <Input name="number" placeholder="1A" required />
-          </div>
-          <div className="space-y-1">
-            <Label>Building</Label>
-            <Input name="building" placeholder="Building A" />
-          </div>
-          <div className="space-y-1">
-            <Label>Bedrooms</Label>
-            <Input name="bedrooms" type="number" min="0" placeholder="2" />
-          </div>
-          <div className="space-y-1">
-            <Label>Bathrooms</Label>
-            <Input name="bathrooms" type="number" step="0.5" min="0" placeholder="1.5" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label>Address Line 1</Label>
-            <Input name="addressLine1" />
-          </div>
-          <div className="space-y-1">
-            <Label>Address Line 2</Label>
-            <Input name="addressLine2" />
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <Label>City</Label>
-            <Input name="city" />
-          </div>
-          <div className="space-y-1">
-            <Label>State / Province</Label>
-            <Input name="state" />
-          </div>
-          <div className="space-y-1">
-            <Label>Postal Code</Label>
-            <Input name="postalCode" />
-          </div>
-        </div>
-        <div className="space-y-1">
-          <Label>Country</Label>
-          <Input name="country" />
-        </div>
-        <div className="space-y-1">
-          <Label>Civic Roll Number</Label>
-          <Input name="civicRoll" placeholder="Municipal assessment/civic roll number" />
-        </div>
-        <Button type="submit" variant="outline" className="gap-2">
-          <Plus className="h-4 w-4" /> Add Unit
-        </Button>
-      </form>
 
       <div className="bg-white border rounded-xl divide-y">
         {units.length === 0 && (
@@ -98,8 +46,8 @@ export default async function AccountUnitsPage() {
         )}
         {units.map((u) => (
           <div key={u.id} className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-4">
-              <div>
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="min-w-0">
                 <p className="font-medium">Unit {u.number}</p>
                 <p className="text-xs text-gray-400">
                   {[u.building, u.bedrooms && `${u.bedrooms}bd`, u.bathrooms && `${u.bathrooms}ba`]
@@ -108,13 +56,20 @@ export default async function AccountUnitsPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4 shrink-0">
               <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
                 {u.status.replace(/_/g, " ")}
               </span>
-              {u.ownerships[0]?.owner && (
-                <span className="text-xs text-gray-500">{u.ownerships[0].owner.name}</span>
-              )}
+              <div className="text-right text-xs">
+                {u.ownerships[0]?.owner && (
+                  <p className="text-gray-600">{u.ownerships[0].owner.name ?? u.ownerships[0].owner.email}</p>
+                )}
+                {u.managers[0]?.user && (
+                  <p className="text-gray-400">
+                    UM: {u.managers[0].user.name ?? u.managers[0].user.email}
+                  </p>
+                )}
+              </div>
               <form action={deleteUnit.bind(null, u.id)}>
                 <button type="submit" className="text-gray-400 hover:text-red-500 transition-colors">
                   <Trash2 className="h-4 w-4" />

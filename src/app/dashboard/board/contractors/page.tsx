@@ -3,9 +3,9 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ContractorDirectory } from "@/components/contracts/contractor-directory"
 
-export default async function ContractorsDirectoryPage() {
+export default async function BoardContractorsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
   const contractors = await db.user.findMany({
     where: { role: "CONTRACTOR" },

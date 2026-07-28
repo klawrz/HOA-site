@@ -20,10 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ContractType } from "@/generated/prisma"
-import { contractTypeLabel } from "@/lib/contract-styles"
+import { ContractType, ContractorCategory, BillingPeriod } from "@/generated/prisma"
+import { contractTypeLabel, billingPeriodLabel } from "@/lib/contract-styles"
 import { contractorCategoryLabel } from "@/lib/contractor-styles"
 import { createPropertyContract, createUnitContract } from "@/app/actions/contracts"
+import { createContractorRecord } from "@/app/actions/contractor-profile"
 
 interface Contractor {
   id: string
@@ -34,6 +35,8 @@ interface Contractor {
 }
 
 const types = Object.keys(contractTypeLabel) as ContractType[]
+const contractorCategories = Object.keys(contractorCategoryLabel) as ContractorCategory[]
+const billingPeriods = Object.keys(billingPeriodLabel) as BillingPeriod[]
 
 function contractorLabel(c: Contractor) {
   const category = c.category ? contractorCategoryLabel[c.category] : null
@@ -47,18 +50,53 @@ type Props = ({ scope: "property"; orgId: string } | { scope: "unit"; unitId: st
 }
 
 export function NewContractDialog(props: Props) {
-  const { contractors, scope } = props
+  const { scope } = props
   const [open, setOpen] = useState(false)
+  const [contractorList, setContractorList] = useState(props.contractors)
   const [contractorId, setContractorId] = useState("")
   const [type, setType] = useState<ContractType>("PROJECT")
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("MONTHLY")
   const [saving, setSaving] = useState(false)
+  const [showNewContractor, setShowNewContractor] = useState(false)
+  const [newContractorName, setNewContractorName] = useState("")
+  const [newContractorEmail, setNewContractorEmail] = useState("")
+  const [newContractorCompany, setNewContractorCompany] = useState("")
+  const [newContractorPhone, setNewContractorPhone] = useState("")
+  const [newContractorCategory, setNewContractorCategory] = useState<ContractorCategory | "">("")
+  const [addingContractor, setAddingContractor] = useState(false)
 
-  const sortedContractors = [...contractors].sort((a, b) => {
+  const sortedContractors = [...contractorList].sort((a, b) => {
     const catA = a.category ?? "￿"
     const catB = b.category ?? "￿"
     if (catA !== catB) return catA.localeCompare(catB)
     return (a.name ?? a.email).localeCompare(b.name ?? b.email)
   })
+
+  async function handleAddContractor() {
+    if (!newContractorName || !newContractorEmail) return
+    setAddingContractor(true)
+    const result = await createContractorRecord({
+      name: newContractorName,
+      email: newContractorEmail,
+      company: newContractorCompany || undefined,
+      phone: newContractorPhone || undefined,
+      category: newContractorCategory || undefined,
+    })
+    setAddingContractor(false)
+    if (result.success && result.contractor) {
+      setContractorList((prev) => [...prev, result.contractor as Contractor])
+      setContractorId(result.contractor.id)
+      setShowNewContractor(false)
+      setNewContractorName("")
+      setNewContractorEmail("")
+      setNewContractorCompany("")
+      setNewContractorPhone("")
+      setNewContractorCategory("")
+      toast.success("Contractor added")
+    } else {
+      toast.error(result.error ?? "Failed to add contractor")
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -67,6 +105,7 @@ export function NewContractDialog(props: Props) {
     const form = new FormData(e.currentTarget)
     form.set("type", type)
     form.set("contractorId", contractorId)
+    if (type === "RECURRING") form.set("billingPeriod", billingPeriod)
     const uploadedFile = form.get("file")
     if (uploadedFile instanceof File && uploadedFile.size === 0) form.delete("file")
 
@@ -80,6 +119,7 @@ export function NewContractDialog(props: Props) {
       setOpen(false)
       setContractorId("")
       setType("PROJECT")
+      setBillingPeriod("MONTHLY")
       ;(document.getElementById(`contract-form-${scope}`) as HTMLFormElement)?.reset()
     } else {
       toast.error(result.error ?? "Failed to create contract")
@@ -118,24 +158,108 @@ export function NewContractDialog(props: Props) {
             </p>
           </div>
           <div className="space-y-1">
-            <Label>Contractor</Label>
-            <Select
-              value={contractorId}
-              onValueChange={(v) => setContractorId(v ?? "")}
-              required
-              items={Object.fromEntries(sortedContractors.map((c) => [c.id, contractorLabel(c)]))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select contractor" />
-              </SelectTrigger>
-              <SelectContent>
-                {sortedContractors.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {contractorLabel(c)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center justify-between">
+              <Label>Contractor</Label>
+              <button
+                type="button"
+                onClick={() => setShowNewContractor((v) => !v)}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                {showNewContractor ? "Cancel" : "+ Add New Contractor"}
+              </button>
+            </div>
+            {!showNewContractor && (
+              <Select
+                value={contractorId}
+                onValueChange={(v) => setContractorId(v ?? "")}
+                required
+                items={Object.fromEntries(sortedContractors.map((c) => [c.id, contractorLabel(c)]))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select contractor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedContractors.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {contractorLabel(c)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {showNewContractor && (
+              <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Name</Label>
+                    <Input
+                      value={newContractorName}
+                      onChange={(e) => setNewContractorName(e.target.value)}
+                      placeholder="Jane Doe"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={newContractorEmail}
+                      onChange={(e) => setNewContractorEmail(e.target.value)}
+                      placeholder="jane@example.com"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Service Type</Label>
+                  <Select
+                    value={newContractorCategory}
+                    onValueChange={(v) => setNewContractorCategory((v as ContractorCategory) ?? "")}
+                    items={contractorCategoryLabel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select service type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contractorCategories.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {contractorCategoryLabel[c]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Company</Label>
+                    <Input
+                      value={newContractorCompany}
+                      onChange={(e) => setNewContractorCompany(e.target.value)}
+                      placeholder="e.g. Acme Plumbing"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Phone</Label>
+                    <Input
+                      value={newContractorPhone}
+                      onChange={(e) => setNewContractorPhone(e.target.value)}
+                      placeholder="555-000-0000"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddContractor}
+                  disabled={addingContractor || !newContractorName || !newContractorEmail}
+                >
+                  {addingContractor ? "Adding..." : "Add Contractor"}
+                </Button>
+                <p className="text-xs text-gray-400">
+                  This creates a directory entry so you can pick them right away. They won&apos;t have
+                  portal access unless you invite them separately from Members.
+                </p>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -153,9 +277,32 @@ export function NewContractDialog(props: Props) {
               <Input name="reminderDaysBefore" type="number" min="0" placeholder="30" />
             </div>
           )}
-          <div className="space-y-1">
-            <Label>Amount ($)</Label>
-            <Input name="amount" type="number" min="0" step="0.01" placeholder="0.00" />
+          <div className={type === "RECURRING" ? "grid grid-cols-2 gap-3" : "space-y-1"}>
+            <div className="space-y-1">
+              <Label>Amount ($)</Label>
+              <Input name="amount" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
+            {type === "RECURRING" && (
+              <div className="space-y-1">
+                <Label>Billed Per</Label>
+                <Select
+                  value={billingPeriod}
+                  onValueChange={(v) => setBillingPeriod(v as BillingPeriod)}
+                  items={billingPeriodLabel}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {billingPeriods.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {billingPeriodLabel[p]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <div className="space-y-1">
             <Label>Description</Label>
