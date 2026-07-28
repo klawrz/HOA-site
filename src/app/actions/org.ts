@@ -41,6 +41,25 @@ export async function deleteUnit(unitId: string) {
   revalidatePath("/dashboard/account/units")
 }
 
+export async function updateOrgAddress(formData: FormData) {
+  const session = await auth()
+  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") throw new Error("Unauthorized")
+
+  await db.organization.update({
+    where: { id: session.user.orgId },
+    data: {
+      addressLine1: (formData.get("addressLine1") as string) || null,
+      addressLine2: (formData.get("addressLine2") as string) || null,
+      city: (formData.get("city") as string) || null,
+      state: (formData.get("state") as string) || null,
+      postalCode: (formData.get("postalCode") as string) || null,
+      country: (formData.get("country") as string) || null,
+    },
+  })
+  revalidatePath("/dashboard/account")
+  revalidatePath("/")
+}
+
 export async function completeOnboarding() {
   const session = await auth()
   if (!session?.user.orgId) throw new Error("Unauthorized")

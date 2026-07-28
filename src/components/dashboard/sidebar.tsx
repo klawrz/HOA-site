@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -18,6 +18,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Units", href: "/dashboard/account/units", icon: Building2 },
     { label: "Members", href: "/dashboard/account/members", icon: Users },
     { label: "Property Manager", href: "/dashboard/account/pm", icon: Wrench },
+    { label: "Compliance", href: "/dashboard/account/compliance", icon: ShieldCheck },
   ],
   OWNER: [
     { label: "My Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
@@ -37,6 +38,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     { label: "Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
     { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
+    { label: "Compliance", href: "/dashboard/property-manager/compliance", icon: ShieldCheck },
   ],
   CONTRACTOR: [
     { label: "Dashboard", href: "/dashboard/contractor", icon: LayoutDashboard },
@@ -48,6 +50,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
     { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
+    { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
     { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon },
   ],
   UNIT_MANAGER: [

@@ -44,3 +44,10 @@ next-env.d.ts
 
 # real member correspondence / financial data used for product research - never commit
 /Discussion docs on real emails
+
+# user-uploaded documents - local dev storage only, not shared repo content
+/public/uploads
+
+# local-only dev conveniences, not shared repo content
+/run-dev.cmd
+/.claude

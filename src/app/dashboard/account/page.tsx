@@ -2,8 +2,12 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Building2, Users, Mail, ArrowRight, CheckCircle2, Circle } from "lucide-react"
+import { Building2, Users, Mail, ArrowRight, CheckCircle2, Circle, MapPin } from "lucide-react"
 import { InvitePanel } from "./invite-panel"
+import { updateOrgAddress } from "@/app/actions/org"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 
 export default async function AccountDashboardPage() {
   const session = await auth()
@@ -27,6 +31,46 @@ export default async function AccountDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{org.name}</h1>
         <p className="text-gray-500 text-sm mt-1">Account Owner Dashboard</p>
+      </div>
+
+      {/* Property address - shown on the public property home page */}
+      <div className="bg-white border rounded-xl p-5">
+        <h2 className="font-semibold text-sm text-gray-700 flex items-center gap-2 mb-3">
+          <MapPin className="h-4 w-4 text-gray-400" /> Property Address
+        </h2>
+        <form action={updateOrgAddress} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Address Line 1</Label>
+              <Input name="addressLine1" defaultValue={org.addressLine1 ?? ""} />
+            </div>
+            <div className="space-y-1">
+              <Label>Address Line 2</Label>
+              <Input name="addressLine2" defaultValue={org.addressLine2 ?? ""} />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label>City</Label>
+              <Input name="city" defaultValue={org.city ?? ""} />
+            </div>
+            <div className="space-y-1">
+              <Label>State / Province</Label>
+              <Input name="state" defaultValue={org.state ?? ""} />
+            </div>
+            <div className="space-y-1">
+              <Label>Postal Code</Label>
+              <Input name="postalCode" defaultValue={org.postalCode ?? ""} />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Country</Label>
+            <Input name="country" defaultValue={org.country ?? ""} />
+          </div>
+          <Button type="submit" variant="outline" size="sm">
+            Save Address
+          </Button>
+        </form>
       </div>
 
       {/* Stats */}

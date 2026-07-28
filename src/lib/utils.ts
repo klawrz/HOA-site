@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 // Clear date + time stamp for things like ticket submissions, where knowing
 // exactly when (not just which day) matters.
 export function formatDateTime(date: Date | string) {
-  return new Date(date).toLocaleString(undefined, {
+  return new Date(date).toLocaleString("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
   })
