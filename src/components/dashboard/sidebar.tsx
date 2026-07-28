@@ -18,6 +18,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Units", href: "/dashboard/account/units", icon: Building2 },
     { label: "Members", href: "/dashboard/account/members", icon: Users },
     { label: "Property Manager", href: "/dashboard/account/pm", icon: Wrench },
+    { label: "Contracts", href: "/dashboard/account/contracts", icon: FileText },
     { label: "Compliance", href: "/dashboard/account/compliance", icon: ShieldCheck },
   ],
   OWNER: [
@@ -38,6 +39,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     { label: "Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
     { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
+    { label: "Contracts", href: "/dashboard/property-manager/contracts", icon: FileText },
     { label: "Compliance", href: "/dashboard/property-manager/compliance", icon: ShieldCheck },
   ],
   CONTRACTOR: [

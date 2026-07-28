@@ -4,12 +4,15 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketIcon, FileText, CheckCircle2 } from "lucide-react"
 import { UpdateTicketStatusForm } from "./update-status-form"
+import { BusinessProfileForm } from "./business-profile-form"
 import { formatDateTime } from "@/lib/utils"
 import { priorityColor, scopeLabel } from "@/lib/ticket-styles"
 
 export default async function ContractorDashboard() {
   const session = await auth()
   if (!session || session.user.role !== "CONTRACTOR") redirect("/dashboard")
+
+  const me = await db.user.findUnique({ where: { id: session.user.id } })
 
   const assignments = await db.ticketAssignment.findMany({
     where: { contractorId: session.user.id },
@@ -39,6 +42,18 @@ export default async function ContractorDashboard() {
         <h1 className="text-2xl font-bold">Contractor Dashboard</h1>
         <p className="text-gray-500 mt-1">Welcome, {session.user.name}</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Business Profile</CardTitle>
+          <p className="text-xs text-gray-400">
+            Your service type helps Property Managers and the Board find you for the right kind of work.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <BusinessProfileForm company={me?.company ?? null} phone={me?.phone ?? null} category={me?.category ?? null} />
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-3 gap-4">
         <Card>

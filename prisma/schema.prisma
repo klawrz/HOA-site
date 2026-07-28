@@ -17,6 +17,26 @@ enum Role {
   UNIT_MANAGER
 }
 
+// Fixed taxonomy of vendor/service types a Contractor account can be
+// classified under - specific companies (contractor accounts) are added
+// under a type, rather than each HOA inventing its own free-text list.
+enum ContractorCategory {
+  ELECTRICITY
+  WATER
+  GARBAGE
+  POOL_MAINTENANCE
+  LAWYER
+  ACCOUNTANT
+  PROPERTY_MANAGEMENT
+  INTERNET
+  TELEPHONE
+  INSURANCE
+  HVAC
+  PLUMBING
+  WINDOWS_DOORS
+  OTHER
+}
+
 enum RentalPolicy {
   ANYONE
   FRIENDS_FAMILY_ONLY
@@ -112,6 +132,7 @@ model User {
   role      Role     @default(OWNER)
   phone     String?
   company   String?
+  category  ContractorCategory? // service type, Contractor role only
   orgId     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -159,6 +180,7 @@ model Unit {
   invites    Invite[]
   contacts   UnitContact[]
   managers   UnitManagerAssignment[]
+  contracts  Contract[]
 
   @@unique([orgId, number])
 }
@@ -274,21 +296,46 @@ model Meeting {
   documents Document[]
 }
 
+// Property-level contracts (scope PROPERTY, no unitId) are the HOA's own
+// vendor agreements - managed by Account Owner/Board, or PM staff holding
+// a CONTRACTS access grant on that org. Unit-level contracts (scope UNIT)
+// are the current Owner's own arrangements for their unit (e.g. a private
+// cleaning service) - Owner retains control, same as UnitContact/
+// UnitManagerAssignment. type distinguishes ongoing recurring services
+// (utilities, cleaning) from one-off PROJECT work, and flags CRITICAL
+// contracts (insurance, government/regulatory) for prominent highlighting
+// and expiry tracking, mirroring ComplianceDocument's reminder window.
+enum ContractScope {
+  PROPERTY
+  UNIT
+}
+
+enum ContractType {
+  RECURRING
+  PROJECT
+  CRITICAL
+}
+
 model Contract {
-  id           String    @id @default(cuid())
-  orgId        String
-  title        String
-  contractorId String
-  startDate    DateTime
-  endDate      DateTime?
-  amount       Float?
-  description  String?
-  status       String    @default("ACTIVE")
-  fileUrl      String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                 String        @id @default(cuid())
+  orgId              String
+  scope              ContractScope @default(PROPERTY)
+  unitId             String?
+  type               ContractType  @default(PROJECT)
+  title              String
+  contractorId       String
+  startDate          DateTime
+  endDate            DateTime?
+  reminderDaysBefore Int           @default(30)
+  amount             Float?
+  description        String?
+  status             String        @default("ACTIVE")
+  fileUrl            String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  unit       Unit?        @relation(fields: [unitId], references: [id], onDelete: Cascade)
   contractor User         @relation(fields: [contractorId], references: [id])
 }
 

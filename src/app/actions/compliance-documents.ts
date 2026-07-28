@@ -4,30 +4,7 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { ComplianceDocumentCategory, HomeownerMeetingDocType, PMAccessArea } from "@/generated/prisma"
 import { revalidatePath } from "next/cache"
-import { randomUUID } from "crypto"
-import { mkdir, writeFile } from "fs/promises"
-import path from "path"
-
-const MAX_UPLOAD_SIZE = 15 * 1024 * 1024 // 15MB
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "compliance-documents")
-
-// Files are stored on local disk under public/uploads - fine for this dev
-// environment, not committed to git (see .gitignore). A real deployment
-// would swap this for object storage without changing the callers below.
-async function saveUploadedFile(
-  file: File
-): Promise<{ success: true; url: string } | { success: false; error: string }> {
-  if (file.size === 0) return { success: false, error: "Empty file" }
-  if (file.size > MAX_UPLOAD_SIZE) return { success: false, error: "File is too large (max 15MB)" }
-
-  await mkdir(UPLOAD_DIR, { recursive: true })
-  const ext = path.extname(file.name).slice(0, 20)
-  const filename = `${randomUUID()}${ext}`
-  const buffer = Buffer.from(await file.arrayBuffer())
-  await writeFile(path.join(UPLOAD_DIR, filename), buffer)
-
-  return { success: true, url: `/uploads/compliance-documents/${filename}` }
-}
+import { resolveFileUrl as resolveUploadedFileUrl } from "@/lib/file-upload"
 
 function readComplianceDocumentFormData(formData: FormData) {
   const bool = (v: FormDataEntryValue | null) => (v === "true" ? true : v === "false" ? false : undefined)
@@ -52,14 +29,8 @@ function readComplianceDocumentFormData(formData: FormData) {
   }
 }
 
-async function resolveFileUrl(formData: FormData, fallbackUrl: string | null) {
-  const uploaded = formData.get("file")
-  if (uploaded instanceof File && uploaded.size > 0) {
-    const result = await saveUploadedFile(uploaded)
-    if (!result.success) return { success: false as const, error: result.error }
-    return { success: true as const, url: result.url }
-  }
-  return { success: true as const, url: fallbackUrl }
+function resolveFileUrl(formData: FormData, fallbackUrl: string | null) {
+  return resolveUploadedFileUrl(formData, fallbackUrl, "compliance-documents")
 }
 
 async function getOwnCompany(userId: string) {

@@ -1,0 +1,16 @@
+export const contractorCategoryLabel: Record<string, string> = {
+  ELECTRICITY: "Electricity",
+  WATER: "Water",
+  GARBAGE: "Garbage",
+  POOL_MAINTENANCE: "Pool Maintenance",
+  LAWYER: "Lawyer",
+  ACCOUNTANT: "Accountant",
+  PROPERTY_MANAGEMENT: "Property Management",
+  INTERNET: "Internet",
+  TELEPHONE: "Telephone",
+  INSURANCE: "Insurance",
+  HVAC: "HVAC",
+  PLUMBING: "Plumbing",
+  WINDOWS_DOORS: "Windows and Doors",
+  OTHER: "Other",
+}

@@ -6,6 +6,8 @@ import { formatDateTime } from "@/lib/utils"
 import { UnitContacts } from "./unit-contacts"
 import { UnitManagers } from "./unit-managers"
 import { UserCog, Phone, Mail } from "lucide-react"
+import { ContractList } from "@/components/contracts/contract-list"
+import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
 
 function addressLines(u: {
   addressLine1: string | null
@@ -35,6 +37,7 @@ export default async function UnitDetailPage({
         include: {
           contacts: true,
           managers: { include: { user: true, grants: true } },
+          contracts: { include: { contractor: true }, orderBy: { createdAt: "desc" } },
         },
       },
     },
@@ -43,6 +46,11 @@ export default async function UnitDetailPage({
   if (!ownership) notFound()
 
   const { unit } = ownership
+
+  const contractors = await db.user.findMany({
+    where: { role: "CONTRACTOR" },
+    orderBy: { name: "asc" },
+  })
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -132,6 +140,21 @@ export default async function UnitDetailPage({
               grants: m.grants.map((g) => ({ area: g.area, level: g.level })),
             }))}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex items-center justify-between flex-row">
+          <div>
+            <CardTitle className="text-base">Contracts</CardTitle>
+            <p className="text-xs text-gray-400">
+              Your own arrangements for this unit - cleaning, private repairs, and the like.
+            </p>
+          </div>
+          <NewContractDialog scope="unit" unitId={unit.id} contractors={contractors} />
+        </CardHeader>
+        <CardContent>
+          <ContractList contracts={unit.contracts} canManage />
         </CardContent>
       </Card>
     </div>
