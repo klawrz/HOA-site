@@ -4,6 +4,7 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Users, TicketIcon, DollarSign } from "lucide-react"
+import Link from "next/link"
 import { RentalPolicyForm } from "./rental-policy-form"
 import { priorityColor as sharedPriorityColor, statusColor as sharedStatusColor } from "@/lib/ticket-styles"
 import { formatDateTime } from "@/lib/utils"
@@ -37,7 +38,7 @@ export default async function OwnerDashboard() {
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
   const ownerships = await db.unitOwnership.findMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId: session.user.id, isCurrent: true },
     include: {
       unit: {
         include: {
@@ -128,10 +129,15 @@ export default async function OwnerDashboard() {
                   {sb.label}
                 </span>
               </div>
-              <div className="flex gap-4 text-sm text-gray-500 mt-1">
-                {unit.bedrooms && <span>{unit.bedrooms} bed</span>}
-                {unit.bathrooms && <span>{unit.bathrooms} bath</span>}
-                {unit.sqft && <span>{unit.sqft.toLocaleString()} sqft</span>}
+              <div className="flex items-center justify-between mt-1">
+                <div className="flex gap-4 text-sm text-gray-500">
+                  {unit.bedrooms && <span>{unit.bedrooms} bed</span>}
+                  {unit.bathrooms && <span>{unit.bathrooms} bath</span>}
+                  {unit.sqft && <span>{unit.sqft.toLocaleString()} sqft</span>}
+                </div>
+                <Link href={`/dashboard/owner/units/${unit.id}`} className="text-xs text-blue-600 hover:underline">
+                  Manage Unit Profile →
+                </Link>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

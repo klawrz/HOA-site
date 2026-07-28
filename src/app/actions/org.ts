@@ -19,6 +19,12 @@ export async function addUnit(formData: FormData) {
       bedrooms: formData.get("bedrooms") ? Number(formData.get("bedrooms")) : null,
       bathrooms: formData.get("bathrooms") ? Number(formData.get("bathrooms")) : null,
       sqft: formData.get("sqft") ? Number(formData.get("sqft")) : null,
+      addressLine1: (formData.get("addressLine1") as string) || null,
+      addressLine2: (formData.get("addressLine2") as string) || null,
+      city: (formData.get("city") as string) || null,
+      state: (formData.get("state") as string) || null,
+      postalCode: (formData.get("postalCode") as string) || null,
+      country: (formData.get("country") as string) || null,
       status: "AVAILABLE",
     },
   })

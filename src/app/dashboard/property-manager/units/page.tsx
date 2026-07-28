@@ -37,7 +37,7 @@ export default async function UnitAvailabilityPage() {
 
   const units = await db.unit.findMany({
     include: {
-      ownership: { include: { owner: true } },
+      ownerships: { where: { isCurrent: true }, include: { owner: true } },
       leases: { where: { isActive: true }, include: { renter: true } },
     },
     orderBy: { number: "asc" },
@@ -81,7 +81,7 @@ export default async function UnitAvailabilityPage() {
           </thead>
           <tbody className="divide-y">
             {units.map((unit) => {
-              const ownership = unit.ownership
+              const ownership = unit.ownerships[0]
               const policy = ownership?.rentalPolicy ?? "NOT_RENTING"
               const activeLease = unit.leases[0]
               const pc = policyConfig[policy]

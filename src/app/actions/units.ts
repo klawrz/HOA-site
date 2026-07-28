@@ -15,7 +15,7 @@ export async function updateRentalPolicy(
   if (!session || session.user.role !== "OWNER") return { success: false }
 
   const ownership = await db.unitOwnership.findFirst({
-    where: { id: ownershipId, ownerId: session.user.id },
+    where: { id: ownershipId, ownerId: session.user.id, isCurrent: true },
   })
   if (!ownership) return { success: false }
 

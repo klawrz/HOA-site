@@ -63,7 +63,19 @@ export function InvitePanel({
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v ?? "")} required>
+            <Select
+              value={role}
+              onValueChange={(v) => setRole(v ?? "")}
+              required
+              items={{
+                OWNER: "Unit Owner",
+                PROPERTY_MANAGER: "Property Manager",
+                BOARD_MEMBER: "Board Member",
+                CONTRACTOR: "Contractor",
+                RENTER: "Renter",
+                UNIT_MANAGER: "Unit Manager",
+              }}
+            >
               <SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="OWNER">Unit Owner</SelectItem>
@@ -71,6 +83,7 @@ export function InvitePanel({
                 <SelectItem value="BOARD_MEMBER">Board Member</SelectItem>
                 <SelectItem value="CONTRACTOR">Contractor</SelectItem>
                 <SelectItem value="RENTER">Renter</SelectItem>
+                <SelectItem value="UNIT_MANAGER">Unit Manager</SelectItem>
               </SelectContent>
             </Select>
           </div>

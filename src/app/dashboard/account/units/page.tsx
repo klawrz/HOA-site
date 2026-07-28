@@ -21,7 +21,7 @@ export default async function AccountUnitsPage() {
 
   const units = await db.unit.findMany({
     where: { orgId: session.user.orgId },
-    include: { ownership: { include: { owner: true } } },
+    include: { ownerships: { where: { isCurrent: true }, include: { owner: true } } },
     orderBy: { number: "asc" },
   })
 
@@ -52,6 +52,34 @@ export default async function AccountUnitsPage() {
             <Input name="bathrooms" type="number" step="0.5" min="0" placeholder="1.5" />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label>Address Line 1</Label>
+            <Input name="addressLine1" />
+          </div>
+          <div className="space-y-1">
+            <Label>Address Line 2</Label>
+            <Input name="addressLine2" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label>City</Label>
+            <Input name="city" />
+          </div>
+          <div className="space-y-1">
+            <Label>State / Province</Label>
+            <Input name="state" />
+          </div>
+          <div className="space-y-1">
+            <Label>Postal Code</Label>
+            <Input name="postalCode" />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label>Country</Label>
+          <Input name="country" />
+        </div>
         <Button type="submit" variant="outline" className="gap-2">
           <Plus className="h-4 w-4" /> Add Unit
         </Button>
@@ -80,8 +108,8 @@ export default async function AccountUnitsPage() {
               <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
                 {u.status.replace(/_/g, " ")}
               </span>
-              {u.ownership?.owner && (
-                <span className="text-xs text-gray-500">{u.ownership.owner.name}</span>
+              {u.ownerships[0]?.owner && (
+                <span className="text-xs text-gray-500">{u.ownerships[0].owner.name}</span>
               )}
               <form action={deleteUnit.bind(null, u.id)}>
                 <button type="submit" className="text-gray-400 hover:text-red-500 transition-colors">

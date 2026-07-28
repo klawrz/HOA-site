@@ -50,6 +50,9 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
     { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon },
   ],
+  UNIT_MANAGER: [
+    { label: "My Units", href: "/dashboard/unit-manager", icon: LayoutDashboard },
+  ],
 }
 
 const roleLabels: Record<Role, string> = {
@@ -59,6 +62,7 @@ const roleLabels: Record<Role, string> = {
   PROPERTY_MANAGER: "Manager Portal",
   CONTRACTOR: "Contractor Portal",
   BOARD_MEMBER: "Board Portal",
+  UNIT_MANAGER: "Unit Manager Portal",
 }
 
 export function DashboardSidebar({ role }: { role: Role }) {

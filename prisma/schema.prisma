@@ -14,6 +14,7 @@ enum Role {
   PROPERTY_MANAGER
   CONTRACTOR
   BOARD_MEMBER
+  UNIT_MANAGER
 }
 
 enum RentalPolicy {
@@ -115,6 +116,7 @@ model User {
   ticketComments   TicketComment[]
   pmMemberships    PMStaffMembership[]
   createdPMCompanies PropertyManagementCompany[]
+  unitManagerAssignments UnitManagerAssignment[]
 }
 
 model Unit {
@@ -131,22 +133,37 @@ model Unit {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  org       Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  ownership UnitOwnership?
-  leases    Lease[]
-  tickets   TroubleTicket[]
-  invites   Invite[]
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+
+  org        Organization           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  ownerships UnitOwnership[]
+  leases     Lease[]
+  tickets    TroubleTicket[]
+  invites    Invite[]
+  contacts   UnitContact[]
+  managers   UnitManagerAssignment[]
 
   @@unique([orgId, number])
 }
 
+// Multiple rows per unit over time - only one should have isCurrent = true
+// at once (enforced in the server action, not the DB, matching how
+// Lease.isActive already works in this codebase). Past rows are kept for
+// forensic/ownership-history purposes rather than being overwritten.
 model UnitOwnership {
   id           String       @id @default(cuid())
-  unitId       String       @unique
+  unitId       String
   ownerId      String
   rentalPolicy RentalPolicy @default(NOT_RENTING)
   notes        String?
+  isCurrent    Boolean      @default(true)
   since        DateTime     @default(now())
+  divestedAt   DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -379,4 +396,69 @@ model PMContract {
 
   company PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
   org     Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------------
+// Unit profile
+//
+// The Owner retains control of their own unit: only the current
+// owner may assign contacts and delegate a Unit Manager. A Unit
+// Manager is a real HOPE user (e.g. handling guest check-in,
+// arranging cleaning, or maintenance/repairs on the owner's behalf),
+// with the same span-of-control philosophy as PM staff - granular
+// per-area, per-level access grants rather than a fixed role tier.
+// ------------------------------------------------------------
+
+enum UnitContactKind {
+  PRIME
+  EMERGENCY
+}
+
+model UnitContact {
+  id        String          @id @default(cuid())
+  unitId    String
+  kind      UnitContactKind
+  name      String
+  phone     String
+  email     String?
+  notes     String?
+  createdAt DateTime        @default(now())
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+}
+
+model UnitManagerAssignment {
+  id        String   @id @default(cuid())
+  unitId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  unit   Unit                @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grants UnitManagerGrant[]
+
+  @@unique([unitId, userId])
+}
+
+enum UnitManagerArea {
+  GUESTS
+  CLEANING
+  TICKETS
+}
+
+enum UnitManagerLevel {
+  VIEW
+  MANAGE
+}
+
+model UnitManagerGrant {
+  id           String           @id @default(cuid())
+  assignmentId String
+  area         UnitManagerArea
+  level        UnitManagerLevel @default(VIEW)
+  createdAt    DateTime         @default(now())
+
+  assignment UnitManagerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, area])
 }

@@ -44,13 +44,28 @@ async function main() {
   const [u1A, u1B, u2A, u2B, u3A, u3B] = units
 
   // --- Ownerships ---
+  // unitId is no longer a unique key (ownership history is now allowed),
+  // so seed idempotency uses findFirst+create instead of upsert.
+  async function ensureCurrentOwnership(data: {
+    unitId: string
+    ownerId: string
+    rentalPolicy: "ANYONE" | "FRIENDS_FAMILY_ONLY" | "NOT_RENTING"
+    notes?: string
+  }) {
+    const existing = await db.unitOwnership.findFirst({
+      where: { unitId: data.unitId, isCurrent: true },
+    })
+    if (existing) return
+    await db.unitOwnership.create({ data: { ...data, notes: data.notes ?? null } })
+  }
+
   await Promise.all([
-    db.unitOwnership.upsert({ where: { unitId: u1A.id }, update: {}, create: { unitId: u1A.id, ownerId: owner1.id, rentalPolicy: "ANYONE", notes: "Prefers 12-month leases" } }),
-    db.unitOwnership.upsert({ where: { unitId: u1B.id }, update: {}, create: { unitId: u1B.id, ownerId: owner1.id, rentalPolicy: "FRIENDS_FAMILY_ONLY" } }),
-    db.unitOwnership.upsert({ where: { unitId: u2A.id }, update: {}, create: { unitId: u2A.id, ownerId: owner2.id, rentalPolicy: "ANYONE", notes: "Contact via email" } }),
-    db.unitOwnership.upsert({ where: { unitId: u2B.id }, update: {}, create: { unitId: u2B.id, ownerId: owner2.id, rentalPolicy: "NOT_RENTING" } }),
-    db.unitOwnership.upsert({ where: { unitId: u3A.id }, update: {}, create: { unitId: u3A.id, ownerId: owner3.id, rentalPolicy: "ANYONE" } }),
-    db.unitOwnership.upsert({ where: { unitId: u3B.id }, update: {}, create: { unitId: u3B.id, ownerId: owner3.id, rentalPolicy: "NOT_RENTING", notes: "Under renovation" } }),
+    ensureCurrentOwnership({ unitId: u1A.id, ownerId: owner1.id, rentalPolicy: "ANYONE", notes: "Prefers 12-month leases" }),
+    ensureCurrentOwnership({ unitId: u1B.id, ownerId: owner1.id, rentalPolicy: "FRIENDS_FAMILY_ONLY" }),
+    ensureCurrentOwnership({ unitId: u2A.id, ownerId: owner2.id, rentalPolicy: "ANYONE", notes: "Contact via email" }),
+    ensureCurrentOwnership({ unitId: u2B.id, ownerId: owner2.id, rentalPolicy: "NOT_RENTING" }),
+    ensureCurrentOwnership({ unitId: u3A.id, ownerId: owner3.id, rentalPolicy: "ANYONE" }),
+    ensureCurrentOwnership({ unitId: u3B.id, ownerId: owner3.id, rentalPolicy: "NOT_RENTING", notes: "Under renovation" }),
   ])
 
   // --- Leases ---

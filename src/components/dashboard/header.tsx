@@ -15,19 +15,23 @@ import {
 import { Role } from "@/generated/prisma"
 
 const roleBadgeColor: Record<Role, string> = {
+  ACCOUNT_OWNER: "bg-gray-100 text-gray-800",
   OWNER: "bg-blue-100 text-blue-800",
   RENTER: "bg-green-100 text-green-800",
   PROPERTY_MANAGER: "bg-purple-100 text-purple-800",
   CONTRACTOR: "bg-orange-100 text-orange-800",
   BOARD_MEMBER: "bg-red-100 text-red-800",
+  UNIT_MANAGER: "bg-teal-100 text-teal-800",
 }
 
 const roleLabel: Record<Role, string> = {
+  ACCOUNT_OWNER: "Account Owner",
   OWNER: "Owner",
   RENTER: "Renter",
   PROPERTY_MANAGER: "Property Manager",
   CONTRACTOR: "Contractor",
   BOARD_MEMBER: "Board Member",
+  UNIT_MANAGER: "Unit Manager",
 }
 
 interface HeaderUser {

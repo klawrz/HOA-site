@@ -18,7 +18,7 @@ export default async function RenterDashboard() {
     include: {
       unit: {
         include: {
-          ownership: { include: { owner: true } },
+          ownerships: { where: { isCurrent: true }, include: { owner: true } },
         },
       },
     },
@@ -73,25 +73,25 @@ export default async function RenterDashboard() {
                 <span> · Ends {new Date(lease.endDate).toLocaleDateString()}</span>
               )}
             </div>
-            {lease.unit.ownership?.owner && (
+            {lease.unit.ownerships[0]?.owner && (
               <div className="bg-gray-50 rounded-lg p-3 border">
                 <p className="text-xs font-medium text-gray-500 mb-1">Your Landlord</p>
-                <p className="font-medium">{lease.unit.ownership.owner.name}</p>
+                <p className="font-medium">{lease.unit.ownerships[0].owner.name}</p>
                 <div className="flex flex-col gap-0.5 mt-1">
                   <a
-                    href={`mailto:${lease.unit.ownership.owner.email}`}
+                    href={`mailto:${lease.unit.ownerships[0].owner.email}`}
                     className="text-xs text-blue-600 flex items-center gap-1"
                   >
                     <Mail className="h-3 w-3" />
-                    {lease.unit.ownership.owner.email}
+                    {lease.unit.ownerships[0].owner.email}
                   </a>
-                  {lease.unit.ownership.owner.phone && (
+                  {lease.unit.ownerships[0].owner.phone && (
                     <a
-                      href={`tel:${lease.unit.ownership.owner.phone}`}
+                      href={`tel:${lease.unit.ownerships[0].owner.phone}`}
                       className="text-xs text-blue-600 flex items-center gap-1"
                     >
                       <Phone className="h-3 w-3" />
-                      {lease.unit.ownership.owner.phone}
+                      {lease.unit.ownerships[0].owner.phone}
                     </a>
                   )}
                 </div>

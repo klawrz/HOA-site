@@ -30,6 +30,10 @@ export async function POST(req: Request) {
         data: { name, email: invite.email, password: hashed, role: invite.role, orgId: invite.orgId },
       })
       if (invite.unitId && invite.role === "OWNER") {
+        await tx.unitOwnership.updateMany({
+          where: { unitId: invite.unitId, isCurrent: true },
+          data: { isCurrent: false, divestedAt: new Date() },
+        })
         await tx.unitOwnership.create({ data: { unitId: invite.unitId, ownerId: user.id } })
         await tx.unit.update({ where: { id: invite.unitId }, data: { status: "OWNER_OCCUPIED" } })
       }

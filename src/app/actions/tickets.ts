@@ -31,11 +31,24 @@ function canCreateTicket(role: Role, scope: TicketScope) {
 
 // Span of control: who may assign a contractor or change priority.
 // Property Manager has authority over everything; Board Member's
-// authority is scoped to common-property requests only.
+// authority is scoped to common-property requests only. Unit Managers
+// never get assign/prioritize authority - same limited scope as an
+// Owner or Renter submitting their own ticket.
 function canManageTicket(role: Role, scope: TicketScope) {
   if (role === "PROPERTY_MANAGER") return true
   if (role === "BOARD_MEMBER" && scope === "COMMON_AREA") return true
   return false
+}
+
+// A Unit Manager's authority is per-unit and comes entirely from a grant
+// the unit's Owner assigned (see actions/unit-profile.ts) - not from role
+// alone, since the Owner retains control of who can do what for their unit.
+async function unitManagerCanManageTickets(userId: string, unitId: string) {
+  const assignment = await db.unitManagerAssignment.findUnique({
+    where: { unitId_userId: { unitId, userId } },
+    include: { grants: true },
+  })
+  return assignment?.grants.some((g) => g.area === "TICKETS" && g.level === "MANAGE") ?? false
 }
 
 export async function submitTicket(data: {
@@ -47,7 +60,13 @@ export async function submitTicket(data: {
 }) {
   const session = await auth()
   if (!session || !session.user.orgId) return { success: false }
-  if (!canCreateTicket(session.user.role, data.scope)) return { success: false }
+
+  if (session.user.role === "UNIT_MANAGER") {
+    if (data.scope !== "UNIT" || !data.unitId) return { success: false }
+    if (!(await unitManagerCanManageTickets(session.user.id, data.unitId))) return { success: false }
+  } else if (!canCreateTicket(session.user.role, data.scope)) {
+    return { success: false }
+  }
   if (data.scope === "UNIT" && !data.unitId) return { success: false }
 
   await db.troubleTicket.create({
