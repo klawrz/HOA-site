@@ -17,6 +17,11 @@ const policyConfig: Record<
     color: "bg-yellow-100 text-yellow-800",
     dot: "bg-yellow-500",
   },
+  SHORT_TERM_RENTAL: {
+    label: "Short-Term Rental",
+    color: "bg-orange-100 text-orange-800",
+    dot: "bg-orange-500",
+  },
   NOT_RENTING: {
     label: "Not Renting",
     color: "bg-gray-100 text-gray-600",
@@ -37,7 +42,7 @@ export default async function UnitAvailabilityPage() {
 
   const units = await db.unit.findMany({
     include: {
-      ownership: { include: { owner: true } },
+      ownerships: { where: { isCurrent: true }, include: { owner: true } },
       leases: { where: { isActive: true }, include: { renter: true } },
     },
     orderBy: { number: "asc" },
@@ -46,6 +51,7 @@ export default async function UnitAvailabilityPage() {
   const legend = [
     { dot: "bg-green-500", label: "Open to anyone" },
     { dot: "bg-yellow-500", label: "Friends & family only" },
+    { dot: "bg-orange-500", label: "Short-term rental" },
     { dot: "bg-gray-400", label: "Not renting" },
   ]
 
@@ -81,7 +87,7 @@ export default async function UnitAvailabilityPage() {
           </thead>
           <tbody className="divide-y">
             {units.map((unit) => {
-              const ownership = unit.ownership
+              const ownership = unit.ownerships[0]
               const policy = ownership?.rentalPolicy ?? "NOT_RENTING"
               const activeLease = unit.leases[0]
               const pc = policyConfig[policy]

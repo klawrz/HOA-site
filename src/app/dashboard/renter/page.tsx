@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Home, TicketIcon, Phone, Mail } from "lucide-react"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
+import { statusColor } from "@/lib/ticket-styles"
 
 export default async function RenterDashboard() {
   const session = await auth()
@@ -17,7 +18,7 @@ export default async function RenterDashboard() {
     include: {
       unit: {
         include: {
-          ownership: { include: { owner: true } },
+          ownerships: { where: { isCurrent: true }, include: { owner: true } },
         },
       },
     },
@@ -28,13 +29,6 @@ export default async function RenterDashboard() {
     orderBy: { createdAt: "desc" },
     take: 5,
   })
-
-  const statusColor: Record<string, string> = {
-    OPEN: "bg-yellow-100 text-yellow-800",
-    IN_PROGRESS: "bg-blue-100 text-blue-800",
-    RESOLVED: "bg-green-100 text-green-800",
-    CLOSED: "bg-gray-100 text-gray-600",
-  }
 
   return (
     <div className="space-y-6">
@@ -79,25 +73,25 @@ export default async function RenterDashboard() {
                 <span> · Ends {new Date(lease.endDate).toLocaleDateString()}</span>
               )}
             </div>
-            {lease.unit.ownership?.owner && (
+            {lease.unit.ownerships[0]?.owner && (
               <div className="bg-gray-50 rounded-lg p-3 border">
                 <p className="text-xs font-medium text-gray-500 mb-1">Your Landlord</p>
-                <p className="font-medium">{lease.unit.ownership.owner.name}</p>
+                <p className="font-medium">{lease.unit.ownerships[0].owner.name}</p>
                 <div className="flex flex-col gap-0.5 mt-1">
                   <a
-                    href={`mailto:${lease.unit.ownership.owner.email}`}
+                    href={`mailto:${lease.unit.ownerships[0].owner.email}`}
                     className="text-xs text-blue-600 flex items-center gap-1"
                   >
                     <Mail className="h-3 w-3" />
-                    {lease.unit.ownership.owner.email}
+                    {lease.unit.ownerships[0].owner.email}
                   </a>
-                  {lease.unit.ownership.owner.phone && (
+                  {lease.unit.ownerships[0].owner.phone && (
                     <a
-                      href={`tel:${lease.unit.ownership.owner.phone}`}
+                      href={`tel:${lease.unit.ownerships[0].owner.phone}`}
                       className="text-xs text-blue-600 flex items-center gap-1"
                     >
                       <Phone className="h-3 w-3" />
-                      {lease.unit.ownership.owner.phone}
+                      {lease.unit.ownerships[0].owner.phone}
                     </a>
                   )}
                 </div>
@@ -137,7 +131,7 @@ export default async function RenterDashboard() {
                   <div>
                     <p className="font-medium">{t.title}</p>
                     <p className="text-xs text-gray-400">
-                      {new Date(t.createdAt).toLocaleDateString()}
+                      {formatDateTime(t.createdAt)}
                     </p>
                   </div>
                   <Badge className={`text-xs ${statusColor[t.status]}`}>

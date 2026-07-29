@@ -5,12 +5,14 @@ declare module "next-auth" {
   interface User {
     role: Role
     orgId: string | null
+    isBoardMember: boolean
   }
   interface Session {
     user: {
       id: string
       role: Role
       orgId: string | null
+      isBoardMember: boolean
     } & DefaultSession["user"]
   }
 }
@@ -20,5 +22,6 @@ declare module "next-auth/jwt" {
     id: string
     role: Role
     orgId: string | null
+    isBoardMember: boolean
   }
 }

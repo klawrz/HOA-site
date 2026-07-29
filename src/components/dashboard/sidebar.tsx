@@ -5,23 +5,31 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
 
-type NavItem = { label: string; href: string; icon: React.ElementType }
+type NavItem = { label: string; href: string; icon: React.ElementType; indent?: boolean }
 
 const navByRole: Record<Role, NavItem[]> = {
   ACCOUNT_OWNER: [
     { label: "Dashboard", href: "/dashboard/account", icon: LayoutDashboard },
     { label: "Units", href: "/dashboard/account/units", icon: Building2 },
     { label: "Members", href: "/dashboard/account/members", icon: Users },
+    { label: "Property Manager", href: "/dashboard/account/pm", icon: Wrench },
+    { label: "Contracts", href: "/dashboard/account/contracts", icon: FileText },
+    { label: "Contractors", href: "/dashboard/account/contractors", icon: Wrench, indent: true },
+    { label: "Compliance", href: "/dashboard/account/compliance", icon: ShieldCheck },
   ],
   OWNER: [
     { label: "My Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
     { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2 },
+    { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign },
+    { label: "Contracts", href: "/dashboard/owner/financial/contracts", icon: FileText, indent: true },
     { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon },
+    { label: "Governance", href: "/dashboard/owner/governance", icon: Landmark },
+    { label: "Property Manager", href: "/dashboard/owner/property-manager", icon: Wrench },
   ],
   RENTER: [
     { label: "My Dashboard", href: "/dashboard/renter", icon: LayoutDashboard },
@@ -32,8 +40,12 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/property-manager", icon: LayoutDashboard },
     { label: "Unit Availability", href: "/dashboard/property-manager/units", icon: Building2 },
     { label: "Owner Directory", href: "/dashboard/property-manager/owners", icon: Users },
-    { label: "Contractors", href: "/dashboard/property-manager/contractors", icon: Wrench },
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
+    { label: "Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
+    { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
+    { label: "Contracts", href: "/dashboard/property-manager/contracts", icon: FileText },
+    { label: "Contractors", href: "/dashboard/property-manager/contractors", icon: Wrench, indent: true },
+    { label: "Compliance", href: "/dashboard/property-manager/compliance", icon: ShieldCheck },
   ],
   CONTRACTOR: [
     { label: "Dashboard", href: "/dashboard/contractor", icon: LayoutDashboard },
@@ -45,6 +57,13 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
     { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
+    { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
+    { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
+    { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon },
+  ],
+  UNIT_MANAGER: [
+    { label: "My Units", href: "/dashboard/unit-manager", icon: LayoutDashboard },
+    { label: "My Profile", href: "/dashboard/unit-manager/profile", icon: Settings },
   ],
 }
 
@@ -55,11 +74,36 @@ const roleLabels: Record<Role, string> = {
   PROPERTY_MANAGER: "Manager Portal",
   CONTRACTOR: "Contractor Portal",
   BOARD_MEMBER: "Board Portal",
+  UNIT_MANAGER: "Unit Manager Portal",
 }
 
-export function DashboardSidebar({ role }: { role: Role }) {
+export function DashboardSidebar({ role, isBoardMember }: { role: Role; isBoardMember: boolean }) {
   const pathname = usePathname()
-  const navItems = navByRole[role] ?? []
+  // Copy - navByRole is a module-level singleton, and splicing below must
+  // not mutate it or the injected item would leak into every render.
+  const navItems = [...(navByRole[role] ?? [])]
+
+  // isBoardMember is independent of the primary role (see schema.prisma) -
+  // an Owner who also holds Board governance access gets a sub-tab under
+  // their own Governance page, rather than a second role/portal.
+  if (role === "OWNER" && isBoardMember) {
+    const governanceIndex = navItems.findIndex((item) => item.href === "/dashboard/owner/governance")
+    if (governanceIndex !== -1) {
+      navItems.splice(governanceIndex + 1, 0, {
+        label: "Board",
+        href: "/dashboard/owner/governance/board",
+        icon: Landmark,
+        indent: true,
+      })
+    }
+  }
+
+  // The most specific href match wins - without this, a nested route like
+  // /financial/contracts would highlight both "Financial" and "Contracts"
+  // at once, since a plain prefix check matches both of their hrefs.
+  const bestMatch = navItems
+    .filter((item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")))
+    .sort((a, b) => b.href.length - a.href.length)[0]
 
   return (
     <aside className="w-64 bg-white border-r flex flex-col shrink-0">
@@ -69,15 +113,14 @@ export function DashboardSidebar({ role }: { role: Role }) {
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href))
+          const isActive = item === bestMatch
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                item.indent && "ml-4 text-[13px]",
                 isActive
                   ? "bg-gray-900 text-white font-medium"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"

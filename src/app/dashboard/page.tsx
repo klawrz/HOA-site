@@ -8,6 +8,7 @@ const roleRedirect: Record<string, string> = {
   PROPERTY_MANAGER: "/dashboard/property-manager",
   CONTRACTOR: "/dashboard/contractor",
   BOARD_MEMBER: "/dashboard/board",
+  UNIT_MANAGER: "/dashboard/unit-manager",
 }
 
 export default async function DashboardIndexPage() {

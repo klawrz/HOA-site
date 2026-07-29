@@ -18,12 +18,14 @@ import { updateRentalPolicy } from "@/app/actions/units"
 const policyLabels: Record<RentalPolicy, string> = {
   ANYONE: "Open to anyone",
   FRIENDS_FAMILY_ONLY: "Friends & family only",
+  SHORT_TERM_RENTAL: "Short-term rental (Airbnb/VRBO)",
   NOT_RENTING: "Not renting",
 }
 
 const policyColors: Record<RentalPolicy, string> = {
   ANYONE: "text-green-700",
   FRIENDS_FAMILY_ONLY: "text-yellow-700",
+  SHORT_TERM_RENTAL: "text-orange-700",
   NOT_RENTING: "text-gray-500",
 }
 
@@ -59,7 +61,7 @@ export function RentalPolicyForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">Who can rent this unit?</Label>
-          <Select value={policy} onValueChange={(v) => setPolicy(v as RentalPolicy)}>
+          <Select value={policy} onValueChange={(v) => setPolicy(v as RentalPolicy)} items={policyLabels}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

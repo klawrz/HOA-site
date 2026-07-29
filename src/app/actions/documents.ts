@@ -13,10 +13,12 @@ export async function createDocument(data: {
   fileUrl: string
 }) {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") return { success: false }
+  if (!session || !session.user.orgId) return { success: false }
+  if (session.user.role !== "BOARD_MEMBER" && !session.user.isBoardMember) return { success: false }
 
   await db.document.create({
     data: {
+      orgId: session.user.orgId,
       title: data.title,
       category: data.category,
       description: data.description || null,
@@ -28,5 +30,7 @@ export async function createDocument(data: {
 
   revalidatePath("/dashboard/board")
   revalidatePath("/dashboard/board/documents")
+  revalidatePath("/dashboard/owner/governance")
+  revalidatePath("/dashboard/owner/governance/board")
   return { success: true }
 }

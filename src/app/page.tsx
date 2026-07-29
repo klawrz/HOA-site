@@ -2,9 +2,10 @@ import Link from "next/link"
 import Image from "next/image"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import { Building2, Users, FileText, Wrench, Shield } from "lucide-react"
+import { Building2, Users, FileText, Wrench, Shield, MapPin, UserSquare2 } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { db } from "@/lib/db"
 
 const roles = [
   {
@@ -39,9 +40,29 @@ const roles = [
   },
 ]
 
+function addressLines(org: {
+  addressLine1: string | null
+  addressLine2: string | null
+  city: string | null
+  state: string | null
+  postalCode: string | null
+  country: string | null
+}) {
+  const line2 = [org.city, org.state, org.postalCode].filter(Boolean).join(", ")
+  return [org.addressLine1, org.addressLine2, line2, org.country].filter(Boolean)
+}
+
 export default async function HomePage() {
   const session = await auth()
   if (session) redirect("/dashboard")
+
+  const org = await db.organization.findFirst({
+    include: {
+      members: { where: { role: "BOARD_MEMBER" }, orderBy: { name: "asc" } },
+    },
+  })
+  const address = org ? addressLines(org) : []
+  const boardMembers = org?.members ?? []
 
   return (
     <div className="min-h-full flex flex-col">
@@ -93,6 +114,37 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
+
+        {(address.length > 0 || boardMembers.length > 0) && (
+          <section className="max-w-4xl mx-auto py-12 px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {address.length > 0 && (
+                <div className="bg-white rounded-xl border p-6">
+                  <h2 className="font-semibold text-gray-800 flex items-center gap-2 mb-3">
+                    <MapPin className="h-4 w-4 text-gray-400" /> Property Address
+                  </h2>
+                  <div className="text-sm text-gray-600 space-y-0.5">
+                    {address.map((line, i) => (
+                      <p key={i}>{line}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {boardMembers.length > 0 && (
+                <div className="bg-white rounded-xl border p-6">
+                  <h2 className="font-semibold text-gray-800 flex items-center gap-2 mb-3">
+                    <UserSquare2 className="h-4 w-4 text-gray-400" /> Board of Directors
+                  </h2>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    {boardMembers.map((m) => (
+                      <li key={m.id}>{m.name ?? m.email}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="max-w-5xl mx-auto py-16 px-6">
           <h2 className="text-2xl font-bold text-center mb-10 text-gray-800">

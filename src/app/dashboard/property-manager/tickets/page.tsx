@@ -1,22 +1,12 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
-import { AssignTicketForm } from "./assign-ticket-form"
-
-const priorityColor: Record<string, string> = {
-  URGENT: "bg-red-100 text-red-800",
-  HIGH: "bg-orange-100 text-orange-800",
-  MEDIUM: "bg-blue-100 text-blue-800",
-  LOW: "bg-gray-100 text-gray-600",
-}
-
-const statusColor: Record<string, string> = {
-  OPEN: "bg-yellow-100 text-yellow-800",
-  IN_PROGRESS: "bg-blue-100 text-blue-800",
-  RESOLVED: "bg-green-100 text-green-800",
-  CLOSED: "bg-gray-100 text-gray-600",
-}
+import { buttonVariants } from "@/components/ui/button"
+import { TicketManageForm } from "@/app/dashboard/_components/ticket-manage-form"
+import { cn, formatDateTime } from "@/lib/utils"
+import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
 
 export default async function AllTicketsPage() {
   const session = await auth()
@@ -36,9 +26,14 @@ export default async function AllTicketsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">All Trouble Tickets</h1>
-        <p className="text-gray-500 mt-1">{tickets.length} total tickets</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">All Trouble Tickets</h1>
+          <p className="text-gray-500 mt-1">{tickets.length} total tickets</p>
+        </div>
+        <Link href="/dashboard/property-manager/tickets/new" className={cn(buttonVariants())}>
+          New Request
+        </Link>
       </div>
 
       <div className="space-y-3">
@@ -56,13 +51,14 @@ export default async function AllTicketsPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[t.status]}`}>
                         {t.status.replace("_", " ")}
                       </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
+                        {t.unit ? `Unit ${t.unit.number}` : scopeLabel[t.scope]}
+                      </span>
                     </div>
                     <p className="font-semibold">{t.title}</p>
                     <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{t.description}</p>
                     <div className="flex flex-wrap gap-3 text-xs text-gray-400 mt-2">
-                      <span>Unit {t.unit.number}</span>
-                      <span>Submitted by {t.submittedBy.name ?? t.submittedBy.email}</span>
-                      <span>{new Date(t.createdAt).toLocaleDateString()}</span>
+                      <span>Submitted by {t.submittedBy.name ?? t.submittedBy.email} on {formatDateTime(t.createdAt)}</span>
                     </div>
                     {assigned && (
                       <p className="text-xs text-blue-600 mt-1">
@@ -71,10 +67,11 @@ export default async function AllTicketsPage() {
                     )}
                   </div>
                   {t.status !== "RESOLVED" && t.status !== "CLOSED" && (
-                    <AssignTicketForm
+                    <TicketManageForm
                       ticketId={t.id}
                       contractors={contractors}
                       currentContractorId={assigned?.contractorId}
+                      currentPriority={t.priority}
                     />
                   )}
                 </div>

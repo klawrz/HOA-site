@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RentalPolicy } from "@/generated/prisma"
 
 export default async function OwnersDirectoryPage() {
   const session = await auth()
@@ -21,15 +22,17 @@ export default async function OwnersDirectoryPage() {
     orderBy: { name: "asc" },
   })
 
-  const policyColor: Record<string, string> = {
+  const policyColor: Record<RentalPolicy, string> = {
     ANYONE: "bg-green-100 text-green-800",
     FRIENDS_FAMILY_ONLY: "bg-yellow-100 text-yellow-800",
+    SHORT_TERM_RENTAL: "bg-orange-100 text-orange-800",
     NOT_RENTING: "bg-gray-100 text-gray-600",
   }
 
-  const policyLabel: Record<string, string> = {
+  const policyLabel: Record<RentalPolicy, string> = {
     ANYONE: "Open to anyone",
     FRIENDS_FAMILY_ONLY: "Friends & family",
+    SHORT_TERM_RENTAL: "Short-term rental",
     NOT_RENTING: "Not renting",
   }
 

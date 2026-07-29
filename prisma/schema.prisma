@@ -14,11 +14,33 @@ enum Role {
   PROPERTY_MANAGER
   CONTRACTOR
   BOARD_MEMBER
+  UNIT_MANAGER
+}
+
+// Fixed taxonomy of vendor/service types a Contractor account can be
+// classified under - specific companies (contractor accounts) are added
+// under a type, rather than each HOA inventing its own free-text list.
+enum ContractorCategory {
+  ELECTRICITY
+  WATER
+  GARBAGE
+  POOL_MAINTENANCE
+  LAWYER
+  ACCOUNTANT
+  PROPERTY_MANAGEMENT
+  INTERNET
+  TELEPHONE
+  INSURANCE
+  HVAC
+  PLUMBING
+  WINDOWS_DOORS
+  OTHER
 }
 
 enum RentalPolicy {
   ANYONE
   FRIENDS_FAMILY_ONLY
+  SHORT_TERM_RENTAL // STR carries different HOA obligations than a long-term lease
   NOT_RENTING
 }
 
@@ -41,6 +63,12 @@ enum TicketPriority {
   MEDIUM
   HIGH
   URGENT
+  EMERGENCY
+}
+
+enum TicketScope {
+  UNIT
+  COMMON_AREA
 }
 
 enum DocumentCategory {
@@ -56,6 +84,15 @@ model Organization {
   name               String
   slug               String   @unique
   onboardingComplete Boolean  @default(false)
+
+  // Property address, shown on the public property home page
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -63,9 +100,12 @@ model Organization {
   units     Unit[]
   invites   Invite[]
   meetings  Meeting[]
+  pmContracts    PMContract[]
+  pmAccessGrants PMAccessGrant[]
   documents Document[]
   contracts Contract[]
   tickets   TroubleTicket[]
+  complianceDocuments ComplianceDocument[]
 }
 
 model Invite {
@@ -93,9 +133,26 @@ model User {
   role      Role     @default(OWNER)
   phone     String?
   company   String?
+  category  ContractorCategory? // service type, Contractor role only
   orgId     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Independent of the primary role - lets an Owner (most commonly) also
+  // hold Board governance capability without a second account or a
+  // combined role enum value, since in practice Board members are usually
+  // elected from among the ownership. Set by the Account Owner. Does not
+  // affect users whose primary role is already BOARD_MEMBER.
+  isBoardMember Boolean @default(false)
+
+  // Unit Manager directory profile - lets a registered Unit Manager promote
+  // themselves to Owners browsing the directory, instead of being just a
+  // bare name/email in a picker.
+  headline         String? // short one-line pitch, e.g. "Reliable cleaning & guest turnover, 24/7"
+  bio              String?
+  specialties      String? // comma-separated UnitManagerArea values
+  yearsExperience  Int?
+  directoryVisible Boolean @default(true) // opt out to stay assignable but unlisted
 
   org              Organization?      @relation(fields: [orgId], references: [id])
   sentInvites      Invite[]           @relation("SentInvites")
@@ -105,6 +162,11 @@ model User {
   contracts        Contract[]
   submittedTickets TroubleTicket[]    @relation("SubmittedBy")
   ticketComments   TicketComment[]
+  pmMemberships    PMStaffMembership[]
+  createdPMCompanies PropertyManagementCompany[]
+  unitManagerAssignments UnitManagerAssignment[]
+  uploadedComplianceDocuments ComplianceDocument[]
+  createdOccupancyEntries OccupancyEntry[]
 }
 
 model Unit {
@@ -117,26 +179,45 @@ model Unit {
   bathrooms   Float?
   sqft        Int?
   description String?
+  civicRoll   String?    // municipal civic/assessment roll number for this unit
   status      UnitStatus @default(AVAILABLE)
+  selfManaged Boolean    @default(true) // Owner handles the unit themselves, no delegated Unit Manager
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  org       Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  ownership UnitOwnership?
-  leases    Lease[]
-  tickets   TroubleTicket[]
-  invites   Invite[]
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+
+  org        Organization           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  ownerships UnitOwnership[]
+  leases     Lease[]
+  tickets    TroubleTicket[]
+  invites    Invite[]
+  contacts   UnitContact[]
+  managers   UnitManagerAssignment[]
+  contracts  Contract[]
+  occupancyEntries OccupancyEntry[]
 
   @@unique([orgId, number])
 }
 
+// Multiple rows per unit over time - only one should have isCurrent = true
+// at once (enforced in the server action, not the DB, matching how
+// Lease.isActive already works in this codebase). Past rows are kept for
+// forensic/ownership-history purposes rather than being overwritten.
 model UnitOwnership {
   id           String       @id @default(cuid())
-  unitId       String       @unique
+  unitId       String
   ownerId      String
   rentalPolicy RentalPolicy @default(NOT_RENTING)
   notes        String?
+  isCurrent    Boolean      @default(true)
   since        DateTime     @default(now())
+  divestedAt   DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -162,7 +243,8 @@ model Lease {
 model TroubleTicket {
   id            String         @id @default(cuid())
   orgId         String
-  unitId        String
+  unitId        String?
+  scope         TicketScope    @default(UNIT)
   submittedById String
   title         String
   description   String
@@ -173,7 +255,7 @@ model TroubleTicket {
   resolvedAt    DateTime?
 
   org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  unit        Unit               @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  unit        Unit?              @relation(fields: [unitId], references: [id], onDelete: Cascade)
   submittedBy User               @relation("SubmittedBy", fields: [submittedById], references: [id])
   assignments TicketAssignment[]
   comments    TicketComment[]
@@ -234,20 +316,346 @@ model Meeting {
   documents Document[]
 }
 
+// Property-level contracts (scope PROPERTY, no unitId) are the HOA's own
+// vendor agreements - managed by Account Owner/Board, or PM staff holding
+// a CONTRACTS access grant on that org. Unit-level contracts (scope UNIT)
+// are the current Owner's own arrangements for their unit (e.g. a private
+// cleaning service) - Owner retains control, same as UnitContact/
+// UnitManagerAssignment. type distinguishes ongoing recurring services
+// (utilities, cleaning) from one-off PROJECT work, and flags CRITICAL
+// contracts (insurance, government/regulatory) for prominent highlighting
+// and expiry tracking, mirroring ComplianceDocument's reminder window.
+enum ContractScope {
+  PROPERTY
+  UNIT
+}
+
+enum ContractType {
+  RECURRING
+  PROJECT
+  CRITICAL
+}
+
+// Only meaningful when type is RECURRING - the amount is billed per this
+// interval (e.g. a monthly landscaping fee) rather than a one-off total.
+enum BillingPeriod {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
 model Contract {
-  id           String    @id @default(cuid())
-  orgId        String
-  title        String
-  contractorId String
-  startDate    DateTime
-  endDate      DateTime?
-  amount       Float?
-  description  String?
-  status       String    @default("ACTIVE")
-  fileUrl      String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                 String        @id @default(cuid())
+  orgId              String
+  scope              ContractScope @default(PROPERTY)
+  unitId             String?
+  type               ContractType  @default(PROJECT)
+  title              String
+  contractorId       String
+  startDate          DateTime
+  endDate            DateTime?
+  reminderDaysBefore Int           @default(30)
+  amount             Float?
+  billingPeriod      BillingPeriod?
+  description        String?
+  status             String        @default("ACTIVE")
+  fileUrl            String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  unit       Unit?        @relation(fields: [unitId], references: [id], onDelete: Cascade)
   contractor User         @relation(fields: [contractorId], references: [id])
+}
+
+// ------------------------------------------------------------
+// Property Manager structure
+//
+// The PM is a contracted entity (like a supplier) that an HOA
+// engages - PMContract is that vendor relationship. A PM can be a
+// solo individual (no company/staff below) or a company with
+// multiple staff, and a single company can be contracted by more
+// than one HOA. Access for a given staff member on a given HOA is
+// granular per area (PMAccessGrant) rather than a fixed role tier,
+// so span of control can be tailored per person per HOA.
+// ------------------------------------------------------------
+
+model PropertyManagementCompany {
+  id             String   @id @default(cuid())
+  legalName      String
+  registrationId String?
+
+  // General company contact (e.g. main office line/inbox)
+  email String?
+  phone String?
+
+  // Full mailing address
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+
+  // The specific point-of-contact person, not just a company inbox
+  primaryContactName  String?
+  primaryContactEmail String?
+  primaryContactPhone String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy         User                      @relation(fields: [createdById], references: [id])
+  staff             PMStaffMembership[]
+  contracts         PMContract[]
+  emergencyContacts PMEmergencyContact[]
+  complianceDocuments ComplianceDocument[]
+}
+
+model PMEmergencyContact {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  role      String?
+  phone     String
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  company PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model PMStaffMembership {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  company      PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessGrants PMAccessGrant[]
+
+  @@unique([companyId, userId])
+}
+
+enum PMAccessArea {
+  TICKETS
+  CONTRACTS
+  DOCUMENTS
+  STAFF
+}
+
+enum PMAccessLevel {
+  VIEW
+  MANAGE
+}
+
+model PMAccessGrant {
+  id           String        @id @default(cuid())
+  membershipId String
+  orgId        String
+  area         PMAccessArea
+  level        PMAccessLevel @default(VIEW)
+  createdAt    DateTime      @default(now())
+
+  membership PMStaffMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  org        Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, orgId, area])
+}
+
+enum PMContractStatus {
+  ACTIVE
+  PENDING
+  ENDED
+}
+
+model PMContract {
+  id        String            @id @default(cuid())
+  companyId String
+  orgId     String
+  status    PMContractStatus  @default(ACTIVE)
+  startDate DateTime
+  endDate   DateTime?
+  terms     String?
+  fileUrl   String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  company PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  org     Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------------
+// Unit profile
+//
+// The Owner retains control of their own unit: only the current
+// owner may assign contacts and delegate a Unit Manager. A Unit
+// Manager is a real HOPE user (e.g. handling guest check-in,
+// arranging cleaning, or maintenance/repairs on the owner's behalf),
+// with the same span-of-control philosophy as PM staff - granular
+// per-area, per-level access grants rather than a fixed role tier.
+// ------------------------------------------------------------
+
+enum UnitContactKind {
+  PRIME
+  EMERGENCY
+}
+
+model UnitContact {
+  id        String          @id @default(cuid())
+  unitId    String
+  kind      UnitContactKind
+  name      String
+  phone     String
+  email     String?
+  notes     String?
+  createdAt DateTime        @default(now())
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+}
+
+model UnitManagerAssignment {
+  id        String   @id @default(cuid())
+  unitId    String
+  userId    String? // null for a manually-entered manager with no HOPE login
+  name      String? // manual-entry only - the account's User.name is used otherwise
+  phone     String?
+  email     String? // manual-entry only - the account's User.email is used otherwise
+  notes     String?
+  createdAt DateTime @default(now())
+
+  unit   Unit                @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  user   User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grants UnitManagerGrant[]
+
+  @@unique([unitId, userId])
+}
+
+enum UnitManagerArea {
+  GUESTS
+  CLEANING
+  TICKETS
+  OCCUPANCY
+}
+
+enum UnitManagerLevel {
+  VIEW
+  MANAGE
+}
+
+model UnitManagerGrant {
+  id           String           @id @default(cuid())
+  assignmentId String
+  area         UnitManagerArea
+  level        UnitManagerLevel @default(VIEW)
+  createdAt    DateTime         @default(now())
+
+  assignment UnitManagerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, area])
+}
+
+// ------------------------------------------------------------
+// Occupancy calendar
+//
+// A chronological log of who is actually staying in a unit and when -
+// managed by the current Owner or a delegated Unit Manager holding an
+// OCCUPANCY grant. Lives on Unit (not UnitOwnership) so the log persists
+// across an ownership change, same reasoning as why Lease is Unit-scoped
+// even though it's "current owner's business." An entry's absence means
+// "not logged," not "vacant" - don't infer vacancy from calendar gaps;
+// VACANT is only ever an explicit entry.
+// ------------------------------------------------------------
+
+enum OccupancyType {
+  OWNER_FAMILY
+  TRUSTED_GUEST
+  LONG_TERM_RENTER
+  SHORT_TERM_GUEST
+  VACANT
+}
+
+model OccupancyEntry {
+  id              String        @id @default(cuid())
+  unitId          String
+  startDate       DateTime
+  endDate         DateTime
+  type            OccupancyType
+  occupantName    String?
+  occupantContact String?
+  notes           String?
+  createdById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  unit      Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
+}
+
+// ------------------------------------------------------------
+// Document repository & compliance
+//
+// Separate from Contract/PMContract (those are vendor agreements).
+// This tracks the HOA's or a PM company's own legal/compliance
+// records - entity registration, tax filings, insurance, permits,
+// licenses - each with an expiration so nothing lapses unnoticed.
+// A record belongs to exactly one owner: an Organization (HOA) or a
+// PropertyManagementCompany. HOA records are managed by Account
+// Owner/Board always, and by PM staff holding a DOCUMENTS access
+// grant on that org. Company records are visible to all of a
+// company's staff, managed by the company admin only.
+// ------------------------------------------------------------
+
+enum ComplianceDocumentCategory {
+  BYLAWS_CONSTITUTION
+  RULES_REGULATIONS
+  GOVERNING_LAW
+  HOMEOWNER_MEETINGS
+  ENTITY_REGISTRATION
+  TAX_FILING
+  INSURANCE
+  PERMIT_LICENSE
+  OTHER
+}
+
+// Sub-part of an annual Homeowner Meetings set (only meaningful when
+// category is HOMEOWNER_MEETINGS) - each year typically produces a call
+// notice, proxies, an agenda, and minutes, filed as separate records
+// sharing the same meetingYear so they can be grouped together.
+enum HomeownerMeetingDocType {
+  CALL
+  PROXIES
+  AGENDA
+  MINUTES
+}
+
+model ComplianceDocument {
+  id                 String                     @id @default(cuid())
+  orgId              String?
+  companyId          String?
+  title              String
+  category           ComplianceDocumentCategory @default(OTHER)
+  description        String?
+  fileUrl            String?
+  language           String?
+  issuedAt           DateTime?
+  expiresAt          DateTime?
+  reminderDaysBefore Int                        @default(30)
+
+  // Homeowner Meetings only
+  meetingYear           Int?
+  meetingDocType        HomeownerMeetingDocType?
+  minutesFilingRequired Boolean?
+  minutesFiled          Boolean?
+  minutesFiledAt        DateTime?
+
+  uploadedById       String
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  org        Organization?              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  company    PropertyManagementCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy User                       @relation(fields: [uploadedById], references: [id])
 }

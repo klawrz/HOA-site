@@ -20,71 +20,70 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { createContract } from "@/app/actions/contracts"
+import { createPMContract } from "@/app/actions/pm"
 
-interface Contractor {
+interface CompanyOption {
   id: string
-  name: string | null
-  email: string
-  company: string | null
+  legalName: string
 }
 
-export function NewContractDialog({ contractors }: { contractors: Contractor[] }) {
+export function NewPMContractDialog({ companies }: { companies: CompanyOption[] }) {
   const [open, setOpen] = useState(false)
-  const [contractorId, setContractorId] = useState("")
+  const [companyId, setCompanyId] = useState("")
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!contractorId) return
+    if (!companyId) return
     setSaving(true)
     const form = new FormData(e.currentTarget)
-    const result = await createContract({
-      title: form.get("title") as string,
-      contractorId,
+    const result = await createPMContract({
+      companyId,
       startDate: form.get("startDate") as string,
-      endDate: form.get("endDate") as string,
-      amount: form.get("amount") as string,
-      description: form.get("description") as string,
+      endDate: (form.get("endDate") as string) || undefined,
+      terms: (form.get("terms") as string) || undefined,
     })
     setSaving(false)
     if (result.success) {
-      toast.success("Contract created")
+      toast.success("Property manager contracted")
       setOpen(false)
     } else {
-      toast.error("Failed to create contract")
+      toast.error("Failed to save")
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
-        + New Contract
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>+ New Contract</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>New Contract</DialogTitle>
+          <DialogTitle>Contract a Property Manager</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <Label>Contract Title</Label>
-            <Input name="title" placeholder="e.g. Landscaping Services 2025" required />
-          </div>
-          <div className="space-y-1">
-            <Label>Contractor</Label>
-            <Select value={contractorId} onValueChange={(v) => setContractorId(v ?? "")} required>
+            <Label>Property Management Company</Label>
+            <Select
+              value={companyId}
+              onValueChange={(v) => setCompanyId(v ?? "")}
+              items={Object.fromEntries(companies.map((c) => [c.id, c.legalName]))}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select contractor" />
+                <SelectValue placeholder="Select a company" />
               </SelectTrigger>
               <SelectContent>
-                {contractors.map((c) => (
+                {companies.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.name ?? c.email}
-                    {c.company && ` (${c.company})`}
+                    {c.legalName}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {companies.length === 0 && (
+              <p className="text-xs text-gray-400">
+                No property management companies are registered yet - ask them to create a
+                company profile from their Property Manager account first.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -97,19 +96,15 @@ export function NewContractDialog({ contractors }: { contractors: Contractor[] }
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Amount ($)</Label>
-            <Input name="amount" type="number" min="0" step="0.01" placeholder="0.00" />
-          </div>
-          <div className="space-y-1">
-            <Label>Description</Label>
-            <Textarea name="description" placeholder="Scope of work..." className="h-20 resize-none" />
+            <Label>Terms</Label>
+            <Textarea name="terms" placeholder="Scope of services, fees, notes..." className="h-20 resize-none" />
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !contractorId}>
-              {saving ? "Creating..." : "Create Contract"}
+            <Button type="submit" disabled={saving || !companyId}>
+              {saving ? "Saving..." : "Save Contract"}
             </Button>
           </div>
         </form>
