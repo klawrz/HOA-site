@@ -40,6 +40,7 @@ enum ContractorCategory {
 enum RentalPolicy {
   ANYONE
   FRIENDS_FAMILY_ONLY
+  SHORT_TERM_RENTAL // STR carries different HOA obligations than a long-term lease
   NOT_RENTING
 }
 
@@ -137,6 +138,15 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Unit Manager directory profile - lets a registered Unit Manager promote
+  // themselves to Owners browsing the directory, instead of being just a
+  // bare name/email in a picker.
+  headline         String? // short one-line pitch, e.g. "Reliable cleaning & guest turnover, 24/7"
+  bio              String?
+  specialties      String? // comma-separated UnitManagerArea values
+  yearsExperience  Int?
+  directoryVisible Boolean @default(true) // opt out to stay assignable but unlisted
+
   org              Organization?      @relation(fields: [orgId], references: [id])
   sentInvites      Invite[]           @relation("SentInvites")
   ownedUnits       UnitOwnership[]
@@ -149,6 +159,7 @@ model User {
   createdPMCompanies PropertyManagementCompany[]
   unitManagerAssignments UnitManagerAssignment[]
   uploadedComplianceDocuments ComplianceDocument[]
+  createdOccupancyEntries OccupancyEntry[]
 }
 
 model Unit {
@@ -163,6 +174,7 @@ model Unit {
   description String?
   civicRoll   String?    // municipal civic/assessment roll number for this unit
   status      UnitStatus @default(AVAILABLE)
+  selfManaged Boolean    @default(true) // Owner handles the unit themselves, no delegated Unit Manager
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -181,6 +193,7 @@ model Unit {
   contacts   UnitContact[]
   managers   UnitManagerAssignment[]
   contracts  Contract[]
+  occupancyEntries OccupancyEntry[]
 
   @@unique([orgId, number])
 }
@@ -499,11 +512,15 @@ model UnitContact {
 model UnitManagerAssignment {
   id        String   @id @default(cuid())
   unitId    String
-  userId    String
+  userId    String? // null for a manually-entered manager with no HOPE login
+  name      String? // manual-entry only - the account's User.name is used otherwise
+  phone     String?
+  email     String? // manual-entry only - the account's User.email is used otherwise
+  notes     String?
   createdAt DateTime @default(now())
 
   unit   Unit                @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
   grants UnitManagerGrant[]
 
   @@unique([unitId, userId])
@@ -513,6 +530,7 @@ enum UnitManagerArea {
   GUESTS
   CLEANING
   TICKETS
+  OCCUPANCY
 }
 
 enum UnitManagerLevel {
@@ -530,6 +548,43 @@ model UnitManagerGrant {
   assignment UnitManagerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
 
   @@unique([assignmentId, area])
+}
+
+// ------------------------------------------------------------
+// Occupancy calendar
+//
+// A chronological log of who is actually staying in a unit and when -
+// managed by the current Owner or a delegated Unit Manager holding an
+// OCCUPANCY grant. Lives on Unit (not UnitOwnership) so the log persists
+// across an ownership change, same reasoning as why Lease is Unit-scoped
+// even though it's "current owner's business." An entry's absence means
+// "not logged," not "vacant" - don't infer vacancy from calendar gaps;
+// VACANT is only ever an explicit entry.
+// ------------------------------------------------------------
+
+enum OccupancyType {
+  OWNER_FAMILY
+  TRUSTED_GUEST
+  LONG_TERM_RENTER
+  SHORT_TERM_GUEST
+  VACANT
+}
+
+model OccupancyEntry {
+  id              String        @id @default(cuid())
+  unitId          String
+  startDate       DateTime
+  endDate         DateTime
+  type            OccupancyType
+  occupantName    String?
+  occupantContact String?
+  notes           String?
+  createdById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  unit      Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
 }
 
 // ------------------------------------------------------------

@@ -64,9 +64,9 @@ export default async function AccountUnitsPage() {
                 {u.ownerships[0]?.owner && (
                   <p className="text-gray-600">{u.ownerships[0].owner.name ?? u.ownerships[0].owner.email}</p>
                 )}
-                {u.managers[0]?.user && (
+                {u.managers[0] && (
                   <p className="text-gray-400">
-                    UM: {u.managers[0].user.name ?? u.managers[0].user.email}
+                    UM: {u.managers[0].user?.name ?? u.managers[0].user?.email ?? u.managers[0].name}
                   </p>
                 )}
               </div>

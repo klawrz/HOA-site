@@ -13,3 +13,9 @@ export function formatDateTime(date: Date | string) {
     timeStyle: "short",
   })
 }
+
+// Date-only display for date-range data (e.g. occupancy calendars) where
+// time-of-day isn't meaningful.
+export function formatDate(date: Date | string) {
+  return new Date(date).toLocaleDateString("en-US", { dateStyle: "medium" })
+}

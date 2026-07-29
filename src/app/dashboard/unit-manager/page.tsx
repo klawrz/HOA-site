@@ -3,14 +3,17 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { Building2 } from "lucide-react"
+import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
 
 const AREA_LABELS: Record<string, string> = {
   GUESTS: "Guests",
   CLEANING: "Cleaning",
   TICKETS: "Tickets",
+  OCCUPANCY: "Occupancy",
 }
 
 export default async function UnitManagerDashboard() {
@@ -19,7 +22,10 @@ export default async function UnitManagerDashboard() {
 
   const assignments = await db.unitManagerAssignment.findMany({
     where: { userId: session.user.id },
-    include: { unit: true, grants: true },
+    include: {
+      unit: { include: { occupancyEntries: { orderBy: { startDate: "asc" } } } },
+      grants: true,
+    },
     orderBy: { createdAt: "asc" },
   })
 
@@ -33,6 +39,7 @@ export default async function UnitManagerDashboard() {
       <div className="space-y-3">
         {assignments.map((a) => {
           const canManageTickets = a.grants.some((g) => g.area === "TICKETS" && g.level === "MANAGE")
+          const occupancyGrant = a.grants.find((g) => g.area === "OCCUPANCY")
           return (
             <Card key={a.id}>
               <CardHeader className="pb-2">
@@ -57,14 +64,36 @@ export default async function UnitManagerDashboard() {
                     ))
                   )}
                 </div>
-                {canManageTickets && (
-                  <Link
-                    href={`/dashboard/unit-manager/tickets/new?unitId=${a.unit.id}`}
-                    className={cn(buttonVariants({ size: "sm" }))}
-                  >
-                    + Submit Ticket for This Unit
-                  </Link>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {canManageTickets && (
+                    <Link
+                      href={`/dashboard/unit-manager/tickets/new?unitId=${a.unit.id}`}
+                      className={cn(buttonVariants({ size: "sm" }))}
+                    >
+                      + Submit Ticket for This Unit
+                    </Link>
+                  )}
+                  {occupancyGrant && (
+                    <Dialog>
+                      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+                        {occupancyGrant.level === "MANAGE" ? "Manage" : "View"} Occupancy Calendar
+                      </DialogTrigger>
+                      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>
+                            Occupancy Calendar - Unit {a.unit.number}
+                            {a.unit.building && ` — Building ${a.unit.building}`}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <OccupancyCalendar
+                          unitId={a.unit.id}
+                          entries={a.unit.occupancyEntries}
+                          canManage={occupancyGrant.level === "MANAGE"}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )

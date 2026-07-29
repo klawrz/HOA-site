@@ -8,6 +8,8 @@ import { UnitManagers } from "./unit-managers"
 import { UserCog, Phone, Mail } from "lucide-react"
 import { ContractList } from "@/components/contracts/contract-list"
 import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
+import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
+import { parseSpecialties } from "@/lib/unit-manager-specialties"
 
 function addressLines(u: {
   addressLine1: string | null
@@ -38,6 +40,7 @@ export default async function UnitDetailPage({
           contacts: true,
           managers: { include: { user: true, grants: true } },
           contracts: { include: { contractor: true }, orderBy: { createdAt: "desc" } },
+          occupancyEntries: { orderBy: { startDate: "asc" } },
         },
       },
     },
@@ -49,6 +52,15 @@ export default async function UnitDetailPage({
 
   const contractors = await db.user.findMany({
     where: { role: "CONTRACTOR" },
+    orderBy: { name: "asc" },
+  })
+
+  // A shared directory, same as the Contractor directory below - anyone who
+  // has ever become a Unit Manager (via invite or assignment elsewhere) and
+  // opted into directoryVisible is visible here so other Owners can pick
+  // them instead of typing an email blind.
+  const unitManagerDirectory = await db.user.findMany({
+    where: { role: "UNIT_MANAGER", directoryVisible: true },
     orderBy: { name: "asc" },
   })
 
@@ -70,21 +82,28 @@ export default async function UnitDetailPage({
             <UserCog className="h-3.5 w-3.5" /> Unit Manager
           </p>
           <div className="space-y-2">
-            {unit.managers.map((m) => (
-              <div key={m.id}>
-                <p className="font-semibold text-teal-900">{m.user.name ?? m.user.email}</p>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-teal-800">
-                  {m.user.phone && (
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-3.5 w-3.5" /> {m.user.phone}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <Mail className="h-3.5 w-3.5" /> {m.user.email}
-                  </span>
+            {unit.managers.map((m) => {
+              const name = m.user?.name ?? m.name
+              const phone = m.user?.phone ?? m.phone
+              const email = m.user?.email ?? m.email
+              return (
+                <div key={m.id}>
+                  <p className="font-semibold text-teal-900">{name ?? email}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-teal-800">
+                    {phone && (
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5" /> {phone}
+                      </span>
+                    )}
+                    {email && (
+                      <span className="flex items-center gap-1">
+                        <Mail className="h-3.5 w-3.5" /> {email}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -110,12 +129,21 @@ export default async function UnitDetailPage({
         </CardContent>
       </Card>
 
+      <Card id="occupancy-calendar">
+        <CardHeader>
+          <CardTitle className="text-base">Occupancy Calendar</CardTitle>
+          <p className="text-xs text-gray-400">
+            Log who&apos;s staying and when - your own family, a trusted guest, a renter, or vacant.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <OccupancyCalendar unitId={unit.id} entries={unit.occupancyEntries} canManage />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Contacts</CardTitle>
-          <p className="text-xs text-gray-400">
-            A prime contact and up to 2 emergency contacts for this unit.
-          </p>
         </CardHeader>
         <CardContent>
           <UnitContacts unitId={unit.id} contacts={unit.contacts} />
@@ -126,8 +154,7 @@ export default async function UnitDetailPage({
         <CardHeader>
           <CardTitle className="text-base">Unit Manager</CardTitle>
           <p className="text-xs text-gray-400">
-            Delegate someone to handle guests, cleaning, or maintenance tickets for this unit.
-            You control exactly what they can do.
+            Delegate guests, cleaning, tickets, or occupancy access. You control what they can do.
           </p>
         </CardHeader>
         <CardContent>
@@ -135,22 +162,33 @@ export default async function UnitDetailPage({
             unitId={unit.id}
             managers={unit.managers.map((m) => ({
               id: m.id,
-              name: m.user.name,
-              email: m.user.email,
+              name: m.user?.name ?? m.name,
+              email: m.user?.email ?? m.email,
+              phone: m.user?.phone ?? m.phone,
+              notes: m.notes,
+              hasAccount: !!m.user,
               grants: m.grants.map((g) => ({ area: g.area, level: g.level })),
             }))}
+            directory={unitManagerDirectory
+              .filter((u) => !unit.managers.some((m) => m.user?.email === u.email))
+              .map((u) => ({
+                name: u.name,
+                email: u.email,
+                company: u.company,
+                headline: u.headline,
+                bio: u.bio,
+                phone: u.phone,
+                yearsExperience: u.yearsExperience,
+                specialties: parseSpecialties(u.specialties),
+              }))}
+            selfManaged={unit.selfManaged}
           />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex items-center justify-between flex-row">
-          <div>
-            <CardTitle className="text-base">Contracts</CardTitle>
-            <p className="text-xs text-gray-400">
-              Your own arrangements for this unit - cleaning, private repairs, and the like.
-            </p>
-          </div>
+          <CardTitle className="text-base">Contracts</CardTitle>
           <NewContractDialog scope="unit" unitId={unit.id} contractors={contractors} />
         </CardHeader>
         <CardContent>

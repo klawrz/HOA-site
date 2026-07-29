@@ -29,6 +29,7 @@ export function UnitContacts({ unitId, contacts }: { unitId: string; contacts: C
   const [kind, setKind] = useState<UnitContactKind>("PRIME")
   const [saving, setSaving] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
 
   const primeCount = contacts.filter((c) => c.kind === "PRIME").length
   const emergencyCount = contacts.filter((c) => c.kind === "EMERGENCY").length
@@ -56,6 +57,7 @@ export function UnitContacts({ unitId, contacts }: { unitId: string; contacts: C
     if (result.success) {
       toast.success("Contact added")
       e.currentTarget.reset()
+      setShowAddForm(false)
     } else {
       toast.error("Failed to add contact")
     }
@@ -102,37 +104,48 @@ export function UnitContacts({ unitId, contacts }: { unitId: string; contacts: C
         <p className="text-sm text-gray-500">No contacts on file yet.</p>
       )}
 
-      <form onSubmit={handleAdd} className="space-y-2 pt-2 border-t">
-        <div className="space-y-1">
-          <Label>Type</Label>
-          <Select value={kind} onValueChange={(v) => setKind(v as UnitContactKind)} items={KIND_ITEMS}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="PRIME">Prime Contact</SelectItem>
-              <SelectItem value="EMERGENCY">Emergency Contact</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <Label>Name</Label>
-            <Input name="name" required />
-          </div>
-          <div className="space-y-1">
-            <Label>Phone</Label>
-            <Input name="phone" required />
-          </div>
-        </div>
-        <div className="space-y-1">
-          <Label>Email</Label>
-          <Input name="email" type="email" />
-        </div>
-        <Button type="submit" size="sm" disabled={saving}>
-          {saving ? "Adding..." : "+ Add Contact"}
+      {!showAddForm ? (
+        <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)} className="mt-1">
+          + Add Contact
         </Button>
-      </form>
+      ) : (
+        <form onSubmit={handleAdd} className="space-y-2 pt-2 border-t">
+          <div className="space-y-1">
+            <Label>Type</Label>
+            <Select value={kind} onValueChange={(v) => setKind(v as UnitContactKind)} items={KIND_ITEMS}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PRIME">Prime Contact</SelectItem>
+                <SelectItem value="EMERGENCY">Emergency Contact</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input name="name" required />
+            </div>
+            <div className="space-y-1">
+              <Label>Phone</Label>
+              <Input name="phone" required />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Email</Label>
+            <Input name="email" type="email" />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Adding..." : "Add Contact"}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

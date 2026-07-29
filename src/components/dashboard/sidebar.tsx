@@ -59,6 +59,7 @@ const navByRole: Record<Role, NavItem[]> = {
   ],
   UNIT_MANAGER: [
     { label: "My Units", href: "/dashboard/unit-manager", icon: LayoutDashboard },
+    { label: "My Profile", href: "/dashboard/unit-manager/profile", icon: Settings },
   ],
 }
 

@@ -17,6 +17,11 @@ const policyConfig: Record<
     color: "bg-yellow-100 text-yellow-800",
     dot: "bg-yellow-500",
   },
+  SHORT_TERM_RENTAL: {
+    label: "Short-Term Rental",
+    color: "bg-orange-100 text-orange-800",
+    dot: "bg-orange-500",
+  },
   NOT_RENTING: {
     label: "Not Renting",
     color: "bg-gray-100 text-gray-600",
@@ -46,6 +51,7 @@ export default async function UnitAvailabilityPage() {
   const legend = [
     { dot: "bg-green-500", label: "Open to anyone" },
     { dot: "bg-yellow-500", label: "Friends & family only" },
+    { dot: "bg-orange-500", label: "Short-term rental" },
     { dot: "bg-gray-400", label: "Not renting" },
   ]
 

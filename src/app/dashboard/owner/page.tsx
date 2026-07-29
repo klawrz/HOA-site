@@ -3,11 +3,12 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, Users, TicketIcon, DollarSign } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
+import { Building2, Users, TicketIcon, DollarSign, CalendarDays, Settings } from "lucide-react"
 import Link from "next/link"
 import { RentalPolicyForm } from "./rental-policy-form"
 import { priorityColor as sharedPriorityColor, statusColor as sharedStatusColor } from "@/lib/ticket-styles"
-import { formatDateTime } from "@/lib/utils"
+import { formatDateTime, cn } from "@/lib/utils"
 
 function statusBadge(status: string) {
   const map: Record<string, string> = {
@@ -135,9 +136,20 @@ export default async function OwnerDashboard() {
                   {unit.bathrooms && <span>{unit.bathrooms} bath</span>}
                   {unit.sqft && <span>{unit.sqft.toLocaleString()} sqft</span>}
                 </div>
-                <Link href={`/dashboard/owner/units/${unit.id}`} className="text-xs text-blue-600 hover:underline">
-                  Manage Unit Profile →
-                </Link>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/dashboard/owner/units/${unit.id}#occupancy-calendar`}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" /> Occupancy Calendar
+                  </Link>
+                  <Link
+                    href={`/dashboard/owner/units/${unit.id}`}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+                  >
+                    <Settings className="h-3.5 w-3.5" /> Manage Unit
+                  </Link>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

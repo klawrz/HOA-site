@@ -19,18 +19,14 @@ export async function updateRentalPolicy(
   })
   if (!ownership) return { success: false }
 
-  // Derive the unit status from the policy
+  // Derive the unit status from the policy - any policy other than
+  // NOT_RENTING means the owner is open to renting it out.
   let unitStatus: UnitStatus | undefined
-  if (policy === "NOT_RENTING") {
-    const hasActiveLease = await db.lease.findFirst({
-      where: { unitId, isActive: true },
-    })
-    if (!hasActiveLease) unitStatus = "OWNER_OCCUPIED"
-  } else if (policy === "ANYONE" || policy === "FRIENDS_FAMILY_ONLY") {
-    const hasActiveLease = await db.lease.findFirst({
-      where: { unitId, isActive: true },
-    })
-    if (!hasActiveLease) unitStatus = "AVAILABLE"
+  const hasActiveLease = await db.lease.findFirst({
+    where: { unitId, isActive: true },
+  })
+  if (!hasActiveLease) {
+    unitStatus = policy === "NOT_RENTING" ? "OWNER_OCCUPIED" : "AVAILABLE"
   }
 
   await db.unitOwnership.update({
