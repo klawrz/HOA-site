@@ -138,6 +138,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Independent of the primary role - lets an Owner (most commonly) also
+  // hold Board governance capability without a second account or a
+  // combined role enum value, since in practice Board members are usually
+  // elected from among the ownership. Set by the Account Owner. Does not
+  // affect users whose primary role is already BOARD_MEMBER.
+  isBoardMember Boolean @default(false)
+
   // Unit Manager directory profile - lets a registered Unit Manager promote
   // themselves to Owners browsing the directory, instead of being just a
   // bare name/email in a picker.

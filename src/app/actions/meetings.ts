@@ -4,6 +4,10 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 
+function canManageGovernance(role: string, isBoardMember: boolean) {
+  return role === "BOARD_MEMBER" || isBoardMember
+}
+
 export async function createMeeting(data: {
   title: string
   date: string
@@ -12,10 +16,13 @@ export async function createMeeting(data: {
   attendees: string
 }) {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") return { success: false }
+  if (!session || !session.user.orgId || !canManageGovernance(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
 
   await db.meeting.create({
     data: {
+      orgId: session.user.orgId,
       title: data.title,
       date: new Date(data.date),
       location: data.location || null,
@@ -26,12 +33,16 @@ export async function createMeeting(data: {
 
   revalidatePath("/dashboard/board")
   revalidatePath("/dashboard/board/meetings")
+  revalidatePath("/dashboard/owner/governance")
+  revalidatePath("/dashboard/owner/governance/board")
   return { success: true }
 }
 
 export async function saveMeetingMinutes(meetingId: string, minutes: string) {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") return { success: false }
+  if (!session || !canManageGovernance(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
 
   await db.meeting.update({
     where: { id: meetingId },
@@ -39,5 +50,7 @@ export async function saveMeetingMinutes(meetingId: string, minutes: string) {
   })
 
   revalidatePath("/dashboard/board/meetings")
+  revalidatePath("/dashboard/owner/governance")
+  revalidatePath("/dashboard/owner/governance/board")
   return { success: true }
 }

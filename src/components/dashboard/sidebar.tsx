@@ -77,9 +77,26 @@ const roleLabels: Record<Role, string> = {
   UNIT_MANAGER: "Unit Manager Portal",
 }
 
-export function DashboardSidebar({ role }: { role: Role }) {
+export function DashboardSidebar({ role, isBoardMember }: { role: Role; isBoardMember: boolean }) {
   const pathname = usePathname()
-  const navItems = navByRole[role] ?? []
+  // Copy - navByRole is a module-level singleton, and splicing below must
+  // not mutate it or the injected item would leak into every render.
+  const navItems = [...(navByRole[role] ?? [])]
+
+  // isBoardMember is independent of the primary role (see schema.prisma) -
+  // an Owner who also holds Board governance access gets a sub-tab under
+  // their own Governance page, rather than a second role/portal.
+  if (role === "OWNER" && isBoardMember) {
+    const governanceIndex = navItems.findIndex((item) => item.href === "/dashboard/owner/governance")
+    if (governanceIndex !== -1) {
+      navItems.splice(governanceIndex + 1, 0, {
+        label: "Board",
+        href: "/dashboard/owner/governance/board",
+        icon: Landmark,
+        indent: true,
+      })
+    }
+  }
 
   // The most specific href match wins - without this, a nested route like
   // /financial/contracts would highlight both "Financial" and "Contracts"

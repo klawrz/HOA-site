@@ -6,6 +6,7 @@ import { ArrowLeft, Building2, MessageCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MemberEditCard } from "./member-edit-card"
+import { BoardMemberToggle } from "./board-member-toggle"
 
 const roleLabels: Record<string, string> = {
   ACCOUNT_OWNER: "Account Owner",
@@ -72,6 +73,10 @@ export default async function MemberDetailPage({
         email={member.email}
         phone={member.phone}
       />
+
+      {member.role !== "ACCOUNT_OWNER" && member.role !== "BOARD_MEMBER" && (
+        <BoardMemberToggle memberId={member.id} initialValue={member.isBoardMember} />
+      )}
 
       {member.ownedUnits.length > 0 && (
         <Card>

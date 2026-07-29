@@ -86,6 +86,22 @@ export async function updateMemberContactInfo(
   return { success: true }
 }
 
+// Grants Board governance capability (meetings, documents) independent of
+// the member's primary role - see isBoardMember on User in schema.prisma.
+export async function setBoardMember(memberId: string, isBoardMember: boolean) {
+  const session = await auth()
+  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") return { success: false }
+
+  const member = await db.user.findUnique({ where: { id: memberId } })
+  if (!member || member.orgId !== session.user.orgId) return { success: false }
+
+  await db.user.update({ where: { id: memberId }, data: { isBoardMember } })
+
+  revalidatePath("/dashboard/account/members")
+  revalidatePath(`/dashboard/account/members/${memberId}`)
+  return { success: true }
+}
+
 export async function completeOnboarding() {
   const session = await auth()
   if (!session?.user.orgId) throw new Error("Unauthorized")

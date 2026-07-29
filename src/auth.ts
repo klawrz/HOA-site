@@ -21,7 +21,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user || !user.password) return null
         const isValid = await bcrypt.compare(credentials.password as string, user.password)
         if (!isValid) return null
-        return { id: user.id, name: user.name, email: user.email, role: user.role, orgId: user.orgId }
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          orgId: user.orgId,
+          isBoardMember: user.isBoardMember,
+        }
       },
     }),
   ],
@@ -31,6 +38,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id!
         token.role = (user as { role: string }).role as never
         token.orgId = (user as { orgId: string | null }).orgId
+        token.isBoardMember = (user as { isBoardMember: boolean }).isBoardMember
       }
       return token
     },
@@ -39,6 +47,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string
         session.user.role = token.role as import("@/generated/prisma").Role
         session.user.orgId = token.orgId as string | null
+        session.user.isBoardMember = token.isBoardMember as boolean
       }
       return session
     },
