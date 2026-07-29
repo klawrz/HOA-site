@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
-import { DocumentCategory } from "@/generated/prisma"
+import { DocumentCategory, DocumentVisibility } from "@/generated/prisma"
 import { revalidatePath } from "next/cache"
 import { resolveFileUrl as resolveUploadedFileUrl } from "@/lib/file-upload"
 
@@ -26,6 +26,7 @@ export async function createDocument(formData: FormData) {
       orgId: session.user.orgId,
       title,
       category: formData.get("category") as DocumentCategory,
+      visibility: (formData.get("visibility") as DocumentVisibility) || "OWNERS",
       description: (formData.get("description") as string) || null,
       content: (formData.get("content") as string) || null,
       fileUrl: file.url,
@@ -37,5 +38,6 @@ export async function createDocument(formData: FormData) {
   revalidatePath("/dashboard/board/documents")
   revalidatePath("/dashboard/owner/governance")
   revalidatePath("/dashboard/owner/governance/board")
+  revalidatePath("/dashboard/property-manager/documents")
   return { success: true }
 }

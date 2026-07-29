@@ -3,11 +3,13 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, FileText } from "lucide-react"
+import { ArrowLeft, Calendar, FileText, Megaphone } from "lucide-react"
 import { NewMeetingDialog } from "@/app/dashboard/board/meetings/new-meeting-dialog"
 import { MeetingMinutesDialog } from "@/app/dashboard/board/meetings/minutes-dialog"
 import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
-import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
+import { documentCategoryLabel, documentCategoryColor, documentVisibilityLabel, documentVisibilityColor } from "@/lib/document-styles"
+import { AnnouncementList } from "@/components/announcements/announcement-list"
+import { NewAnnouncementDialog } from "@/components/announcements/new-announcement-dialog"
 
 export default async function OwnerBoardManagementPage() {
   const session = await auth()
@@ -15,7 +17,12 @@ export default async function OwnerBoardManagementPage() {
     redirect("/dashboard")
   }
 
-  const [meetings, documents] = await Promise.all([
+  const [announcements, meetings, documents] = await Promise.all([
+    db.announcement.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: { author: true },
+      orderBy: { createdAt: "desc" },
+    }),
     db.meeting.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { date: "desc" } }),
     db.document.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { createdAt: "desc" } }),
   ])
@@ -41,6 +48,27 @@ export default async function OwnerBoardManagementPage() {
           repository.
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Megaphone className="h-4 w-4" /> Announcements
+          </CardTitle>
+          <NewAnnouncementDialog />
+        </CardHeader>
+        <CardContent>
+          <AnnouncementList
+            announcements={announcements.map((a) => ({
+              id: a.id,
+              title: a.title,
+              content: a.content,
+              createdAt: a.createdAt,
+              author: { name: a.author.name, email: a.author.email, role: a.author.role },
+            }))}
+            canManage
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -98,7 +126,14 @@ export default async function OwnerBoardManagementPage() {
                   {docs.map((d) => (
                     <div key={d.id} className="flex items-start justify-between gap-3 bg-gray-50 rounded-lg px-3 py-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">{d.title}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium">{d.title}</p>
+                          {d.visibility === "BOARD_AND_PM" && (
+                            <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${documentVisibilityColor[d.visibility]}`}>
+                              {documentVisibilityLabel[d.visibility]}
+                            </span>
+                          )}
+                        </div>
                         {d.description && <p className="text-xs text-gray-500 mt-0.5">{d.description}</p>}
                         <p className="text-xs text-gray-400 mt-1">{d.createdAt.toLocaleDateString()}</p>
                       </div>

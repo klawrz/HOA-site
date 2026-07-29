@@ -29,6 +29,7 @@ const categories = Object.keys(documentCategoryLabel) as DocumentCategory[]
 export function NewDocumentDialog() {
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState<DocumentCategory>("OTHER")
+  const [restricted, setRestricted] = useState(false)
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -36,6 +37,7 @@ export function NewDocumentDialog() {
     setSaving(true)
     const form = new FormData(e.currentTarget)
     form.set("category", category)
+    form.set("visibility", restricted ? "BOARD_AND_PM" : "OWNERS")
     const uploadedFile = form.get("file")
     if (uploadedFile instanceof File && uploadedFile.size === 0) form.delete("file")
 
@@ -45,6 +47,7 @@ export function NewDocumentDialog() {
       toast.success("Document added")
       setOpen(false)
       setCategory("OTHER")
+      setRestricted(false)
       ;(document.getElementById("new-document-form") as HTMLFormElement)?.reset()
     } else {
       toast.error(result.error ?? "Failed to add document")
@@ -100,6 +103,21 @@ export function NewDocumentDialog() {
             <Label>Or Link to File (optional)</Label>
             <Input name="fileUrl" type="url" placeholder="https://..." />
           </div>
+          <label className="flex items-start gap-2 text-sm bg-gray-50 border rounded-lg p-3">
+            <input
+              type="checkbox"
+              className="accent-gray-900 mt-0.5"
+              checked={restricted}
+              onChange={(e) => setRestricted(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">Restrict to Board & Property Manager</span>
+              <span className="block text-xs text-gray-500 mt-0.5">
+                Hides this from the Owner Governance page - use for sensitive contracts, drafts, or
+                internal matters. Leave unchecked for anything Owners should see.
+              </span>
+            </span>
+          </label>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               Cancel

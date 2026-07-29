@@ -19,3 +19,13 @@ export const documentCategoryColor: Record<string, string> = {
   POLICY: "bg-purple-100 text-purple-800",
   OTHER: "bg-gray-100 text-gray-600",
 }
+
+export const documentVisibilityLabel: Record<string, string> = {
+  OWNERS: "Visible to Owners",
+  BOARD_AND_PM: "Board & PM only",
+}
+
+export const documentVisibilityColor: Record<string, string> = {
+  OWNERS: "bg-gray-100 text-gray-600",
+  BOARD_AND_PM: "bg-red-100 text-red-800",
+}

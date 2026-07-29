@@ -2,9 +2,10 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, FileText, Mail, Phone } from "lucide-react"
+import { Users, Calendar, FileText, Mail, Phone, Megaphone } from "lucide-react"
 import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
 import { formatDateISO } from "@/lib/utils"
+import { AnnouncementList } from "@/components/announcements/announcement-list"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
@@ -12,7 +13,12 @@ export default async function OwnerGovernancePage() {
 
   const now = new Date()
 
-  const [boardPositions, meetings, documents] = await Promise.all([
+  const [announcements, boardPositions, meetings, documents] = await Promise.all([
+    db.announcement.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: { author: true },
+      orderBy: { createdAt: "desc" },
+    }),
     db.boardPosition.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { user: true },
@@ -23,7 +29,7 @@ export default async function OwnerGovernancePage() {
       orderBy: { date: "desc" },
     }),
     db.document.findMany({
-      where: { orgId: session.user.orgId ?? undefined },
+      where: { orgId: session.user.orgId ?? undefined, visibility: "OWNERS" },
       orderBy: { createdAt: "desc" },
     }),
   ])
@@ -41,8 +47,30 @@ export default async function OwnerGovernancePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Governance</h1>
-        <p className="text-gray-500 mt-1">Your Board, upcoming meetings, and the document repository</p>
+        <p className="text-gray-500 mt-1">
+          News, your Board, upcoming meetings, and the document repository
+        </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Megaphone className="h-4 w-4" /> Announcements
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AnnouncementList
+            announcements={announcements.map((a) => ({
+              id: a.id,
+              title: a.title,
+              content: a.content,
+              createdAt: a.createdAt,
+              author: { name: a.author.name, email: a.author.email, role: a.author.role },
+            }))}
+            canManage={false}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

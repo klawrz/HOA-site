@@ -59,7 +59,7 @@ export default async function OwnerDashboard() {
 
   const now = new Date()
 
-  const [ownerships, latestMeeting] = await Promise.all([
+  const [ownerships, latestMeeting, latestAnnouncement] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -76,6 +76,9 @@ export default async function OwnerDashboard() {
     }),
     session.user.orgId
       ? db.meeting.findFirst({ where: { orgId: session.user.orgId }, orderBy: { date: "desc" } })
+      : Promise.resolve(null),
+    session.user.orgId
+      ? db.announcement.findFirst({ where: { orgId: session.user.orgId }, orderBy: { createdAt: "desc" } })
       : Promise.resolve(null),
   ])
 
@@ -109,6 +112,9 @@ export default async function OwnerDashboard() {
   const meetingIsNew = latestMeeting
     ? (now.getTime() - latestMeeting.createdAt.getTime()) / (1000 * 60 * 60 * 24) <= 14
     : false
+  const announcementIsNew = latestAnnouncement
+    ? (now.getTime() - latestAnnouncement.createdAt.getTime()) / (1000 * 60 * 60 * 24) <= 14
+    : false
 
   const signals: { icon: ReactNode; text: string; href?: string }[] = []
   if (upcomingStay) {
@@ -141,6 +147,13 @@ export default async function OwnerDashboard() {
     signals.push({
       icon: <FileWarning className="h-4 w-4 text-amber-600" />,
       text: `${expiringContracts[0].title} renews ${expiringContracts[0].endDate!.toLocaleDateString()}.`,
+    })
+  }
+  if (latestAnnouncement && announcementIsNew) {
+    signals.push({
+      icon: <Megaphone className="h-4 w-4 text-purple-600" />,
+      text: `New announcement: "${latestAnnouncement.title}"`,
+      href: "/dashboard/owner/governance",
     })
   }
   if (latestMeeting && meetingIsNew) {

@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
 import { FileText } from "lucide-react"
 import { NewDocumentDialog } from "./new-document-dialog"
-import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
+import { documentCategoryLabel, documentCategoryColor, documentVisibilityLabel, documentVisibilityColor } from "@/lib/document-styles"
 
 export default async function DocumentsPage() {
   const session = await auth()
@@ -53,7 +53,14 @@ export default async function DocumentsPage() {
                       <div className="flex items-start gap-3 flex-1 min-w-0">
                         <FileText className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                          <p className="font-medium text-sm">{d.title}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-sm">{d.title}</p>
+                            {d.visibility === "BOARD_AND_PM" && (
+                              <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${documentVisibilityColor[d.visibility]}`}>
+                                {documentVisibilityLabel[d.visibility]}
+                              </span>
+                            )}
+                          </div>
                           {d.description && (
                             <p className="text-xs text-gray-500 mt-0.5">{d.description}</p>
                           )}

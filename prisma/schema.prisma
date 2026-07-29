@@ -82,6 +82,15 @@ enum DocumentCategory {
   OTHER
 }
 
+// Default OWNERS - everything already in the repository stays visible to
+// Owners exactly as before. BOARD_AND_PM hides a document from the Owner
+// Governance page entirely (e.g. a vendor contract with sensitive terms),
+// while Board members and the Property Manager still see it.
+enum DocumentVisibility {
+  OWNERS
+  BOARD_AND_PM
+}
+
 model Organization {
   id                 String   @id @default(cuid())
   name               String
@@ -110,6 +119,23 @@ model Organization {
   tickets   TroubleTicket[]
   complianceDocuments ComplianceDocument[]
   boardPositions BoardPosition[]
+  announcements Announcement[]
+}
+
+// Board news/updates shown to Owners on the Governance page - distinct
+// from Meetings (formal, scheduled, minutes-bearing) and Documents (files
+// on record). Just a dated post: title, body, who posted it.
+model Announcement {
+  id        String   @id @default(cuid())
+  orgId     String
+  title     String
+  content   String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  author User         @relation(fields: [authorId], references: [id])
 }
 
 // The board roster - who holds which seat, for how long. Deliberately
@@ -193,6 +219,7 @@ model User {
   uploadedComplianceDocuments ComplianceDocument[]
   createdOccupancyEntries OccupancyEntry[]
   boardPositions BoardPosition[]
+  announcements Announcement[]
 }
 
 model Unit {
@@ -310,17 +337,18 @@ model TicketComment {
 }
 
 model Document {
-  id           String           @id @default(cuid())
+  id           String             @id @default(cuid())
   orgId        String
   title        String
-  category     DocumentCategory @default(OTHER)
+  category     DocumentCategory   @default(OTHER)
+  visibility   DocumentVisibility @default(OWNERS)
   description  String?
   fileUrl      String?
   content      String?
   uploadedById String
   meetingId    String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   meeting Meeting?     @relation(fields: [meetingId], references: [id])
