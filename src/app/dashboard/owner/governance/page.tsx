@@ -1,0 +1,174 @@
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import { db } from "@/lib/db"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Users, Calendar, FileText, Mail, Phone } from "lucide-react"
+
+const categoryConfig: Record<string, { label: string; color: string }> = {
+  MEETING_MINUTES: { label: "Meeting Minutes", color: "bg-blue-100 text-blue-800" },
+  CONTRACT: { label: "Contract", color: "bg-orange-100 text-orange-800" },
+  FINANCIAL: { label: "Financial", color: "bg-green-100 text-green-800" },
+  POLICY: { label: "Policy", color: "bg-purple-100 text-purple-800" },
+  OTHER: { label: "Other", color: "bg-gray-100 text-gray-600" },
+}
+
+export default async function OwnerGovernancePage() {
+  const session = await auth()
+  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+
+  const now = new Date()
+
+  const [boardMembers, meetings, documents] = await Promise.all([
+    db.user.findMany({
+      where: { role: "BOARD_MEMBER", orgId: session.user.orgId ?? undefined },
+      orderBy: { name: "asc" },
+    }),
+    db.meeting.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      orderBy: { date: "desc" },
+    }),
+    db.document.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      orderBy: { createdAt: "desc" },
+    }),
+  ])
+
+  const upcomingMeetings = meetings.filter((m) => m.date >= now).sort((a, b) => a.date.getTime() - b.date.getTime())
+  const pastMeetings = meetings.filter((m) => m.date < now)
+
+  const groupedDocs = documents.reduce<Record<string, typeof documents>>((acc, d) => {
+    if (!acc[d.category]) acc[d.category] = []
+    acc[d.category].push(d)
+    return acc
+  }, {})
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Governance</h1>
+        <p className="text-gray-500 mt-1">Your Board, upcoming meetings, and the document repository</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4" /> Board of Directors
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {boardMembers.length === 0 && (
+            <p className="text-sm text-gray-500">No Board members on file yet.</p>
+          )}
+          {boardMembers.map((m) => (
+            <div key={m.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+              <p className="text-sm font-medium">{m.name ?? m.email}</p>
+              <div className="flex gap-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3 w-3" /> {m.email}
+                </span>
+                {m.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3 w-3" /> {m.phone}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Calendar className="h-4 w-4" /> Upcoming Meetings
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {upcomingMeetings.length === 0 && (
+            <p className="text-sm text-gray-500">No upcoming meetings scheduled.</p>
+          )}
+          {upcomingMeetings.map((m) => (
+            <div key={m.id} className="bg-gray-50 rounded-lg px-3 py-2">
+              <p className="text-sm font-medium">{m.title}</p>
+              <p className="text-xs text-gray-400">
+                {m.date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                {m.location && ` · ${m.location}`}
+              </p>
+              {m.agenda && <p className="text-xs text-gray-600 mt-1 whitespace-pre-line">{m.agenda}</p>}
+            </div>
+          ))}
+          {pastMeetings.length > 0 && (
+            <details className="pt-2">
+              <summary className="text-xs text-gray-400 cursor-pointer">
+                {pastMeetings.length} past meeting{pastMeetings.length !== 1 ? "s" : ""}
+              </summary>
+              <div className="space-y-2 mt-2">
+                {pastMeetings.map((m) => (
+                  <div key={m.id} className="bg-gray-50 rounded-lg px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">{m.title}</p>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          m.minutes ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {m.minutes ? "Minutes filed" : "Minutes pending"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400">{m.date.toLocaleDateString()}</p>
+                    {m.minutes && (
+                      <p className="text-xs text-gray-600 mt-1 whitespace-pre-line line-clamp-3">{m.minutes}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4" /> Document Repository
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {documents.length === 0 && <p className="text-sm text-gray-500">No documents on file yet.</p>}
+          {Object.entries(groupedDocs).map(([category, docs]) => {
+            const cfg = categoryConfig[category] ?? categoryConfig.OTHER
+            return (
+              <div key={category}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{cfg.label}</span>
+                  <span className="text-xs text-gray-400">{docs.length} document{docs.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="space-y-2">
+                  {docs.map((d) => (
+                    <div key={d.id} className="flex items-start justify-between gap-3 bg-gray-50 rounded-lg px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{d.title}</p>
+                        {d.description && <p className="text-xs text-gray-500 mt-0.5">{d.description}</p>}
+                        <p className="text-xs text-gray-400 mt-1">{d.createdAt.toLocaleDateString()}</p>
+                      </div>
+                      {d.fileUrl && (
+                        <a
+                          href={d.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline shrink-0"
+                        >
+                          View file
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

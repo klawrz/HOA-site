@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -26,6 +26,8 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "My Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
     { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2 },
     { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon },
+    { label: "Governance", href: "/dashboard/owner/governance", icon: Landmark },
+    { label: "Property Manager", href: "/dashboard/owner/property-manager", icon: Wrench },
   ],
   RENTER: [
     { label: "My Dashboard", href: "/dashboard/renter", icon: LayoutDashboard },

@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { RentalPolicyForm } from "./rental-policy-form"
+import { TodayOccupancy } from "@/components/occupancy/today-occupancy"
 import { priorityColor as sharedPriorityColor, statusColor as sharedStatusColor } from "@/lib/ticket-styles"
 import { formatDateTime, cn } from "@/lib/utils"
 
@@ -193,6 +194,21 @@ export default async function OwnerDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {ownerships.length > 0 && (
+        <Card>
+          <CardContent className="pt-4">
+            <TodayOccupancy
+              units={ownerships.map((o) => ({
+                id: o.unit.id,
+                number: o.unit.number,
+                building: o.unit.building,
+                entries: o.unit.occupancyEntries,
+              }))}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <div>
         <h2 className="text-sm font-medium text-gray-500 mb-3">Your Units</h2>
