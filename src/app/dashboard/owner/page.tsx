@@ -14,6 +14,7 @@ import {
   UserCog,
   FileWarning,
   Megaphone,
+  ChevronRight,
 } from "lucide-react"
 import Link from "next/link"
 import { RentalPolicyForm } from "./rental-policy-form"
@@ -121,10 +122,12 @@ export default async function OwnerDashboard() {
     })
   }
   if (openTickets.length > 0) {
-    const urgent = openTickets.find((t) => t.priority === "URGENT" || t.priority === "EMERGENCY")
+    const highlighted =
+      openTickets.find((t) => t.priority === "URGENT" || t.priority === "EMERGENCY") ?? openTickets[0]
     signals.push({
       icon: <TicketIcon className="h-4 w-4 text-orange-500" />,
-      text: `${openTickets.length} open ticket${openTickets.length !== 1 ? "s" : ""}${urgent ? ` — "${urgent.title}" is ${urgent.priority.toLowerCase()} priority` : ""}.`,
+      text: `${openTickets.length} open ticket${openTickets.length !== 1 ? "s" : ""} — ${highlighted.title}.`,
+      href: "/dashboard/owner/tickets",
     })
   }
   if (unmanagedUnits.length > 0) {
@@ -179,7 +182,10 @@ export default async function OwnerDashboard() {
             </p>
           )}
 
-          <div className="border-t pt-4 flex items-center justify-between gap-6 flex-wrap">
+          <Link
+            href="/dashboard/owner/financial"
+            className="border-t pt-4 flex items-center justify-between gap-6 flex-wrap hover:bg-gray-50 -mx-1 px-1 py-1 rounded-md transition-colors"
+          >
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-purple-500" />
               <div>
@@ -187,11 +193,14 @@ export default async function OwnerDashboard() {
                 <p className="text-xs text-gray-400 mt-0.5">Income, {ownerships.length} unit{ownerships.length !== 1 ? "s" : ""}</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Expenses</p>
-              <p className="text-xs text-gray-400">Dues &amp; expense tracking coming soon</p>
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Expenses</p>
+                <p className="text-xs text-gray-400">Dues &amp; expense tracking coming soon</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
             </div>
-          </div>
+          </Link>
         </CardContent>
       </Card>
 

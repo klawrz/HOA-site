@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -25,6 +25,8 @@ const navByRole: Record<Role, NavItem[]> = {
   OWNER: [
     { label: "My Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
     { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2 },
+    { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign },
+    { label: "Contracts", href: "/dashboard/owner/financial/contracts", icon: FileText, indent: true },
     { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon },
     { label: "Governance", href: "/dashboard/owner/governance", icon: Landmark },
     { label: "Property Manager", href: "/dashboard/owner/property-manager", icon: Wrench },
@@ -79,6 +81,13 @@ export function DashboardSidebar({ role }: { role: Role }) {
   const pathname = usePathname()
   const navItems = navByRole[role] ?? []
 
+  // The most specific href match wins - without this, a nested route like
+  // /financial/contracts would highlight both "Financial" and "Contracts"
+  // at once, since a plain prefix check matches both of their hrefs.
+  const bestMatch = navItems
+    .filter((item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")))
+    .sort((a, b) => b.href.length - a.href.length)[0]
+
   return (
     <aside className="w-64 bg-white border-r flex flex-col shrink-0">
       <div className="p-4 border-b">
@@ -87,9 +96,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href))
+          const isActive = item === bestMatch
           return (
             <Link
               key={item.href}
