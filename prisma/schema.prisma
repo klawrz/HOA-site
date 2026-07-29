@@ -73,6 +73,9 @@ enum TicketScope {
 
 enum DocumentCategory {
   MEETING_MINUTES
+  BYLAWS
+  INSURANCE
+  RESOLUTION
   CONTRACT
   FINANCIAL
   POLICY
@@ -106,6 +109,28 @@ model Organization {
   contracts Contract[]
   tickets   TroubleTicket[]
   complianceDocuments ComplianceDocument[]
+  boardPositions BoardPosition[]
+}
+
+// The board roster - who holds which seat, for how long. Deliberately
+// separate from User.isBoardMember: this is descriptive record-keeping
+// (title, term dates), not the access gate itself. Ending or removing a
+// term does not revoke access - that stays a manual toggle, so nobody
+// gets locked out mid-term just because an end date passed before a
+// replacement was seated.
+model BoardPosition {
+  id        String    @id @default(cuid())
+  orgId     String
+  title     String // e.g. "President", "Treasurer" - HOA-defined, free text
+  userId    String? // null = vacant seat
+  termStart DateTime
+  termEnd   DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User?        @relation(fields: [userId], references: [id])
 }
 
 model Invite {
@@ -167,6 +192,7 @@ model User {
   unitManagerAssignments UnitManagerAssignment[]
   uploadedComplianceDocuments ComplianceDocument[]
   createdOccupancyEntries OccupancyEntry[]
+  boardPositions BoardPosition[]
 }
 
 model Unit {

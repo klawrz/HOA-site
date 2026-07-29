@@ -4,14 +4,7 @@ import { db } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
 import { FileText } from "lucide-react"
 import { NewDocumentDialog } from "./new-document-dialog"
-
-const categoryConfig: Record<string, { label: string; color: string }> = {
-  MEETING_MINUTES: { label: "Meeting Minutes", color: "bg-blue-100 text-blue-800" },
-  CONTRACT: { label: "Contract", color: "bg-orange-100 text-orange-800" },
-  FINANCIAL: { label: "Financial", color: "bg-green-100 text-green-800" },
-  POLICY: { label: "Policy", color: "bg-purple-100 text-purple-800" },
-  OTHER: { label: "Other", color: "bg-gray-100 text-gray-600" },
-}
+import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
 
 export default async function DocumentsPage() {
   const session = await auth()
@@ -44,12 +37,11 @@ export default async function DocumentsPage() {
       </div>
 
       {Object.entries(grouped).map(([category, docs]) => {
-        const cfg = categoryConfig[category]
         return (
           <div key={category}>
             <div className="flex items-center gap-2 mb-3">
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${cfg.color}`}>
-                {cfg.label}
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${documentCategoryColor[category]}`}>
+                {documentCategoryLabel[category]}
               </span>
               <span className="text-sm text-gray-400">{docs.length} document{docs.length !== 1 ? "s" : ""}</span>
             </div>

@@ -17,6 +17,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/account", icon: LayoutDashboard },
     { label: "Units", href: "/dashboard/account/units", icon: Building2 },
     { label: "Members", href: "/dashboard/account/members", icon: Users },
+    { label: "Board", href: "/dashboard/account/board", icon: Landmark },
     { label: "Property Manager", href: "/dashboard/account/pm", icon: Wrench },
     { label: "Contracts", href: "/dashboard/account/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/account/contractors", icon: Wrench, indent: true },
