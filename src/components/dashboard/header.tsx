@@ -1,17 +1,20 @@
 "use client"
 
+import { useState } from "react"
 import { signOut } from "next-auth/react"
-import { LogOut, Bell } from "lucide-react"
+import { LogOut, Bell, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ChangePasswordDialog } from "@/components/dashboard/change-password-dialog"
 import { Role } from "@/generated/prisma"
 
 const roleBadgeColor: Record<Role, string> = {
@@ -42,6 +45,7 @@ interface HeaderUser {
 }
 
 export function DashboardHeader({ user }: { user: HeaderUser }) {
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const initials = user.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : user.email?.[0].toUpperCase() ?? "?"
@@ -69,7 +73,13 @@ export function DashboardHeader({ user }: { user: HeaderUser }) {
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => setChangePasswordOpen(true)}>
+              <KeyRound className="h-4 w-4 mr-2" />
+              Change password
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-600 cursor-pointer"
@@ -81,6 +91,7 @@ export function DashboardHeader({ user }: { user: HeaderUser }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </header>
   )
 }

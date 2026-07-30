@@ -177,6 +177,21 @@ model Invite {
   sentBy User         @relation("SentInvites", fields: [sentById], references: [id])
 }
 
+// Single-use, expiring token for the "forgot password" flow. A user can have
+// multiple outstanding tokens (e.g. requested twice); using any one consumes
+// (and invalidates) all of that user's tokens, same reasoning as Invite's
+// acceptedAt - a used or expired token must never work again.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String?
@@ -222,6 +237,7 @@ model User {
   boardPositions BoardPosition[]
   announcements Announcement[]
   createdBudgets Budget[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Unit {

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,8 @@ const demoUsers = [
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const justReset = searchParams.get("reset") === "1"
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -64,6 +66,11 @@ export default function LoginPage() {
             <CardDescription>Enter your credentials to access the portal</CardDescription>
           </CardHeader>
           <CardContent>
+            {justReset && (
+              <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2 mb-4">
+                Password reset. Sign in with your new password.
+              </p>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="email">Email</Label>
@@ -77,7 +84,12 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   type="password"
