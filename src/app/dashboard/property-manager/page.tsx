@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, Users, Wrench, TicketIcon } from "lucide-react"
 import { formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
+import { getAttentionItems } from "@/lib/attention"
+import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel"
 
 export default async function PropertyManagerDashboard() {
   const session = await auth()
@@ -17,6 +19,7 @@ export default async function PropertyManagerDashboard() {
     openTickets,
     ownerCount,
     contractorCount,
+    attentionItems,
   ] = await Promise.all([
     db.unit.count(),
     db.unit.count({ where: { status: "AVAILABLE" } }),
@@ -24,6 +27,7 @@ export default async function PropertyManagerDashboard() {
     db.troubleTicket.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] } } }),
     db.user.count({ where: { role: "OWNER" } }),
     db.user.count({ where: { role: "CONTRACTOR" } }),
+    session.user.orgId ? getAttentionItems(session.user.orgId, "/dashboard/property-manager") : Promise.resolve([]),
   ])
 
   const recentTickets = await db.troubleTicket.findMany({
@@ -103,6 +107,8 @@ export default async function PropertyManagerDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <NeedsAttentionPanel items={attentionItems} />
 
       <Card>
         <CardHeader>

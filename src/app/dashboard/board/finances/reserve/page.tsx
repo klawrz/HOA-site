@@ -1,0 +1,65 @@
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import Link from "next/link"
+import { db } from "@/lib/db"
+import { ArrowLeft } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summary"
+import { ReserveTransactionDialog } from "@/components/reserve-fund/reserve-transaction-dialog"
+import { SetTargetDialog } from "@/components/reserve-fund/set-target-dialog"
+import { TransactionList } from "@/components/reserve-fund/transaction-list"
+
+export default async function BoardReservePage() {
+  const session = await auth()
+  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+
+  const [org, transactions] = await Promise.all([
+    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
+    db.reserveTransaction.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: { createdBy: true },
+      orderBy: { date: "desc" },
+    }),
+  ])
+
+  const balance = transactions.reduce((s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount), 0)
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link
+          href="/dashboard/board/finances"
+          className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to Finances
+        </Link>
+        <h1 className="text-2xl font-bold">Reserve Fund</h1>
+        <p className="text-gray-500 mt-1">Always-current balance, separate from operating funds</p>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-base">Balance</CardTitle>
+          <div className="flex gap-2">
+            <SetTargetDialog currentTarget={org?.reserveTarget ?? null} />
+            <ReserveTransactionDialog />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ReserveFundSummary balance={balance} target={org?.reserveTarget ?? null} />
+        </CardContent>
+      </Card>
+
+      <TransactionList
+        transactions={transactions.map((t) => ({
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          date: t.date,
+          description: t.description,
+          createdByName: t.createdBy.name ?? t.createdBy.email,
+        }))}
+      />
+    </div>
+  )
+}

@@ -108,6 +108,12 @@ model Organization {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  // Board-approved reserve savings goal (e.g. $100,000) - the running
+  // balance itself is never stored here, it's always computed live from
+  // ReserveTransaction so it can never drift into a stale "as of April 30"
+  // manual snapshot, which was the exact failure this is meant to fix.
+  reserveTarget Float?
+
   members   User[]
   units     Unit[]
   invites   Invite[]
@@ -122,6 +128,26 @@ model Organization {
   announcements Announcement[]
   budgets Budget[]
   assessments Assessment[]
+  reserveTransactions ReserveTransaction[]
+}
+
+enum ReserveTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+model ReserveTransaction {
+  id          String                 @id @default(cuid())
+  orgId       String
+  type        ReserveTransactionType
+  amount      Float
+  date        DateTime
+  description String
+  createdById String
+  createdAt   DateTime               @default(now())
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy User         @relation(fields: [createdById], references: [id])
 }
 
 // Board news/updates shown to Owners on the Governance page - distinct
@@ -240,6 +266,7 @@ model User {
   createdBudgets Budget[]
   passwordResetTokens PasswordResetToken[]
   createdAssessments Assessment[]
+  reserveTransactions ReserveTransaction[]
 }
 
 model Unit {

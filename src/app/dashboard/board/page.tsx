@@ -7,6 +7,8 @@ import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { documentCategoryColor } from "@/lib/document-styles"
+import { getAttentionItems } from "@/lib/attention"
+import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel"
 
 export default async function BoardDashboard() {
   const session = await auth()
@@ -19,6 +21,7 @@ export default async function BoardDashboard() {
     unitCount,
     recentMeetings,
     recentDocs,
+    attentionItems,
   ] = await Promise.all([
     db.meeting.count(),
     db.document.count(),
@@ -32,6 +35,7 @@ export default async function BoardDashboard() {
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    session.user.orgId ? getAttentionItems(session.user.orgId, "/dashboard/board") : Promise.resolve([]),
   ])
 
 
@@ -88,6 +92,8 @@ export default async function BoardDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <NeedsAttentionPanel items={attentionItems} />
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>

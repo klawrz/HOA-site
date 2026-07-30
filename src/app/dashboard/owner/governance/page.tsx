@@ -2,11 +2,12 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, FileText, Mail, Phone, Megaphone, DollarSign } from "lucide-react"
+import { Users, Calendar, FileText, Mail, Phone, Megaphone, DollarSign, PiggyBank } from "lucide-react"
 import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
 import { formatDateISO } from "@/lib/utils"
 import { AnnouncementList } from "@/components/announcements/announcement-list"
 import { BudgetEditor } from "@/components/budgets/budget-editor"
+import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summary"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
@@ -14,7 +15,7 @@ export default async function OwnerGovernancePage() {
 
   const now = new Date()
 
-  const [announcements, boardPositions, meetings, documents, latestApprovedBudget] = await Promise.all([
+  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { author: true },
@@ -38,7 +39,14 @@ export default async function OwnerGovernancePage() {
       include: { lineItems: { include: { contract: true }, orderBy: { sortOrder: "asc" } }, meeting: true },
       orderBy: { year: "desc" },
     }),
+    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
+    db.reserveTransaction.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
   ])
+
+  const reserveBalance = reserveTransactions.reduce(
+    (s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount),
+    0
+  )
 
   const upcomingMeetings = meetings.filter((m) => m.date >= now).sort((a, b) => a.date.getTime() - b.date.getTime())
   const pastMeetings = meetings.filter((m) => m.date < now)
@@ -203,6 +211,17 @@ export default async function OwnerGovernancePage() {
           ) : (
             <p className="text-sm text-gray-500">No approved budget yet.</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <PiggyBank className="h-4 w-4" /> Reserve Fund
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReserveFundSummary balance={reserveBalance} target={org?.reserveTarget ?? null} />
         </CardContent>
       </Card>
 

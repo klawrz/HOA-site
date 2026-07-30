@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
-import { ArrowLeft, Receipt, ChevronRight } from "lucide-react"
+import { ArrowLeft, Receipt, ChevronRight, PiggyBank } from "lucide-react"
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
@@ -47,17 +47,28 @@ export default async function OwnerBoardFinancesPage() {
         <p className="text-gray-500 mt-1">Annual budgets - drafted, revised, and approved</p>
       </div>
 
-      <Link
-        href="/dashboard/owner/governance/board/finances/assessments"
-        className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <Receipt className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium">Dues & Assessments</span>
-          <span className="text-xs text-gray-400">Issued charges and payment reconciliation</span>
-        </div>
-        <ChevronRight className="h-4 w-4 text-gray-400" />
-      </Link>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Link
+          href="/dashboard/owner/governance/board/finances/assessments"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Dues & Assessments</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </Link>
+        <Link
+          href="/dashboard/owner/governance/board/finances/reserve"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <PiggyBank className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Reserve Fund</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </Link>
+      </div>
 
       <div>
         <div className="flex items-center justify-between mb-3">
