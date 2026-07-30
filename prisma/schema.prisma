@@ -73,10 +73,22 @@ enum TicketScope {
 
 enum DocumentCategory {
   MEETING_MINUTES
+  BYLAWS
+  INSURANCE
+  RESOLUTION
   CONTRACT
   FINANCIAL
   POLICY
   OTHER
+}
+
+// Default OWNERS - everything already in the repository stays visible to
+// Owners exactly as before. BOARD_AND_PM hides a document from the Owner
+// Governance page entirely (e.g. a vendor contract with sensitive terms),
+// while Board members and the Property Manager still see it.
+enum DocumentVisibility {
+  OWNERS
+  BOARD_AND_PM
 }
 
 model Organization {
@@ -106,6 +118,46 @@ model Organization {
   contracts Contract[]
   tickets   TroubleTicket[]
   complianceDocuments ComplianceDocument[]
+  boardPositions BoardPosition[]
+  announcements Announcement[]
+  budgets Budget[]
+}
+
+// Board news/updates shown to Owners on the Governance page - distinct
+// from Meetings (formal, scheduled, minutes-bearing) and Documents (files
+// on record). Just a dated post: title, body, who posted it.
+model Announcement {
+  id        String   @id @default(cuid())
+  orgId     String
+  title     String
+  content   String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  author User         @relation(fields: [authorId], references: [id])
+}
+
+// The board roster - who holds which seat, for how long. Deliberately
+// separate from User.isBoardMember: this is descriptive record-keeping
+// (title, term dates), not the access gate itself. Ending or removing a
+// term does not revoke access - that stays a manual toggle, so nobody
+// gets locked out mid-term just because an end date passed before a
+// replacement was seated.
+model BoardPosition {
+  id        String    @id @default(cuid())
+  orgId     String
+  title     String // e.g. "President", "Treasurer" - HOA-defined, free text
+  userId    String? // null = vacant seat
+  termStart DateTime
+  termEnd   DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User?        @relation(fields: [userId], references: [id])
 }
 
 model Invite {
@@ -167,6 +219,9 @@ model User {
   unitManagerAssignments UnitManagerAssignment[]
   uploadedComplianceDocuments ComplianceDocument[]
   createdOccupancyEntries OccupancyEntry[]
+  boardPositions BoardPosition[]
+  announcements Announcement[]
+  createdBudgets Budget[]
 }
 
 model Unit {
@@ -182,6 +237,10 @@ model Unit {
   civicRoll   String?    // municipal civic/assessment roll number for this unit
   status      UnitStatus @default(AVAILABLE)
   selfManaged Boolean    @default(true) // Owner handles the unit themselves, no delegated Unit Manager
+  // This unit's fixed share of common budget/dues, per the governing
+  // documents - HOAs rarely split costs evenly across units. Null until
+  // the Board/PM sets it; dues can't be estimated for a unit without one.
+  allocationPercent Float?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -284,17 +343,18 @@ model TicketComment {
 }
 
 model Document {
-  id           String           @id @default(cuid())
+  id           String             @id @default(cuid())
   orgId        String
   title        String
-  category     DocumentCategory @default(OTHER)
+  category     DocumentCategory   @default(OTHER)
+  visibility   DocumentVisibility @default(OWNERS)
   description  String?
   fileUrl      String?
   content      String?
   uploadedById String
   meetingId    String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   meeting Meeting?     @relation(fields: [meetingId], references: [id])
@@ -314,6 +374,7 @@ model Meeting {
 
   org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   documents Document[]
+  budgets   Budget[]
 }
 
 // Property-level contracts (scope PROPERTY, no unitId) are the HOA's own
@@ -366,6 +427,68 @@ model Contract {
   org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   unit       Unit?        @relation(fields: [unitId], references: [id], onDelete: Cascade)
   contractor User         @relation(fields: [contractorId], references: [id])
+  budgetLineItems BudgetLineItem[]
+}
+
+// ------------------------------------------------------------
+// Budget
+//
+// One Budget per fiscal year, with a free-text version label so the
+// Board can keep a Proposed draft, a Revised draft, and the Final
+// approved version distinct without a rigid workflow. Only the Final,
+// approved version drives Owner-facing figures (dues estimate, the
+// read-only Governance view) - drafts stay Board/PM-internal.
+// ------------------------------------------------------------
+
+enum BudgetStatus {
+  DRAFT
+  APPROVED
+}
+
+// Operating (the annual recurring budget that funds dues) vs Capital
+// (one-off projects - often assessed separately, e.g. a special per-unit
+// assessment) - kept as a real category rather than just a version label,
+// so they show as genuinely separate lists rather than one flat list the
+// reader has to parse by name.
+enum BudgetType {
+  OPERATING
+  CAPITAL
+}
+
+model Budget {
+  id          String       @id @default(cuid())
+  orgId       String
+  year        Int
+  version     String       @default("Draft") // e.g. "Proposed", "Revised", "Final"
+  type        BudgetType   @default(OPERATING)
+  status      BudgetStatus @default(DRAFT)
+  approvedAt  DateTime?
+  meetingId   String? // the AGM (or other meeting) where it was approved
+  notes       String?
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  org       Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy User             @relation(fields: [createdById], references: [id])
+  meeting   Meeting?         @relation(fields: [meetingId], references: [id])
+  lineItems BudgetLineItem[]
+}
+
+model BudgetLineItem {
+  id                 String   @id @default(cuid())
+  budgetId           String
+  label              String
+  budgetedAmount     Float
+  actualAmount       Float? // filled in at/after year-end for variance
+  previousYearActual Float? // manually carried forward - useful reference for Owners
+  contractId         String? // pulls in a specific recurring contract's committed amount
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  budget   Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  contract Contract? @relation(fields: [contractId], references: [id])
 }
 
 // ------------------------------------------------------------

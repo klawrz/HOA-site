@@ -2,15 +2,11 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, FileText, Mail, Phone } from "lucide-react"
-
-const categoryConfig: Record<string, { label: string; color: string }> = {
-  MEETING_MINUTES: { label: "Meeting Minutes", color: "bg-blue-100 text-blue-800" },
-  CONTRACT: { label: "Contract", color: "bg-orange-100 text-orange-800" },
-  FINANCIAL: { label: "Financial", color: "bg-green-100 text-green-800" },
-  POLICY: { label: "Policy", color: "bg-purple-100 text-purple-800" },
-  OTHER: { label: "Other", color: "bg-gray-100 text-gray-600" },
-}
+import { Users, Calendar, FileText, Mail, Phone, Megaphone, DollarSign } from "lucide-react"
+import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
+import { formatDateISO } from "@/lib/utils"
+import { AnnouncementList } from "@/components/announcements/announcement-list"
+import { BudgetEditor } from "@/components/budgets/budget-editor"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
@@ -18,18 +14,29 @@ export default async function OwnerGovernancePage() {
 
   const now = new Date()
 
-  const [boardMembers, meetings, documents] = await Promise.all([
-    db.user.findMany({
-      where: { role: "BOARD_MEMBER", orgId: session.user.orgId ?? undefined },
-      orderBy: { name: "asc" },
+  const [announcements, boardPositions, meetings, documents, latestApprovedBudget] = await Promise.all([
+    db.announcement.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: { author: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.boardPosition.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: { user: true },
+      orderBy: { title: "asc" },
     }),
     db.meeting.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       orderBy: { date: "desc" },
     }),
     db.document.findMany({
-      where: { orgId: session.user.orgId ?? undefined },
+      where: { orgId: session.user.orgId ?? undefined, visibility: "OWNERS" },
       orderBy: { createdAt: "desc" },
+    }),
+    db.budget.findFirst({
+      where: { orgId: session.user.orgId ?? undefined, status: "APPROVED", type: "OPERATING" },
+      include: { lineItems: { include: { contract: true }, orderBy: { sortOrder: "asc" } }, meeting: true },
+      orderBy: { year: "desc" },
     }),
   ])
 
@@ -46,8 +53,30 @@ export default async function OwnerGovernancePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Governance</h1>
-        <p className="text-gray-500 mt-1">Your Board, upcoming meetings, and the document repository</p>
+        <p className="text-gray-500 mt-1">
+          News, your Board, upcoming meetings, and the document repository
+        </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Megaphone className="h-4 w-4" /> Announcements
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AnnouncementList
+            announcements={announcements.map((a) => ({
+              id: a.id,
+              title: a.title,
+              content: a.content,
+              createdAt: a.createdAt,
+              author: { name: a.author.name, email: a.author.email, role: a.author.role },
+            }))}
+            canManage={false}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -56,22 +85,34 @@ export default async function OwnerGovernancePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {boardMembers.length === 0 && (
-            <p className="text-sm text-gray-500">No Board members on file yet.</p>
+          {boardPositions.length === 0 && (
+            <p className="text-sm text-gray-500">No Board positions on file yet.</p>
           )}
-          {boardMembers.map((m) => (
-            <div key={m.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-              <p className="text-sm font-medium">{m.name ?? m.email}</p>
-              <div className="flex gap-3 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
-                  <Mail className="h-3 w-3" /> {m.email}
-                </span>
-                {m.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="h-3 w-3" /> {m.phone}
-                  </span>
-                )}
+          {boardPositions.map((p) => (
+            <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+              <div>
+                <p className="text-sm font-medium">
+                  {p.title}
+                  {p.user && <span className="text-gray-400 font-normal"> — {p.user.name ?? p.user.email}</span>}
+                  {!p.user && <span className="text-gray-400 font-normal"> — Vacant</span>}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {formatDateISO(p.termStart)}
+                  {p.termEnd ? ` – ${formatDateISO(p.termEnd)}` : " – present"}
+                </p>
               </div>
+              {p.user && (
+                <div className="flex gap-3 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3 w-3" /> {p.user.email}
+                  </span>
+                  {p.user.phone && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3 w-3" /> {p.user.phone}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </CardContent>
@@ -130,17 +171,56 @@ export default async function OwnerGovernancePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="h-4 w-4" /> Approved Budget
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {latestApprovedBudget ? (
+            <BudgetEditor
+              budget={{
+                id: latestApprovedBudget.id,
+                year: latestApprovedBudget.year,
+                version: latestApprovedBudget.version,
+                status: latestApprovedBudget.status,
+                notes: latestApprovedBudget.notes,
+                approvedAt: latestApprovedBudget.approvedAt,
+                meetingTitle: latestApprovedBudget.meeting?.title ?? null,
+                lineItems: latestApprovedBudget.lineItems.map((i) => ({
+                  id: i.id,
+                  label: i.label,
+                  budgetedAmount: i.budgetedAmount,
+                  actualAmount: i.actualAmount,
+                  previousYearActual: i.previousYearActual,
+                  contractId: i.contractId,
+                  contractTitle: i.contract?.title ?? null,
+                })),
+              }}
+              contracts={[]}
+              meetings={[]}
+              canManage={false}
+              canApprove={false}
+            />
+          ) : (
+            <p className="text-sm text-gray-500">No approved budget yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
             <FileText className="h-4 w-4" /> Document Repository
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {documents.length === 0 && <p className="text-sm text-gray-500">No documents on file yet.</p>}
           {Object.entries(groupedDocs).map(([category, docs]) => {
-            const cfg = categoryConfig[category] ?? categoryConfig.OTHER
             return (
               <div key={category}>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{cfg.label}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${documentCategoryColor[category]}`}>
+                    {documentCategoryLabel[category]}
+                  </span>
                   <span className="text-xs text-gray-400">{docs.length} document{docs.length !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="space-y-2">

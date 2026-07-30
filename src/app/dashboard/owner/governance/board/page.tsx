@@ -3,18 +3,13 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, FileText } from "lucide-react"
+import { ArrowLeft, Calendar, FileText, Megaphone, ChevronRight, DollarSign } from "lucide-react"
 import { NewMeetingDialog } from "@/app/dashboard/board/meetings/new-meeting-dialog"
 import { MeetingMinutesDialog } from "@/app/dashboard/board/meetings/minutes-dialog"
 import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
-
-const categoryConfig: Record<string, { label: string; color: string }> = {
-  MEETING_MINUTES: { label: "Meeting Minutes", color: "bg-blue-100 text-blue-800" },
-  CONTRACT: { label: "Contract", color: "bg-orange-100 text-orange-800" },
-  FINANCIAL: { label: "Financial", color: "bg-green-100 text-green-800" },
-  POLICY: { label: "Policy", color: "bg-purple-100 text-purple-800" },
-  OTHER: { label: "Other", color: "bg-gray-100 text-gray-600" },
-}
+import { documentCategoryLabel, documentCategoryColor, documentVisibilityLabel, documentVisibilityColor } from "@/lib/document-styles"
+import { AnnouncementList } from "@/components/announcements/announcement-list"
+import { NewAnnouncementDialog } from "@/components/announcements/new-announcement-dialog"
 
 export default async function OwnerBoardManagementPage() {
   const session = await auth()
@@ -22,9 +17,15 @@ export default async function OwnerBoardManagementPage() {
     redirect("/dashboard")
   }
 
-  const [meetings, documents] = await Promise.all([
+  const [announcements, meetings, documents, budgetCount] = await Promise.all([
+    db.announcement.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: { author: true },
+      orderBy: { createdAt: "desc" },
+    }),
     db.meeting.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { date: "desc" } }),
     db.document.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { createdAt: "desc" } }),
+    db.budget.count({ where: { orgId: session.user.orgId ?? undefined } }),
   ])
 
   const groupedDocs = documents.reduce<Record<string, typeof documents>>((acc, d) => {
@@ -48,6 +49,27 @@ export default async function OwnerBoardManagementPage() {
           repository.
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Megaphone className="h-4 w-4" /> Announcements
+          </CardTitle>
+          <NewAnnouncementDialog />
+        </CardHeader>
+        <CardContent>
+          <AnnouncementList
+            announcements={announcements.map((a) => ({
+              id: a.id,
+              title: a.title,
+              content: a.content,
+              createdAt: a.createdAt,
+              author: { name: a.author.name, email: a.author.email, role: a.author.role },
+            }))}
+            canManage
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -93,18 +115,26 @@ export default async function OwnerBoardManagementPage() {
         <CardContent className="space-y-4">
           {documents.length === 0 && <p className="text-sm text-gray-500">No documents yet.</p>}
           {Object.entries(groupedDocs).map(([category, docs]) => {
-            const cfg = categoryConfig[category] ?? categoryConfig.OTHER
             return (
               <div key={category}>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{cfg.label}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${documentCategoryColor[category]}`}>
+                    {documentCategoryLabel[category]}
+                  </span>
                   <span className="text-xs text-gray-400">{docs.length} document{docs.length !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="space-y-2">
                   {docs.map((d) => (
                     <div key={d.id} className="flex items-start justify-between gap-3 bg-gray-50 rounded-lg px-3 py-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">{d.title}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium">{d.title}</p>
+                          {d.visibility === "BOARD_AND_PM" && (
+                            <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${documentVisibilityColor[d.visibility]}`}>
+                              {documentVisibilityLabel[d.visibility]}
+                            </span>
+                          )}
+                        </div>
                         {d.description && <p className="text-xs text-gray-500 mt-0.5">{d.description}</p>}
                         <p className="text-xs text-gray-400 mt-1">{d.createdAt.toLocaleDateString()}</p>
                       </div>
@@ -126,6 +156,23 @@ export default async function OwnerBoardManagementPage() {
           })}
         </CardContent>
       </Card>
+
+      <Link href="/dashboard/owner/governance/board/finances">
+        <Card className="hover:border-gray-300 transition-colors">
+          <CardContent className="py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              <div>
+                <p className="text-sm font-semibold">Finances</p>
+                <p className="text-xs text-gray-400">
+                  {budgetCount} budget{budgetCount !== 1 ? "s" : ""} on record
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-300" />
+          </CardContent>
+        </Card>
+      </Link>
     </div>
   )
 }

@@ -22,37 +22,35 @@ import {
 } from "@/components/ui/select"
 import { createDocument } from "@/app/actions/documents"
 import { DocumentCategory } from "@/generated/prisma"
+import { documentCategoryLabel } from "@/lib/document-styles"
 
-const categories: { value: DocumentCategory; label: string }[] = [
-  { value: "MEETING_MINUTES", label: "Meeting Minutes" },
-  { value: "CONTRACT", label: "Contract" },
-  { value: "FINANCIAL", label: "Financial" },
-  { value: "POLICY", label: "Policy" },
-  { value: "OTHER", label: "Other" },
-]
+const categories = Object.keys(documentCategoryLabel) as DocumentCategory[]
 
 export function NewDocumentDialog() {
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState<DocumentCategory>("OTHER")
+  const [restricted, setRestricted] = useState(false)
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
     const form = new FormData(e.currentTarget)
-    const result = await createDocument({
-      title: form.get("title") as string,
-      category,
-      description: form.get("description") as string,
-      content: form.get("content") as string,
-      fileUrl: form.get("fileUrl") as string,
-    })
+    form.set("category", category)
+    form.set("visibility", restricted ? "BOARD_AND_PM" : "OWNERS")
+    const uploadedFile = form.get("file")
+    if (uploadedFile instanceof File && uploadedFile.size === 0) form.delete("file")
+
+    const result = await createDocument(form)
     setSaving(false)
     if (result.success) {
       toast.success("Document added")
       setOpen(false)
+      setCategory("OTHER")
+      setRestricted(false)
+      ;(document.getElementById("new-document-form") as HTMLFormElement)?.reset()
     } else {
-      toast.error("Failed to add document")
+      toast.error(result.error ?? "Failed to add document")
     }
   }
 
@@ -61,25 +59,25 @@ export function NewDocumentDialog() {
       <DialogTrigger render={<Button />}>
         + Add Document
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Document</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="new-document-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <Label>Title</Label>
             <Input name="title" placeholder="Document title" required />
           </div>
           <div className="space-y-1">
             <Label>Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as DocumentCategory)}>
+            <Select value={category} onValueChange={(v) => setCategory(v as DocumentCategory)} items={documentCategoryLabel}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
+                  <SelectItem key={c} value={c}>
+                    {documentCategoryLabel[c]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -98,9 +96,28 @@ export function NewDocumentDialog() {
             />
           </div>
           <div className="space-y-1">
-            <Label>File URL (optional)</Label>
+            <Label>Upload File (optional)</Label>
+            <Input name="file" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" />
+          </div>
+          <div className="space-y-1">
+            <Label>Or Link to File (optional)</Label>
             <Input name="fileUrl" type="url" placeholder="https://..." />
           </div>
+          <label className="flex items-start gap-2 text-sm bg-gray-50 border rounded-lg p-3">
+            <input
+              type="checkbox"
+              className="accent-gray-900 mt-0.5"
+              checked={restricted}
+              onChange={(e) => setRestricted(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">Restrict to Board & Property Manager</span>
+              <span className="block text-xs text-gray-500 mt-0.5">
+                Hides this from the Owner Governance page - use for sensitive contracts, drafts, or
+                internal matters. Leave unchecked for anything Owners should see.
+              </span>
+            </span>
+          </label>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               Cancel

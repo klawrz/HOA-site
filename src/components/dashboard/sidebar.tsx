@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -17,6 +17,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/account", icon: LayoutDashboard },
     { label: "Units", href: "/dashboard/account/units", icon: Building2 },
     { label: "Members", href: "/dashboard/account/members", icon: Users },
+    { label: "Board", href: "/dashboard/account/board", icon: Landmark },
     { label: "Property Manager", href: "/dashboard/account/pm", icon: Wrench },
     { label: "Contracts", href: "/dashboard/account/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/account/contractors", icon: Wrench, indent: true },
@@ -40,6 +41,9 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/property-manager", icon: LayoutDashboard },
     { label: "Unit Availability", href: "/dashboard/property-manager/units", icon: Building2 },
     { label: "Owner Directory", href: "/dashboard/property-manager/owners", icon: Users },
+    { label: "Announcements", href: "/dashboard/property-manager/announcements", icon: Megaphone },
+    { label: "Documents", href: "/dashboard/property-manager/documents", icon: FileText },
+    { label: "Finances", href: "/dashboard/property-manager/finances", icon: DollarSign },
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     { label: "Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
     { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
@@ -54,8 +58,10 @@ const navByRole: Record<Role, NavItem[]> = {
   ],
   BOARD_MEMBER: [
     { label: "Dashboard", href: "/dashboard/board", icon: LayoutDashboard },
+    { label: "Announcements", href: "/dashboard/board/announcements", icon: Megaphone },
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
     { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
+    { label: "Finances", href: "/dashboard/board/finances", icon: DollarSign },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
     { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
