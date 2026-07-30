@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, TrendingDown, ChevronRight } from "lucide-react"
+import { TrendingUp, TrendingDown, ChevronRight, Receipt } from "lucide-react"
 import { billingPeriodLabel } from "@/lib/contract-styles"
 
 // Only meaningful for a fair "per month" comparison across contracts billed
@@ -40,6 +40,14 @@ export default async function OwnerFinancialPage() {
   ])
 
   const totalApprovedBudget = latestApprovedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
+
+  const unitIds = ownerships.map((o) => o.unitId)
+  const issuedCharges = unitIds.length
+    ? await db.assessmentCharge.findMany({
+        where: { unitId: { in: unitIds }, assessment: { status: "ISSUED" } },
+      })
+    : []
+  const totalOutstanding = issuedCharges.reduce((s, c) => s + Math.max(c.amountDue - c.amountPaid, 0), 0)
 
   const totalIncome = ownerships
     .flatMap((o) => o.unit.leases)
@@ -103,6 +111,29 @@ export default async function OwnerFinancialPage() {
               )
             })}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-gray-500" /> Dues & Assessments
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm text-gray-500">Total outstanding (issued charges)</p>
+            <p className="text-2xl font-bold">
+              ${totalOutstanding.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <Link
+            href="/dashboard/owner/financial/dues"
+            className="flex items-center justify-between text-sm text-blue-600 hover:underline pt-1"
+          >
+            {issuedCharges.length > 0 ? "View dues & assessments" : "No dues issued yet"}
+            <ChevronRight className="h-4 w-4" />
+          </Link>
         </CardContent>
       </Card>
 

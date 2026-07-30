@@ -121,6 +121,7 @@ model Organization {
   boardPositions BoardPosition[]
   announcements Announcement[]
   budgets Budget[]
+  assessments Assessment[]
 }
 
 // Board news/updates shown to Owners on the Governance page - distinct
@@ -238,6 +239,7 @@ model User {
   announcements Announcement[]
   createdBudgets Budget[]
   passwordResetTokens PasswordResetToken[]
+  createdAssessments Assessment[]
 }
 
 model Unit {
@@ -276,6 +278,7 @@ model Unit {
   managers   UnitManagerAssignment[]
   contracts  Contract[]
   occupancyEntries OccupancyEntry[]
+  assessmentCharges AssessmentCharge[]
 
   @@unique([orgId, number])
 }
@@ -489,6 +492,7 @@ model Budget {
   createdBy User             @relation(fields: [createdById], references: [id])
   meeting   Meeting?         @relation(fields: [meetingId], references: [id])
   lineItems BudgetLineItem[]
+  assessments Assessment[]
 }
 
 model BudgetLineItem {
@@ -505,6 +509,77 @@ model BudgetLineItem {
 
   budget   Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
   contract Contract? @relation(fields: [contractId], references: [id])
+}
+
+// ------------------------------------------------------------
+// Assessments & Dues
+//
+// An Assessment is a real, issued charge to owners - the thing a Budget's
+// dues estimate was only ever a preview of. REGULAR_DUES assessments are
+// the routine recurring charge (typically drawn from an approved Operating
+// budget); SPECIAL assessments are one-off cash calls (e.g. a capital
+// project or a shortfall), optionally linked to a Capital budget but not
+// required to be. Per-unit shares are snapshotted onto each
+// AssessmentCharge at creation time from Unit.allocationPercent, rather
+// than computed live, so a later change to a unit's allocation never
+// silently rewrites an assessment that's already gone out. A charge stays
+// DRAFT-editable (regenerate by deleting and recreating) until issued;
+// once ISSUED it's locked and visible to Owners, and only payments can be
+// recorded against it from then on - mirrors Budget's draft/approved split.
+// ------------------------------------------------------------
+
+enum AssessmentType {
+  REGULAR_DUES
+  SPECIAL
+}
+
+enum AssessmentStatus {
+  DRAFT
+  ISSUED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CHEQUE
+  CASH
+  CARD
+  OTHER
+}
+
+model Assessment {
+  id          String           @id @default(cuid())
+  orgId       String
+  title       String
+  type        AssessmentType   @default(REGULAR_DUES)
+  status      AssessmentStatus @default(DRAFT)
+  totalAmount Float
+  dueDate     DateTime
+  budgetId    String?
+  notes       String?
+  createdById String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  org       Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy User               @relation(fields: [createdById], references: [id])
+  budget    Budget?            @relation(fields: [budgetId], references: [id])
+  charges   AssessmentCharge[]
+}
+
+model AssessmentCharge {
+  id            String         @id @default(cuid())
+  assessmentId  String
+  unitId        String
+  amountDue     Float
+  amountPaid    Float          @default(0)
+  paymentMethod PaymentMethod?
+  paidAt        DateTime?
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  unit       Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
 }
 
 // ------------------------------------------------------------

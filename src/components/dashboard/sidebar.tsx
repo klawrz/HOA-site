@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -27,6 +27,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "My Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
     { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2 },
     { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign },
+    { label: "Dues & Assessments", href: "/dashboard/owner/financial/dues", icon: Receipt, indent: true },
     { label: "Contracts", href: "/dashboard/owner/financial/contracts", icon: FileText, indent: true },
     { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon },
     { label: "Governance", href: "/dashboard/owner/governance", icon: Landmark },
@@ -44,6 +45,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Announcements", href: "/dashboard/property-manager/announcements", icon: Megaphone },
     { label: "Documents", href: "/dashboard/property-manager/documents", icon: FileText },
     { label: "Finances", href: "/dashboard/property-manager/finances", icon: DollarSign },
+    { label: "Dues & Assessments", href: "/dashboard/property-manager/finances/assessments", icon: Receipt, indent: true },
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     { label: "Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
     { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
@@ -62,6 +64,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
     { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
     { label: "Finances", href: "/dashboard/board/finances", icon: DollarSign },
+    { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt, indent: true },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
     { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
