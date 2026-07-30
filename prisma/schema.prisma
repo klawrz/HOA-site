@@ -120,6 +120,7 @@ model Organization {
   complianceDocuments ComplianceDocument[]
   boardPositions BoardPosition[]
   announcements Announcement[]
+  budgets Budget[]
 }
 
 // Board news/updates shown to Owners on the Governance page - distinct
@@ -220,6 +221,7 @@ model User {
   createdOccupancyEntries OccupancyEntry[]
   boardPositions BoardPosition[]
   announcements Announcement[]
+  createdBudgets Budget[]
 }
 
 model Unit {
@@ -235,6 +237,10 @@ model Unit {
   civicRoll   String?    // municipal civic/assessment roll number for this unit
   status      UnitStatus @default(AVAILABLE)
   selfManaged Boolean    @default(true) // Owner handles the unit themselves, no delegated Unit Manager
+  // This unit's fixed share of common budget/dues, per the governing
+  // documents - HOAs rarely split costs evenly across units. Null until
+  // the Board/PM sets it; dues can't be estimated for a unit without one.
+  allocationPercent Float?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -368,6 +374,7 @@ model Meeting {
 
   org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   documents Document[]
+  budgets   Budget[]
 }
 
 // Property-level contracts (scope PROPERTY, no unitId) are the HOA's own
@@ -420,6 +427,57 @@ model Contract {
   org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   unit       Unit?        @relation(fields: [unitId], references: [id], onDelete: Cascade)
   contractor User         @relation(fields: [contractorId], references: [id])
+  budgetLineItems BudgetLineItem[]
+}
+
+// ------------------------------------------------------------
+// Budget
+//
+// One Budget per fiscal year, with a free-text version label so the
+// Board can keep a Proposed draft, a Revised draft, and the Final
+// approved version distinct without a rigid workflow. Only the Final,
+// approved version drives Owner-facing figures (dues estimate, the
+// read-only Governance view) - drafts stay Board/PM-internal.
+// ------------------------------------------------------------
+
+enum BudgetStatus {
+  DRAFT
+  APPROVED
+}
+
+model Budget {
+  id          String       @id @default(cuid())
+  orgId       String
+  year        Int
+  version     String       @default("Draft") // e.g. "Proposed", "Revised", "Final"
+  status      BudgetStatus @default(DRAFT)
+  approvedAt  DateTime?
+  meetingId   String? // the AGM (or other meeting) where it was approved
+  notes       String?
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  org       Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy User             @relation(fields: [createdById], references: [id])
+  meeting   Meeting?         @relation(fields: [meetingId], references: [id])
+  lineItems BudgetLineItem[]
+}
+
+model BudgetLineItem {
+  id                 String   @id @default(cuid())
+  budgetId           String
+  label              String
+  budgetedAmount     Float
+  actualAmount       Float? // filled in at/after year-end for variance
+  previousYearActual Float? // manually carried forward - useful reference for Owners
+  contractId         String? // pulls in a specific recurring contract's committed amount
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  budget   Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  contract Contract? @relation(fields: [contractId], references: [id])
 }
 
 // ------------------------------------------------------------

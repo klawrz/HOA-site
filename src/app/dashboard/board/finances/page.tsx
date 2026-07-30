@@ -1,0 +1,53 @@
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import { db } from "@/lib/db"
+import { BudgetList } from "@/components/budgets/budget-list"
+import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
+import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
+
+export default async function BoardFinancesPage() {
+  const session = await auth()
+  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+
+  const [budgets, units] = await Promise.all([
+    db.budget.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: { lineItems: true },
+      orderBy: { year: "desc" },
+    }),
+    db.unit.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { number: "asc" } }),
+  ])
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Finances</h1>
+          <p className="text-gray-500 mt-1">Annual budgets - drafted, revised, and approved</p>
+        </div>
+        <NewBudgetDialog detailBasePath="/dashboard/board/finances" />
+      </div>
+
+      <BudgetList
+        budgets={budgets.map((b) => ({
+          id: b.id,
+          year: b.year,
+          version: b.version,
+          status: b.status,
+          lineItemCount: b.lineItems.length,
+          totalBudgeted: b.lineItems.reduce((s, i) => s + i.budgetedAmount, 0),
+        }))}
+        detailBasePath="/dashboard/board/finances"
+      />
+
+      <UnitAllocationTable
+        units={units.map((u) => ({
+          id: u.id,
+          number: u.number,
+          building: u.building,
+          allocationPercent: u.allocationPercent,
+        }))}
+      />
+    </div>
+  )
+}

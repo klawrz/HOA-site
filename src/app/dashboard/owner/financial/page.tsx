@@ -18,17 +18,28 @@ export default async function OwnerFinancialPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const ownerships = await db.unitOwnership.findMany({
-    where: { ownerId: session.user.id, isCurrent: true },
-    include: {
-      unit: {
-        include: {
-          leases: { where: { isActive: true }, include: { renter: true } },
-          contracts: { include: { contractor: true }, orderBy: { createdAt: "desc" } },
+  const [ownerships, latestApprovedBudget] = await Promise.all([
+    db.unitOwnership.findMany({
+      where: { ownerId: session.user.id, isCurrent: true },
+      include: {
+        unit: {
+          include: {
+            leases: { where: { isActive: true }, include: { renter: true } },
+            contracts: { include: { contractor: true }, orderBy: { createdAt: "desc" } },
+          },
         },
       },
-    },
-  })
+    }),
+    session.user.orgId
+      ? db.budget.findFirst({
+          where: { orgId: session.user.orgId, status: "APPROVED" },
+          include: { lineItems: true },
+          orderBy: { year: "desc" },
+        })
+      : Promise.resolve(null),
+  ])
+
+  const totalApprovedBudget = latestApprovedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
 
   const totalIncome = ownerships
     .flatMap((o) => o.unit.leases)
@@ -108,13 +119,31 @@ export default async function OwnerFinancialPage() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-              <div>
-                <p className="text-sm font-medium">HOA Dues</p>
-                <p className="text-xs text-gray-400 mt-0.5">Not yet tracked - coming in a future update</p>
-              </div>
-              <p className="text-sm text-gray-400">—</p>
-            </div>
+            {ownerships.map((o) => {
+              const percent = o.unit.allocationPercent
+              const estimatedDues =
+                totalApprovedBudget != null && percent != null ? totalApprovedBudget * (percent / 100) : null
+              return (
+                <div key={`dues-${o.unit.id}`} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium">
+                      HOA Dues — Unit {o.unit.number}
+                      {o.unit.building && ` — Building ${o.unit.building}`}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {estimatedDues != null
+                        ? `Est. from ${latestApprovedBudget!.year} approved budget (${percent}% allocation)`
+                        : percent == null
+                          ? "Allocation percentage not set yet - contact your Property Manager"
+                          : "No approved budget yet"}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold text-red-700">
+                    {estimatedDues != null ? `-$${estimatedDues.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr` : "—"}
+                  </p>
+                </div>
+              )
+            })}
 
             {activeContracts
               .filter((c) => c.type === "RECURRING")

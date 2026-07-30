@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, FileText, Megaphone } from "lucide-react"
+import { ArrowLeft, Calendar, FileText, Megaphone, ChevronRight, DollarSign } from "lucide-react"
 import { NewMeetingDialog } from "@/app/dashboard/board/meetings/new-meeting-dialog"
 import { MeetingMinutesDialog } from "@/app/dashboard/board/meetings/minutes-dialog"
 import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
@@ -17,7 +17,7 @@ export default async function OwnerBoardManagementPage() {
     redirect("/dashboard")
   }
 
-  const [announcements, meetings, documents] = await Promise.all([
+  const [announcements, meetings, documents, budgetCount] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { author: true },
@@ -25,6 +25,7 @@ export default async function OwnerBoardManagementPage() {
     }),
     db.meeting.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { date: "desc" } }),
     db.document.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { createdAt: "desc" } }),
+    db.budget.count({ where: { orgId: session.user.orgId ?? undefined } }),
   ])
 
   const groupedDocs = documents.reduce<Record<string, typeof documents>>((acc, d) => {
@@ -155,6 +156,23 @@ export default async function OwnerBoardManagementPage() {
           })}
         </CardContent>
       </Card>
+
+      <Link href="/dashboard/owner/governance/board/finances">
+        <Card className="hover:border-gray-300 transition-colors">
+          <CardContent className="py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              <div>
+                <p className="text-sm font-semibold">Finances</p>
+                <p className="text-xs text-gray-400">
+                  {budgetCount} budget{budgetCount !== 1 ? "s" : ""} on record
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-300" />
+          </CardContent>
+        </Card>
+      </Link>
     </div>
   )
 }

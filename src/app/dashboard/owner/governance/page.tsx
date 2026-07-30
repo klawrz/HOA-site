@@ -2,10 +2,11 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, FileText, Mail, Phone, Megaphone } from "lucide-react"
+import { Users, Calendar, FileText, Mail, Phone, Megaphone, DollarSign } from "lucide-react"
 import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
 import { formatDateISO } from "@/lib/utils"
 import { AnnouncementList } from "@/components/announcements/announcement-list"
+import { BudgetEditor } from "@/components/budgets/budget-editor"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
@@ -13,7 +14,7 @@ export default async function OwnerGovernancePage() {
 
   const now = new Date()
 
-  const [announcements, boardPositions, meetings, documents] = await Promise.all([
+  const [announcements, boardPositions, meetings, documents, latestApprovedBudget] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { author: true },
@@ -31,6 +32,11 @@ export default async function OwnerGovernancePage() {
     db.document.findMany({
       where: { orgId: session.user.orgId ?? undefined, visibility: "OWNERS" },
       orderBy: { createdAt: "desc" },
+    }),
+    db.budget.findFirst({
+      where: { orgId: session.user.orgId ?? undefined, status: "APPROVED" },
+      include: { lineItems: { include: { contract: true }, orderBy: { sortOrder: "asc" } }, meeting: true },
+      orderBy: { year: "desc" },
     }),
   ])
 
@@ -158,6 +164,44 @@ export default async function OwnerGovernancePage() {
                 ))}
               </div>
             </details>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="h-4 w-4" /> Approved Budget
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {latestApprovedBudget ? (
+            <BudgetEditor
+              budget={{
+                id: latestApprovedBudget.id,
+                year: latestApprovedBudget.year,
+                version: latestApprovedBudget.version,
+                status: latestApprovedBudget.status,
+                notes: latestApprovedBudget.notes,
+                approvedAt: latestApprovedBudget.approvedAt,
+                meetingTitle: latestApprovedBudget.meeting?.title ?? null,
+                lineItems: latestApprovedBudget.lineItems.map((i) => ({
+                  id: i.id,
+                  label: i.label,
+                  budgetedAmount: i.budgetedAmount,
+                  actualAmount: i.actualAmount,
+                  previousYearActual: i.previousYearActual,
+                  contractId: i.contractId,
+                  contractTitle: i.contract?.title ?? null,
+                })),
+              }}
+              contracts={[]}
+              meetings={[]}
+              canManage={false}
+              canApprove={false}
+            />
+          ) : (
+            <p className="text-sm text-gray-500">No approved budget yet.</p>
           )}
         </CardContent>
       </Card>
