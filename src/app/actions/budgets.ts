@@ -3,6 +3,7 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
+import { BudgetType } from "@/generated/prisma"
 
 // Drafting/entering numbers is common ground for the Board and the PM (who
 // often prepares the budget for Board review). Formal approval - "the
@@ -25,7 +26,7 @@ function revalidateBudgetPaths() {
   revalidatePath("/dashboard/account/units")
 }
 
-export async function createBudget(data: { year: number; version: string; notes?: string }) {
+export async function createBudget(data: { year: number; version: string; type?: BudgetType; notes?: string }) {
   const session = await auth()
   if (!session?.user.orgId || !canManageBudget(session.user.role, session.user.isBoardMember)) {
     return { success: false }
@@ -36,6 +37,7 @@ export async function createBudget(data: { year: number; version: string; notes?
       orgId: session.user.orgId,
       year: data.year,
       version: data.version.trim() || "Draft",
+      type: data.type ?? "OPERATING",
       notes: data.notes || null,
       createdById: session.user.id,
     },
@@ -118,7 +120,7 @@ export async function createLineItem(
   if (!label) return { success: false, error: "Label required" }
 
   const count = await db.budgetLineItem.count({ where: { budgetId } })
-  if (count >= 20) return { success: false, error: "Budgets are limited to 20 line items" }
+  if (count >= 50) return { success: false, error: "Budgets are limited to 50 line items" }
 
   await db.budgetLineItem.create({
     data: {

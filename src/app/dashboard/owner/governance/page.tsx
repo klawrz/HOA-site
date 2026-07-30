@@ -34,7 +34,7 @@ export default async function OwnerGovernancePage() {
       orderBy: { createdAt: "desc" },
     }),
     db.budget.findFirst({
-      where: { orgId: session.user.orgId ?? undefined, status: "APPROVED" },
+      where: { orgId: session.user.orgId ?? undefined, status: "APPROVED", type: "OPERATING" },
       include: { lineItems: { include: { contract: true }, orderBy: { sortOrder: "asc" } }, meeting: true },
       orderBy: { year: "desc" },
     }),

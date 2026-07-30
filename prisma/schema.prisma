@@ -445,11 +445,22 @@ enum BudgetStatus {
   APPROVED
 }
 
+// Operating (the annual recurring budget that funds dues) vs Capital
+// (one-off projects - often assessed separately, e.g. a special per-unit
+// assessment) - kept as a real category rather than just a version label,
+// so they show as genuinely separate lists rather than one flat list the
+// reader has to parse by name.
+enum BudgetType {
+  OPERATING
+  CAPITAL
+}
+
 model Budget {
   id          String       @id @default(cuid())
   orgId       String
   year        Int
   version     String       @default("Draft") // e.g. "Proposed", "Revised", "Final"
+  type        BudgetType   @default(OPERATING)
   status      BudgetStatus @default(DRAFT)
   approvedAt  DateTime?
   meetingId   String? // the AGM (or other meeting) where it was approved

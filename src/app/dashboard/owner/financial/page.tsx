@@ -32,7 +32,7 @@ export default async function OwnerFinancialPage() {
     }),
     session.user.orgId
       ? db.budget.findFirst({
-          where: { orgId: session.user.orgId, status: "APPROVED" },
+          where: { orgId: session.user.orgId, status: "APPROVED", type: "OPERATING" },
           include: { lineItems: true },
           orderBy: { year: "desc" },
         })

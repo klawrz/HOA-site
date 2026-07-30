@@ -242,7 +242,7 @@ export function BudgetEditor({
         </div>
       </Card>
 
-      {canManage && budget.lineItems.length < 20 && (
+      {canManage && budget.lineItems.length < 50 && (
         <LineItemDialog budgetId={budget.id} contracts={contracts} />
       )}
     </div>

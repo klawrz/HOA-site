@@ -15,8 +15,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createBudget } from "@/app/actions/budgets"
+import { BudgetType } from "@/generated/prisma"
 
-export function NewBudgetDialog({ detailBasePath }: { detailBasePath: string }) {
+export function NewBudgetDialog({
+  detailBasePath,
+  type,
+  triggerLabel = "+ New Budget",
+}: {
+  detailBasePath: string
+  type: BudgetType
+  triggerLabel?: string
+}) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const router = useRouter()
@@ -28,6 +37,7 @@ export function NewBudgetDialog({ detailBasePath }: { detailBasePath: string }) 
     const result = await createBudget({
       year: Number(form.get("year")),
       version: form.get("version") as string,
+      type,
       notes: (form.get("notes") as string) || undefined,
     })
     setSaving(false)
@@ -42,10 +52,10 @@ export function NewBudgetDialog({ detailBasePath }: { detailBasePath: string }) 
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>+ New Budget</DialogTrigger>
+      <DialogTrigger render={<Button size="sm" />}>{triggerLabel}</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>New Budget</DialogTitle>
+          <DialogTitle>New {type === "CAPITAL" ? "Capital Expenditure" : "Operating"} Budget</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
