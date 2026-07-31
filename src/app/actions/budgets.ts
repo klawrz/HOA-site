@@ -26,10 +26,26 @@ function revalidateBudgetPaths() {
   revalidatePath("/dashboard/account/units")
 }
 
-export async function createBudget(data: { year: number; version: string; type?: BudgetType; notes?: string }) {
+export async function createBudget(data: {
+  year: number
+  version: string
+  type?: BudgetType
+  notes?: string
+  cloneFromBudgetId?: string
+}) {
   const session = await auth()
   if (!session?.user.orgId || !canManageBudget(session.user.role, session.user.isBoardMember)) {
     return { success: false }
+  }
+
+  let sourceLineItems: { label: string; budgetedAmount: number; actualAmount: number | null; sortOrder: number }[] = []
+  if (data.cloneFromBudgetId) {
+    const source = await db.budget.findUnique({
+      where: { id: data.cloneFromBudgetId },
+      include: { lineItems: { orderBy: { sortOrder: "asc" } } },
+    })
+    if (!source || source.orgId !== session.user.orgId) return { success: false, error: "Source budget not found" }
+    sourceLineItems = source.lineItems
   }
 
   const budget = await db.budget.create({
@@ -40,6 +56,19 @@ export async function createBudget(data: { year: number; version: string; type?:
       type: data.type ?? "OPERATING",
       notes: data.notes || null,
       createdById: session.user.id,
+      // Same format each year is the point: labels and last year's amount
+      // carry over as a starting point to adjust, rather than retyping
+      // ~20 line items from scratch. previousYearActual comes from the
+      // source's own actual where it closed out the year, falling back to
+      // what it was budgeted if no actual was ever recorded.
+      lineItems: {
+        create: sourceLineItems.map((i) => ({
+          label: i.label,
+          budgetedAmount: i.budgetedAmount,
+          previousYearActual: i.actualAmount ?? i.budgetedAmount,
+          sortOrder: i.sortOrder,
+        })),
+      },
     },
   })
 

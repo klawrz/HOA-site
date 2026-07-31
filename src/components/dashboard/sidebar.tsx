@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -47,6 +47,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Finances", href: "/dashboard/property-manager/finances", icon: DollarSign },
     { label: "Dues & Assessments", href: "/dashboard/property-manager/finances/assessments", icon: Receipt, indent: true },
     { label: "Reserve Fund", href: "/dashboard/property-manager/finances/reserve", icon: PiggyBank, indent: true },
+    { label: "Multi-Year Comparison", href: "/dashboard/property-manager/finances/comparison", icon: TableProperties, indent: true },
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     { label: "Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
     { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
@@ -67,6 +68,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Finances", href: "/dashboard/board/finances", icon: DollarSign },
     { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt, indent: true },
     { label: "Reserve Fund", href: "/dashboard/board/finances/reserve", icon: PiggyBank, indent: true },
+    { label: "Multi-Year Comparison", href: "/dashboard/board/finances/comparison", icon: TableProperties, indent: true },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
     { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },

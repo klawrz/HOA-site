@@ -2,13 +2,14 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { Trash2 } from "lucide-react"
+import { Trash2, Download } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineItemDialog } from "./line-item-dialog"
 import { ApproveBudgetDialog } from "./approve-budget-dialog"
 import { deleteLineItem, revertBudgetToDraft, deleteBudget } from "@/app/actions/budgets"
 import { formatDateISO } from "@/lib/utils"
+import { downloadCsv } from "@/lib/csv"
 
 interface ContractOption {
   id: string
@@ -89,6 +90,21 @@ export function BudgetEditor({
     }
   }
 
+  function handleExport() {
+    const rows: (string | number)[][] = [["Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual"]]
+    for (const item of budget.lineItems) {
+      const variance = item.actualAmount != null ? item.actualAmount - item.budgetedAmount : ""
+      rows.push([
+        item.label,
+        item.budgetedAmount,
+        item.actualAmount ?? "",
+        variance,
+        item.previousYearActual ?? "",
+      ])
+    }
+    downloadCsv(`budget-${budget.year}-${budget.version.toLowerCase().replace(/\s+/g, "-")}.csv`, rows)
+  }
+
   const totals = budget.lineItems.reduce(
     (acc, i) => {
       acc.budgeted += i.budgetedAmount
@@ -133,26 +149,31 @@ export function BudgetEditor({
           )}
           {budget.notes && <p className="text-sm text-gray-600 mt-1">{budget.notes}</p>}
         </div>
-        {canApprove && (
-          <div className="flex gap-2">
-            {budget.status === "DRAFT" ? (
-              <ApproveBudgetDialog budgetId={budget.id} meetings={meetings} />
-            ) : (
-              <Button size="sm" variant="outline" onClick={handleRevert}>
-                Revert to Draft
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleExport} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+          {canApprove && (
+            <>
+              {budget.status === "DRAFT" ? (
+                <ApproveBudgetDialog budgetId={budget.id} meetings={meetings} />
+              ) : (
+                <Button size="sm" variant="outline" onClick={handleRevert}>
+                  Revert to Draft
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:text-red-700"
+                onClick={handleDeleteBudget}
+                disabled={deletingBudget}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-600 hover:text-red-700"
-              onClick={handleDeleteBudget}
-              disabled={deletingBudget}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       <Card className="py-0 overflow-hidden">

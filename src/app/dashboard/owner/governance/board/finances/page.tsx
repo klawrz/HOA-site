@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
-import { ArrowLeft, Receipt, ChevronRight, PiggyBank } from "lucide-react"
+import { ArrowLeft, Receipt, ChevronRight, PiggyBank, TableProperties } from "lucide-react"
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
@@ -68,12 +68,28 @@ export default async function OwnerBoardFinancesPage() {
           </div>
           <ChevronRight className="h-4 w-4 text-gray-400" />
         </Link>
+        <Link
+          href="/dashboard/owner/governance/board/finances/comparison"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors sm:col-span-2"
+        >
+          <div className="flex items-center gap-2">
+            <TableProperties className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Multi-Year Comparison</span>
+            <span className="text-xs text-gray-400">Last year, this year, and proposed next year, side by side</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </Link>
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-gray-500">Operating Budgets</h2>
-          <NewBudgetDialog detailBasePath="/dashboard/owner/governance/board/finances" type="OPERATING" triggerLabel="+ New Operating Budget" />
+          <NewBudgetDialog
+            detailBasePath="/dashboard/owner/governance/board/finances"
+            type="OPERATING"
+            triggerLabel="+ New Operating Budget"
+            previousBudget={operating[0] ? { id: operating[0].id, year: operating[0].year, version: operating[0].version, lineItemCount: operating[0].lineItems.length } : null}
+          />
         </div>
         <BudgetList budgets={operating.map(toBudgetRow)} detailBasePath="/dashboard/owner/governance/board/finances" />
       </div>
@@ -81,7 +97,12 @@ export default async function OwnerBoardFinancesPage() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-gray-500">Capital Expenditures</h2>
-          <NewBudgetDialog detailBasePath="/dashboard/owner/governance/board/finances" type="CAPITAL" triggerLabel="+ New Capital Budget" />
+          <NewBudgetDialog
+            detailBasePath="/dashboard/owner/governance/board/finances"
+            type="CAPITAL"
+            triggerLabel="+ New Capital Budget"
+            previousBudget={capital[0] ? { id: capital[0].id, year: capital[0].year, version: capital[0].version, lineItemCount: capital[0].lineItems.length } : null}
+          />
         </div>
         <BudgetList budgets={capital.map(toBudgetRow)} detailBasePath="/dashboard/owner/governance/board/finances" />
       </div>

@@ -21,13 +21,16 @@ export function NewBudgetDialog({
   detailBasePath,
   type,
   triggerLabel = "+ New Budget",
+  previousBudget,
 }: {
   detailBasePath: string
   type: BudgetType
   triggerLabel?: string
+  previousBudget?: { id: string; year: number; version: string; lineItemCount: number } | null
 }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [cloneFromPrevious, setCloneFromPrevious] = useState(!!previousBudget)
   const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -39,6 +42,7 @@ export function NewBudgetDialog({
       version: form.get("version") as string,
       type,
       notes: (form.get("notes") as string) || undefined,
+      cloneFromBudgetId: cloneFromPrevious ? previousBudget?.id : undefined,
     })
     setSaving(false)
     if (result.success) {
@@ -46,7 +50,7 @@ export function NewBudgetDialog({
       setOpen(false)
       if (result.id) router.push(`${detailBasePath}/${result.id}`)
     } else {
-      toast.error("Failed to create budget")
+      toast.error(result.error || "Failed to create budget")
     }
   }
 
@@ -72,6 +76,23 @@ export function NewBudgetDialog({
             <Label>Notes (optional)</Label>
             <Textarea name="notes" placeholder="Context for this version..." className="h-16 resize-none" />
           </div>
+          {previousBudget && (
+            <label className="flex items-start gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cloneFromPrevious}
+                onChange={(e) => setCloneFromPrevious(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Start from {previousBudget.year} — {previousBudget.version}
+                <span className="block text-xs text-gray-400">
+                  Copies its {previousBudget.lineItemCount} line item{previousBudget.lineItemCount !== 1 ? "s" : ""}{" "}
+                  as a starting point, with its actuals carried in as this budget&apos;s prior-year reference.
+                </span>
+              </span>
+            </label>
+          )}
           <div className="flex gap-2 justify-end">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               Cancel
