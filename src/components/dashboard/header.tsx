@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ChangePasswordDialog } from "@/components/dashboard/change-password-dialog"
+import { AskHopePanel } from "@/components/ask-hope/ask-hope-panel"
 import { Role } from "@/generated/prisma"
 
 const roleBadgeColor: Record<Role, string> = {
@@ -59,6 +60,7 @@ export function DashboardHeader({ user }: { user: HeaderUser }) {
         >
           {roleLabel[user.role]}
         </span>
+        <AskHopePanel role={user.role} userName={user.name} />
         <Button variant="ghost" size="icon">
           <Bell className="h-4 w-4" />
         </Button>
