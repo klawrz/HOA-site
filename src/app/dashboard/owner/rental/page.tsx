@@ -4,6 +4,7 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RentalPolicyForm } from "../rental-policy-form"
 import { LeaseStatusCard } from "@/components/lease/lease-status-card"
+import { AccessCodeSection } from "@/components/lease/access-code-section"
 
 export default async function OwnerRentalSettingsPage() {
   const session = await auth()
@@ -11,7 +12,13 @@ export default async function OwnerRentalSettingsPage() {
 
   const ownerships = await db.unitOwnership.findMany({
     where: { ownerId: session.user.id, isCurrent: true },
-    include: { unit: { include: { leases: { where: { isActive: true }, include: { renter: true } } } } },
+    include: {
+      unit: {
+        include: {
+          leases: { where: { isActive: true }, include: { renter: true, payments: true } },
+        },
+      },
+    },
     orderBy: { unit: { number: "asc" } },
   })
 
@@ -44,9 +51,16 @@ export default async function OwnerRentalSettingsPage() {
                         monthlyRent: lease.monthlyRent,
                         startDate: lease.startDate,
                         endDate: lease.endDate,
+                        payments: lease.payments,
                       }
                     : null
                 }
+              />
+              <AccessCodeSection
+                unitId={o.unit.id}
+                code={o.unit.accessCode}
+                notes={o.unit.accessCodeNotes}
+                canManage
               />
               <RentalPolicyForm
                 ownershipId={o.id}

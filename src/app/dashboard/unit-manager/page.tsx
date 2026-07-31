@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { Building2 } from "lucide-react"
 import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
 import { LeaseStatusCard } from "@/components/lease/lease-status-card"
+import { AccessCodeSection } from "@/components/lease/access-code-section"
 
 const AREA_LABELS: Record<string, string> = {
   GUESTS: "Guests",
@@ -27,7 +28,7 @@ export default async function UnitManagerDashboard() {
       unit: {
         include: {
           occupancyEntries: { orderBy: { startDate: "asc" } },
-          leases: { where: { isActive: true }, include: { renter: true } },
+          leases: { where: { isActive: true }, include: { renter: true, payments: true } },
         },
       },
       grants: true,
@@ -103,21 +104,30 @@ export default async function UnitManagerDashboard() {
                   )}
                 </div>
                 {canManageGuests && (
-                  <LeaseStatusCard
-                    unitId={a.unit.id}
-                    lease={
-                      lease
-                        ? {
-                            id: lease.id,
-                            renterName: lease.renter.name,
-                            renterEmail: lease.renter.email,
-                            monthlyRent: lease.monthlyRent,
-                            startDate: lease.startDate,
-                            endDate: lease.endDate,
-                          }
-                        : null
-                    }
-                  />
+                  <>
+                    <LeaseStatusCard
+                      unitId={a.unit.id}
+                      lease={
+                        lease
+                          ? {
+                              id: lease.id,
+                              renterName: lease.renter.name,
+                              renterEmail: lease.renter.email,
+                              monthlyRent: lease.monthlyRent,
+                              startDate: lease.startDate,
+                              endDate: lease.endDate,
+                              payments: lease.payments,
+                            }
+                          : null
+                      }
+                    />
+                    <AccessCodeSection
+                      unitId={a.unit.id}
+                      code={a.unit.accessCode}
+                      notes={a.unit.accessCodeNotes}
+                      canManage
+                    />
+                  </>
                 )}
               </CardContent>
             </Card>

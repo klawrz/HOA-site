@@ -5,12 +5,14 @@ import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 import { parseDateOnly } from "@/lib/occupancy"
+import { PaymentMethod } from "@/generated/prisma"
 
 function revalidateLeasePaths(unitId: string) {
   revalidatePath(`/dashboard/owner/units/${unitId}`)
   revalidatePath("/dashboard/owner")
   revalidatePath("/dashboard/owner/rental")
   revalidatePath("/dashboard/unit-manager")
+  revalidatePath("/dashboard/renter")
 }
 
 async function requireCurrentOwner(unitId: string, userId: string) {
@@ -111,5 +113,87 @@ export async function endLease(leaseId: string) {
   ])
 
   revalidateLeasePaths(lease.unitId)
+  return { success: true }
+}
+
+export async function recordRentPayment(
+  leaseId: string,
+  data: { amount: number; dueDate: string; paidAt?: string; paymentMethod?: PaymentMethod; notes?: string }
+) {
+  const session = await auth()
+  if (!session) return { success: false }
+
+  const lease = await db.lease.findUnique({ where: { id: leaseId } })
+  if (!lease) return { success: false }
+  if (!(await canArrangeRental(session.user.role, session.user.id, lease.unitId, session.user.isBoardMember))) {
+    return { success: false }
+  }
+
+  if (!data.amount || data.amount <= 0) return { success: false, error: "Amount must be greater than zero" }
+
+  await db.rentPayment.create({
+    data: {
+      leaseId,
+      amount: data.amount,
+      dueDate: parseDateOnly(data.dueDate),
+      paidAt: data.paidAt ? parseDateOnly(data.paidAt) : null,
+      paymentMethod: data.paymentMethod || null,
+      notes: data.notes?.trim() || null,
+      createdById: session.user.id,
+    },
+  })
+
+  revalidateLeasePaths(lease.unitId)
+  return { success: true }
+}
+
+export async function markRentPaymentPaid(id: string, paidAt: string, paymentMethod?: PaymentMethod) {
+  const session = await auth()
+  if (!session) return { success: false }
+
+  const payment = await db.rentPayment.findUnique({ where: { id }, include: { lease: true } })
+  if (!payment) return { success: false }
+  if (!(await canArrangeRental(session.user.role, session.user.id, payment.lease.unitId, session.user.isBoardMember))) {
+    return { success: false }
+  }
+
+  await db.rentPayment.update({
+    where: { id },
+    data: { paidAt: parseDateOnly(paidAt), paymentMethod: paymentMethod || payment.paymentMethod },
+  })
+
+  revalidateLeasePaths(payment.lease.unitId)
+  return { success: true }
+}
+
+export async function deleteRentPayment(id: string) {
+  const session = await auth()
+  if (!session) return { success: false }
+
+  const payment = await db.rentPayment.findUnique({ where: { id }, include: { lease: true } })
+  if (!payment) return { success: false }
+  if (!(await canArrangeRental(session.user.role, session.user.id, payment.lease.unitId, session.user.isBoardMember))) {
+    return { success: false }
+  }
+
+  await db.rentPayment.delete({ where: { id } })
+
+  revalidateLeasePaths(payment.lease.unitId)
+  return { success: true }
+}
+
+export async function setAccessCode(unitId: string, code: string, notes: string) {
+  const session = await auth()
+  if (!session) return { success: false }
+  if (!(await canArrangeRental(session.user.role, session.user.id, unitId, session.user.isBoardMember))) {
+    return { success: false }
+  }
+
+  await db.unit.update({
+    where: { id: unitId },
+    data: { accessCode: code.trim() || null, accessCodeNotes: notes.trim() || null },
+  })
+
+  revalidateLeasePaths(unitId)
   return { success: true }
 }

@@ -3,10 +3,10 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Home, TicketIcon, Phone, Mail } from "lucide-react"
+import { Home, TicketIcon, Phone, Mail, KeyRound } from "lucide-react"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
-import { cn, formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime, formatDateISO } from "@/lib/utils"
 import { statusColor } from "@/lib/ticket-styles"
 
 export default async function RenterDashboard() {
@@ -21,6 +21,7 @@ export default async function RenterDashboard() {
           ownerships: { where: { isCurrent: true }, include: { owner: true } },
         },
       },
+      payments: { orderBy: { dueDate: "desc" }, take: 6 },
     },
   })
 
@@ -94,6 +95,38 @@ export default async function RenterDashboard() {
                       {lease.unit.ownerships[0].owner.phone}
                     </a>
                   )}
+                </div>
+              </div>
+            )}
+            {lease.unit.accessCode && (
+              <div className="bg-gray-50 rounded-lg p-3 border flex items-center gap-2">
+                <KeyRound className="h-3.5 w-3.5 text-gray-400" />
+                <div>
+                  <p className="text-xs font-medium text-gray-500">Access Code</p>
+                  <p className="font-medium">{lease.unit.accessCode}</p>
+                  {lease.unit.accessCodeNotes && (
+                    <p className="text-xs text-gray-400">{lease.unit.accessCodeNotes}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {lease.payments.length > 0 && (
+              <div className="border rounded-lg p-3">
+                <p className="text-xs font-medium text-gray-500 mb-2">Recent Rent Payments</p>
+                <div className="space-y-1.5">
+                  {lease.payments.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between text-sm">
+                      <span>
+                        ${p.amount.toLocaleString()}
+                        <span className="text-xs text-gray-400 ml-2">Due {formatDateISO(p.dueDate)}</span>
+                      </span>
+                      {p.paidAt ? (
+                        <span className="text-xs text-green-600">Paid {formatDateISO(p.paidAt)}</span>
+                      ) : (
+                        <span className="text-xs text-amber-600">Unpaid</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
