@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { cn } from "@/lib/utils"
 import { Building2 } from "lucide-react"
 import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
+import { LeaseStatusCard } from "@/components/lease/lease-status-card"
 
 const AREA_LABELS: Record<string, string> = {
   GUESTS: "Guests",
@@ -23,7 +24,12 @@ export default async function UnitManagerDashboard() {
   const assignments = await db.unitManagerAssignment.findMany({
     where: { userId: session.user.id },
     include: {
-      unit: { include: { occupancyEntries: { orderBy: { startDate: "asc" } } } },
+      unit: {
+        include: {
+          occupancyEntries: { orderBy: { startDate: "asc" } },
+          leases: { where: { isActive: true }, include: { renter: true } },
+        },
+      },
       grants: true,
     },
     orderBy: { createdAt: "asc" },
@@ -33,13 +39,15 @@ export default async function UnitManagerDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">My Units</h1>
-        <p className="text-gray-500 mt-1">Units you've been delegated to help manage</p>
+        <p className="text-gray-500 mt-1">Units you&apos;ve been delegated to help manage</p>
       </div>
 
       <div className="space-y-3">
         {assignments.map((a) => {
           const canManageTickets = a.grants.some((g) => g.area === "TICKETS" && g.level === "MANAGE")
           const occupancyGrant = a.grants.find((g) => g.area === "OCCUPANCY")
+          const canManageGuests = a.grants.some((g) => g.area === "GUESTS" && g.level === "MANAGE")
+          const lease = a.unit.leases[0]
           return (
             <Card key={a.id}>
               <CardHeader className="pb-2">
@@ -94,6 +102,23 @@ export default async function UnitManagerDashboard() {
                     </Dialog>
                   )}
                 </div>
+                {canManageGuests && (
+                  <LeaseStatusCard
+                    unitId={a.unit.id}
+                    lease={
+                      lease
+                        ? {
+                            id: lease.id,
+                            renterName: lease.renter.name,
+                            renterEmail: lease.renter.email,
+                            monthlyRent: lease.monthlyRent,
+                            startDate: lease.startDate,
+                            endDate: lease.endDate,
+                          }
+                        : null
+                    }
+                  />
+                )}
               </CardContent>
             </Card>
           )
