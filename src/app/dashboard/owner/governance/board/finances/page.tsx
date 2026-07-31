@@ -41,7 +41,7 @@ export default async function OwnerBoardFinancesPage() {
           href="/dashboard/owner/governance/board"
           className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to Board Management
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to Board
         </Link>
         <h1 className="text-2xl font-bold">Finances</h1>
         <p className="text-gray-500 mt-1">Annual budgets - drafted, revised, and approved</p>

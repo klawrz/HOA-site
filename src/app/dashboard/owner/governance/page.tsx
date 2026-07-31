@@ -1,22 +1,29 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, FileText, Mail, Phone, Megaphone, DollarSign, PiggyBank } from "lucide-react"
+import { Users, Calendar, FileText, Mail, Phone, Megaphone, DollarSign, PiggyBank, ChevronRight } from "lucide-react"
 import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
 import { formatDateISO } from "@/lib/utils"
 import { AnnouncementList } from "@/components/announcements/announcement-list"
 import { MarkAnnouncementsRead } from "@/components/announcements/mark-announcements-read"
+import { NewAnnouncementDialog } from "@/components/announcements/new-announcement-dialog"
+import { NewMeetingDialog } from "@/app/dashboard/board/meetings/new-meeting-dialog"
+import { MeetingMinutesDialog } from "@/app/dashboard/board/meetings/minutes-dialog"
+import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
 import { BudgetEditor } from "@/components/budgets/budget-editor"
 import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summary"
 import { BankInfoCard } from "@/components/key-info/bank-info-card"
 import { KeyContactList } from "@/components/key-info/key-contact-list"
+import { KeyContactDialog } from "@/components/key-info/key-contact-dialog"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
   const now = new Date()
+  const isBoardMember = session.user.isBoardMember
 
   const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts] = await Promise.all([
     db.announcement.findMany({
@@ -37,7 +44,10 @@ export default async function OwnerGovernancePage() {
       orderBy: { date: "desc" },
     }),
     db.document.findMany({
-      where: { orgId: session.user.orgId ?? undefined, visibility: "OWNERS" },
+      // Board-authorized owners also see BOARD_AND_PM-visibility documents,
+      // not just the OWNERS tier - matches what they'd see on the (removed)
+      // separate Board management page this content used to live on.
+      where: { orgId: session.user.orgId ?? undefined, ...(isBoardMember ? {} : { visibility: "OWNERS" }) },
       orderBy: { createdAt: "desc" },
     }),
     db.budget.findFirst({
@@ -77,10 +87,11 @@ export default async function OwnerGovernancePage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Megaphone className="h-4 w-4" /> Announcements
           </CardTitle>
+          {isBoardMember && <NewAnnouncementDialog />}
         </CardHeader>
         <CardContent>
           <MarkAnnouncementsRead announcementIds={announcements.map((a) => a.id)} />
@@ -99,7 +110,7 @@ export default async function OwnerGovernancePage() {
                 author: { name: c.author.name, email: c.author.email, role: c.author.role },
               })),
             }))}
-            canManage={false}
+            canManage={isBoardMember}
             currentUserId={session.user.id}
           />
         </CardContent>
@@ -112,14 +123,15 @@ export default async function OwnerGovernancePage() {
           bankSigningAuthority: org?.bankSigningAuthority ?? null,
           bankPaymentInstructions: org?.bankPaymentInstructions ?? null,
         }}
-        canManage={false}
+        canManage={isBoardMember}
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-4 w-4" /> Key Contacts
           </CardTitle>
+          {isBoardMember && <KeyContactDialog />}
         </CardHeader>
         <CardContent>
           <KeyContactList
@@ -132,7 +144,7 @@ export default async function OwnerGovernancePage() {
               email: c.email,
               notes: c.notes,
             }))}
-            canManage={false}
+            canManage={isBoardMember}
           />
         </CardContent>
       </Card>
@@ -178,10 +190,11 @@ export default async function OwnerGovernancePage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-4 w-4" /> Upcoming Meetings
           </CardTitle>
+          {isBoardMember && <NewMeetingDialog />}
         </CardHeader>
         <CardContent className="space-y-2">
           {upcomingMeetings.length === 0 && (
@@ -195,6 +208,7 @@ export default async function OwnerGovernancePage() {
                 {m.location && ` · ${m.location}`}
               </p>
               {m.agenda && <p className="text-xs text-gray-600 mt-1 whitespace-pre-line">{m.agenda}</p>}
+              {isBoardMember && <MeetingMinutesDialog meeting={m} />}
             </div>
           ))}
           {pastMeetings.length > 0 && (
@@ -219,6 +233,7 @@ export default async function OwnerGovernancePage() {
                     {m.minutes && (
                       <p className="text-xs text-gray-600 mt-1 whitespace-pre-line line-clamp-3">{m.minutes}</p>
                     )}
+                    {isBoardMember && <MeetingMinutesDialog meeting={m} />}
                   </div>
                 ))}
               </div>
@@ -234,6 +249,15 @@ export default async function OwnerGovernancePage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {isBoardMember && (
+            <Link
+              href="/dashboard/owner/governance/board/finances"
+              className="flex items-center justify-between text-sm text-blue-600 hover:underline pb-3"
+            >
+              Manage all budgets
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          )}
           {latestApprovedBudget ? (
             <BudgetEditor
               budget={{
@@ -278,14 +302,24 @@ export default async function OwnerGovernancePage() {
             policy={org?.reservePolicy ?? null}
             heldAt={org?.reserveHeldAt ?? null}
           />
+          {isBoardMember && (
+            <Link
+              href="/dashboard/owner/governance/board/finances/reserve"
+              className="flex items-center justify-between text-sm text-blue-600 hover:underline pt-3"
+            >
+              Manage reserve fund
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <FileText className="h-4 w-4" /> Document Repository
           </CardTitle>
+          {isBoardMember && <NewDocumentDialog />}
         </CardHeader>
         <CardContent className="space-y-4">
           {documents.length === 0 && <p className="text-sm text-gray-500">No documents on file yet.</p>}

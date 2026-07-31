@@ -5,10 +5,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, Mail, Phone, Wrench } from "lucide-react"
 import { formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor } from "@/lib/ticket-styles"
+import { PMContractBoard } from "@/components/pm/pm-contract-board"
 
 export default async function OwnerPropertyManagerPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+
+  const isBoardMember = session.user.isBoardMember
+
+  if (isBoardMember) {
+    const [contracts, companies, meetings] = await Promise.all([
+      db.pMContract.findMany({
+        where: { orgId: session.user.orgId ?? undefined },
+        include: { company: { include: { emergencyContacts: true } }, createdBy: true, approvedBy: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.propertyManagementCompany.findMany({ orderBy: { legalName: "asc" } }),
+      db.meeting.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { date: "desc" } }),
+    ])
+
+    return (
+      <PMContractBoard
+        contracts={contracts}
+        companies={companies.map((c) => ({ id: c.id, legalName: c.legalName }))}
+        meetings={meetings.map((m) => ({ id: m.id, title: m.title, date: m.date }))}
+        canManage
+        canApprove
+      />
+    )
+  }
 
   const [pmContract, maintenanceTickets] = await Promise.all([
     db.pMContract.findFirst({
