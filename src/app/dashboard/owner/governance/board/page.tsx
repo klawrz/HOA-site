@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, FileText, Megaphone, ChevronRight, DollarSign } from "lucide-react"
+import { ArrowLeft, Calendar, FileText, Megaphone, ChevronRight, DollarSign, Landmark } from "lucide-react"
 import { NewMeetingDialog } from "@/app/dashboard/board/meetings/new-meeting-dialog"
 import { MeetingMinutesDialog } from "@/app/dashboard/board/meetings/minutes-dialog"
 import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
@@ -170,22 +170,38 @@ export default async function OwnerBoardManagementPage() {
         </CardContent>
       </Card>
 
-      <Link href="/dashboard/owner/governance/board/finances">
-        <Card className="hover:border-gray-300 transition-colors">
-          <CardContent className="py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              <div>
-                <p className="text-sm font-semibold">Finances</p>
-                <p className="text-xs text-gray-400">
-                  {budgetCount} budget{budgetCount !== 1 ? "s" : ""} on record
-                </p>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Link href="/dashboard/owner/governance/board/finances">
+          <Card className="hover:border-gray-300 transition-colors">
+            <CardContent className="py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                <div>
+                  <p className="text-sm font-semibold">Finances</p>
+                  <p className="text-xs text-gray-400">
+                    {budgetCount} budget{budgetCount !== 1 ? "s" : ""} on record
+                  </p>
+                </div>
               </div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-gray-300" />
-          </CardContent>
-        </Card>
-      </Link>
+              <ChevronRight className="h-4 w-4 text-gray-300" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/dashboard/owner/governance/board/key-info">
+          <Card className="hover:border-gray-300 transition-colors">
+            <CardContent className="py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Landmark className="h-4 w-4" />
+                <div>
+                  <p className="text-sm font-semibold">Key Information</p>
+                  <p className="text-xs text-gray-400">Bank details & institutional contacts</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-300" />
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
     </div>
   )
 }

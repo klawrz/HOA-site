@@ -116,6 +116,16 @@ model Organization {
   reservePolicy  String? // funding/use policy in the Board's own words, e.g. when withdrawals are allowed
   reserveHeldAt  String? // institution/account the reserve is actually held at, e.g. "Bank of America - Reserve Acct #1234"
 
+  // Bank Information - part of the Governance "Key Information" tab. Wire/
+  // e-transfer receiving details are ordinary business info HOAs already
+  // hand out to paying owners (same as any invoice), so this is deliberately
+  // free text rather than a rigid account-number field - the Board controls
+  // exactly what's shared.
+  bankName                 String?
+  bankAccountName          String? // e.g. "Sunrise Heights HOA Operating Account"
+  bankSigningAuthority     String? // who is authorized to sign/approve on the account
+  bankPaymentInstructions  String? // how to pay dues / send funds - e-transfer, wire, etc.
+
   members   User[]
   units     Unit[]
   invites   Invite[]
@@ -131,6 +141,7 @@ model Organization {
   budgets Budget[]
   assessments Assessment[]
   reserveTransactions ReserveTransaction[]
+  keyContacts KeyContact[]
 }
 
 enum ReserveTransactionType {
@@ -150,6 +161,36 @@ model ReserveTransaction {
 
   org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   createdBy User         @relation(fields: [createdById], references: [id])
+}
+
+// Institutional contacts shown on the Governance "Key Information" tab -
+// the PM, lawyer, accountant, insurance company, and employees an Owner
+// might otherwise have no idea how to reach. Bank info lives directly on
+// Organization instead (see above) since there's exactly one of it per org,
+// unlike these, which can repeat per category (e.g. multiple employees).
+enum KeyContactCategory {
+  PROPERTY_MANAGER
+  LAWYER
+  ACCOUNTANT
+  INSURANCE
+  EMPLOYEE
+  OTHER
+}
+
+model KeyContact {
+  id        String             @id @default(cuid())
+  orgId     String
+  category  KeyContactCategory
+  name      String // firm or person name
+  role      String? // e.g. "HOA Attorney", "Pool Maintenance Lead"
+  phone     String?
+  email     String?
+  notes     String?
+  sortOrder Int                @default(0)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }
 
 // Board news/updates shown to Owners on the Governance page - distinct
