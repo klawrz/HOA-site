@@ -3,18 +3,18 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { PMContractBoard } from "@/components/pm/pm-contract-board"
 
-export default async function AccountPMPage() {
+export default async function BoardPMPage() {
   const session = await auth()
-  if (!session || session.user.role !== "ACCOUNT_OWNER" || !session.user.orgId) redirect("/dashboard")
+  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
   const [contracts, companies, meetings] = await Promise.all([
     db.pMContract.findMany({
-      where: { orgId: session.user.orgId },
+      where: { orgId: session.user.orgId ?? undefined },
       include: { company: { include: { emergencyContacts: true } }, createdBy: true, approvedBy: true },
       orderBy: { createdAt: "desc" },
     }),
     db.propertyManagementCompany.findMany({ orderBy: { legalName: "asc" } }),
-    db.meeting.findMany({ where: { orgId: session.user.orgId }, orderBy: { date: "desc" } }),
+    db.meeting.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { date: "desc" } }),
   ])
 
   return (
@@ -23,7 +23,7 @@ export default async function AccountPMPage() {
       companies={companies.map((c) => ({ id: c.id, legalName: c.legalName }))}
       meetings={meetings.map((m) => ({ id: m.id, title: m.title, date: m.date }))}
       canManage
-      canApprove={false}
+      canApprove
     />
   )
 }

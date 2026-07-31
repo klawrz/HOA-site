@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
-import { PMAccessArea, PMAccessLevel, PMContractStatus } from "@/generated/prisma"
+import { PMAccessArea, PMAccessLevel, PMEntityType } from "@/generated/prisma"
 import { revalidatePath } from "next/cache"
 
 async function getOwnCompany(userId: string) {
@@ -23,6 +23,7 @@ async function requireCompanyAdmin(companyId: string, userId: string) {
 }
 
 export async function createOrUpdateCompanyProfile(data: {
+  entityType: PMEntityType
   legalName: string
   registrationId?: string
   email?: string
@@ -43,6 +44,7 @@ export async function createOrUpdateCompanyProfile(data: {
   const existing = await getOwnCompany(session.user.id)
 
   const fields = {
+    entityType: data.entityType,
     legalName: data.legalName,
     registrationId: data.registrationId || null,
     email: data.email || null,
@@ -145,14 +147,41 @@ export async function setAccessGrant(
   return { success: true }
 }
 
+// Unlike canManageBudget/canManageAssessments, PROPERTY_MANAGER is
+// excluded from both tiers here on purpose - a PM drafting or approving
+// the contract that governs its own engagement is a conflict of interest
+// a third-party budget number doesn't have.
+function canManagePMContract(role: string, isBoardMember: boolean) {
+  return role === "ACCOUNT_OWNER" || role === "BOARD_MEMBER" || isBoardMember
+}
+
+function canApprovePMContract(role: string, isBoardMember: boolean) {
+  return role === "BOARD_MEMBER" || isBoardMember
+}
+
+function revalidatePMContractPaths() {
+  revalidatePath("/dashboard/account/pm")
+  revalidatePath("/dashboard/board/pm")
+  revalidatePath("/dashboard/owner/governance/board/pm")
+  revalidatePath("/dashboard/owner/property-manager")
+  revalidatePath("/dashboard/property-manager/staff")
+}
+
 export async function createPMContract(data: {
   companyId: string
   startDate: string
   endDate?: string
+  responsibilities: string
+  terminationTerms: string
   terms?: string
 }) {
   const session = await auth()
-  if (!session || session.user.role !== "ACCOUNT_OWNER" || !session.user.orgId) return { success: false }
+  if (!session?.user.orgId || !canManagePMContract(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+  if (!data.responsibilities.trim() || !data.terminationTerms.trim()) {
+    return { success: false, error: "Responsibilities and termination terms are required" }
+  }
 
   await db.pMContract.create({
     data: {
@@ -160,25 +189,61 @@ export async function createPMContract(data: {
       orgId: session.user.orgId,
       startDate: new Date(data.startDate),
       endDate: data.endDate ? new Date(data.endDate) : null,
+      responsibilities: data.responsibilities.trim(),
+      terminationTerms: data.terminationTerms.trim(),
       terms: data.terms || null,
-      status: "ACTIVE",
+      createdById: session.user.id,
+      status: "PENDING",
     },
   })
 
-  revalidatePath("/dashboard/account/pm")
+  revalidatePMContractPaths()
   return { success: true }
 }
 
-export async function updatePMContractStatus(contractId: string, status: PMContractStatus) {
+export async function approvePMContract(contractId: string, meetingId?: string) {
   const session = await auth()
-  if (!session || session.user.role !== "ACCOUNT_OWNER") return { success: false }
+  if (!session?.user.orgId || !canApprovePMContract(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+
+  const contract = await db.pMContract.findUnique({ where: { id: contractId } })
+  if (!contract || contract.orgId !== session.user.orgId || contract.status !== "PENDING") {
+    return { success: false }
+  }
+
+  await db.pMContract.update({
+    where: { id: contractId },
+    data: { status: "ACTIVE", approvedAt: new Date(), approvedById: session.user.id, meetingId: meetingId || null },
+  })
+
+  revalidatePMContractPaths()
+  return { success: true }
+}
+
+export async function endPMContract(contractId: string) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManagePMContract(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
 
   const contract = await db.pMContract.findUnique({ where: { id: contractId } })
   if (!contract || contract.orgId !== session.user.orgId) return { success: false }
 
-  await db.pMContract.update({ where: { id: contractId }, data: { status } })
+  // Ending the contract is the enforced meaning of "transfer of control" -
+  // this company's staff immediately lose whatever per-area access they
+  // held on this org, not just a status label change.
+  await db.$transaction([
+    db.pMContract.update({
+      where: { id: contractId },
+      data: { status: "ENDED", endDate: contract.endDate ?? new Date() },
+    }),
+    db.pMAccessGrant.deleteMany({
+      where: { orgId: contract.orgId, membership: { companyId: contract.companyId } },
+    }),
+  ])
 
-  revalidatePath("/dashboard/account/pm")
+  revalidatePMContractPaths()
   return { success: true }
 }
 

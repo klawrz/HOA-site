@@ -41,14 +41,16 @@ export function NewPMContractDialog({ companies }: { companies: CompanyOption[] 
       companyId,
       startDate: form.get("startDate") as string,
       endDate: (form.get("endDate") as string) || undefined,
+      responsibilities: form.get("responsibilities") as string,
+      terminationTerms: form.get("terminationTerms") as string,
       terms: (form.get("terms") as string) || undefined,
     })
     setSaving(false)
     if (result.success) {
-      toast.success("Property manager contracted")
+      toast.success("Contract sent to the Board for approval")
       setOpen(false)
     } else {
-      toast.error("Failed to save")
+      toast.error(result.error ?? "Failed to save")
     }
   }
 
@@ -96,15 +98,37 @@ export function NewPMContractDialog({ companies }: { companies: CompanyOption[] 
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Terms</Label>
-            <Textarea name="terms" placeholder="Scope of services, fees, notes..." className="h-20 resize-none" />
+            <Label>Responsibilities</Label>
+            <Textarea
+              name="responsibilities"
+              placeholder="Scope of duties this PM is responsible for..."
+              className="h-20 resize-none"
+              required
+            />
           </div>
+          <div className="space-y-1">
+            <Label>Termination &amp; Transfer of Control</Label>
+            <Textarea
+              name="terminationTerms"
+              placeholder="Notice period, termination conditions, and how documents/keys/access/funds transfer back to the HOA..."
+              className="h-20 resize-none"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Other Terms (optional)</Label>
+            <Textarea name="terms" placeholder="Fees, additional notes..." className="h-20 resize-none" />
+          </div>
+          <p className="text-xs text-gray-400">
+            Saving sends this contract to the Board for approval - it won&apos;t take effect until a Board
+            Member approves it.
+          </p>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={saving || !companyId}>
-              {saving ? "Saving..." : "Save Contract"}
+              {saving ? "Saving..." : "Send for Approval"}
             </Button>
           </div>
         </form>

@@ -5,9 +5,18 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { createOrUpdateCompanyProfile } from "@/app/actions/pm"
+import { PMEntityType } from "@/generated/prisma"
 
 interface Existing {
+  entityType: PMEntityType
   legalName: string
   registrationId: string
   email: string
@@ -25,6 +34,7 @@ interface Existing {
 
 export function CompanyProfileForm({ existing }: { existing: Existing | null }) {
   const [saving, setSaving] = useState(false)
+  const [entityType, setEntityType] = useState<PMEntityType>(existing?.entityType ?? "COMPANY")
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -32,6 +42,7 @@ export function CompanyProfileForm({ existing }: { existing: Existing | null }) 
     const form = new FormData(e.currentTarget)
     const get = (name: string) => (form.get(name) as string) || undefined
     const result = await createOrUpdateCompanyProfile({
+      entityType,
       legalName: form.get("legalName") as string,
       registrationId: get("registrationId"),
       email: get("email"),
@@ -59,8 +70,29 @@ export function CompanyProfileForm({ existing }: { existing: Existing | null }) 
       <div className="space-y-3">
         <p className="text-sm font-semibold text-gray-700">Legal Identity</p>
         <div className="space-y-1">
-          <Label>Legal Name</Label>
-          <Input name="legalName" defaultValue={existing?.legalName} placeholder="e.g. Sunrise Property Management LLC" required />
+          <Label>Entity Type</Label>
+          <Select
+            value={entityType}
+            onValueChange={(v) => setEntityType((v as PMEntityType) ?? "COMPANY")}
+            items={{ COMPANY: "Company", INDIVIDUAL: "Individual" }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="COMPANY">Company</SelectItem>
+              <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>{entityType === "INDIVIDUAL" ? "Full Legal Name" : "Legal Name"}</Label>
+          <Input
+            name="legalName"
+            defaultValue={existing?.legalName}
+            placeholder={entityType === "INDIVIDUAL" ? "e.g. Jane Doe" : "e.g. Sunrise Property Management LLC"}
+            required
+          />
         </div>
         <div className="space-y-1">
           <Label>Registration / Tax ID</Label>

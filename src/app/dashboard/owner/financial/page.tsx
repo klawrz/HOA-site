@@ -214,6 +214,13 @@ export default async function OwnerFinancialPage() {
             Manage contracts
             <ChevronRight className="h-4 w-4" />
           </Link>
+          <Link
+            href="/dashboard/owner/financial/expenses"
+            className="flex items-center justify-between text-sm text-blue-600 hover:underline"
+          >
+            Log an expense
+            <ChevronRight className="h-4 w-4" />
+          </Link>
         </CardContent>
       </Card>
     </div>

@@ -16,11 +16,17 @@ type Entry = {
   notes: string | null
 }
 
+type ActiveLease = {
+  renterName: string | null
+  startDate: Date
+}
+
 type UnitOccupancy = {
   id: string
   number: string
   building: string | null
   entries: Entry[]
+  activeLease?: ActiveLease | null
 }
 
 function summarize(entries: Entry[], now: Date) {
@@ -31,6 +37,17 @@ function summarize(entries: Entry[], now: Date) {
   return { current, next }
 }
 
+// A Lease is a legal record, not a physical-presence log - it can exist
+// with no matching OccupancyEntry at all (nothing writes one automatically
+// today). An empty calendar for a leased unit means "not logged," not
+// "vacant," so fall back to the lease itself rather than claiming vacancy.
+// Only `startDate` gates this, matching how the rest of the app treats
+// `Lease.isActive` (not `endDate` vs. today) as the source of truth for
+// "is this the current lease" - callers already query `isActive: true`.
+function leaseHasStarted(lease: ActiveLease, now: Date) {
+  return lease.startDate <= now
+}
+
 export function TodayOccupancy({ units }: { units: UnitOccupancy[] }) {
   const [openUnitId, setOpenUnitId] = useState<string | null>(null)
   const now = new Date()
@@ -39,7 +56,17 @@ export function TodayOccupancy({ units }: { units: UnitOccupancy[] }) {
     <div className="divide-y">
       {units.map((unit) => {
         const { current, next } = summarize(unit.entries, now)
+        const leaseActive = unit.activeLease && leaseHasStarted(unit.activeLease, now) ? unit.activeLease : null
         const open = openUnitId === unit.id
+
+        let statusText: string
+        if (current) {
+          statusText = `Occupied now (${occupancyTypeLabel[current.type]}${current.occupantName ? `, ${current.occupantName}` : ""}, through ${formatDate(current.endDate)})`
+        } else if (leaseActive) {
+          statusText = `Rented${leaseActive.renterName ? ` to ${leaseActive.renterName}` : ""} · occupancy calendar not logged`
+        } else {
+          statusText = "Vacant now"
+        }
 
         return (
           <div key={unit.id} className="py-2.5">
@@ -55,12 +82,10 @@ export function TodayOccupancy({ units }: { units: UnitOccupancy[] }) {
                   {unit.building && ` — Building ${unit.building}`}
                 </span>
                 <span className="text-gray-500 truncate">
-                  {current
-                    ? `Occupied now (${occupancyTypeLabel[current.type]}${current.occupantName ? `, ${current.occupantName}` : ""}, through ${formatDate(current.endDate)})`
-                    : "Vacant now"}
+                  {statusText}
                   {next &&
                     ` · Next: ${occupancyTypeLabel[next.type]}${next.occupantName ? ` (${next.occupantName})` : ""}, ${formatDate(next.startDate)}`}
-                  {!current && !next && " · No occupancy logged"}
+                  {!current && !next && !leaseActive && " · No occupancy logged"}
                 </span>
               </div>
               {open ? (

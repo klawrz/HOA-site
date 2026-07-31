@@ -39,6 +39,7 @@ export default async function CompanyProfilePage() {
               existing={
                 membership
                   ? {
+                      entityType: membership.company.entityType,
                       legalName: membership.company.legalName,
                       registrationId: membership.company.registrationId ?? "",
                       email: membership.company.email ?? "",

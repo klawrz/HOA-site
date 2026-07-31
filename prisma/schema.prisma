@@ -353,6 +353,9 @@ model User {
   announcementComments AnnouncementComment[]
   announcementReads AnnouncementRead[]
   recordedRentPayments RentPayment[]
+  createdPMContracts  PMContract[] @relation("PMContractCreator")
+  approvedPMContracts PMContract[] @relation("PMContractApprover")
+  ownerExpenses OwnerExpense[]
 }
 
 model Unit {
@@ -398,6 +401,7 @@ model Unit {
   contracts  Contract[]
   occupancyEntries OccupancyEntry[]
   assessmentCharges AssessmentCharge[]
+  ownerExpenses OwnerExpense[]
 
   @@unique([orgId, number])
 }
@@ -530,9 +534,10 @@ model Meeting {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  documents Document[]
-  budgets   Budget[]
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  documents   Document[]
+  budgets     Budget[]
+  pmContracts PMContract[]
 }
 
 // Property-level contracts (scope PROPERTY, no unitId) are the HOA's own
@@ -586,6 +591,37 @@ model Contract {
   unit       Unit?        @relation(fields: [unitId], references: [id], onDelete: Cascade)
   contractor User         @relation(fields: [contractorId], references: [id])
   budgetLineItems BudgetLineItem[]
+}
+
+// A private, owner-only manual ledger - distinct from Contract above.
+// Contract models a formal vendor agreement (org-visible to Board/PM,
+// requires a Contractor account); this is just an owner jotting down
+// what they spent, for their own year-end record-keeping. Scoped by
+// ownerId directly rather than current UnitOwnership, so the record
+// survives a unit sale - only creating a new entry requires currently
+// owning the unit (see requireCurrentOwner in owner-expenses.ts).
+enum ExpenseCategory {
+  RECURRING
+  DUES
+  MAINTENANCE
+  CAPITAL
+  CLEANING
+  OTHER
+}
+
+model OwnerExpense {
+  id          String          @id @default(cuid())
+  unitId      String
+  ownerId     String
+  category    ExpenseCategory
+  amount      Float
+  date        DateTime
+  description String
+  notes       String?
+  createdAt   DateTime        @default(now())
+
+  unit  Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 // ------------------------------------------------------------
@@ -733,8 +769,14 @@ model AssessmentCharge {
 // so span of control can be tailored per person per HOA.
 // ------------------------------------------------------------
 
+enum PMEntityType {
+  COMPANY
+  INDIVIDUAL
+}
+
 model PropertyManagementCompany {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
+  entityType     PMEntityType @default(COMPANY)
   legalName      String
   registrationId String?
 
@@ -831,13 +873,29 @@ model PMContract {
   status    PMContractStatus  @default(ACTIVE)
   startDate DateTime
   endDate   DateTime?
-  terms     String?
-  fileUrl   String?
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
 
-  company PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  org     Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  // Board-approval governance record. responsibilities/terminationTerms
+  // are required - a contract can't be sent for Board approval without a
+  // defined scope of duties and a defined transfer-of-control/termination
+  // clause. terms stays as general free-text notes (fees, etc).
+  responsibilities String
+  terminationTerms String
+  terms            String?
+  fileUrl          String?
+
+  createdById String
+  approvedById String?
+  approvedAt   DateTime?
+  meetingId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    PropertyManagementCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  org        Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy  User                      @relation("PMContractCreator", fields: [createdById], references: [id])
+  approvedBy User?                     @relation("PMContractApprover", fields: [approvedById], references: [id])
+  meeting    Meeting?                  @relation(fields: [meetingId], references: [id])
 }
 
 // ------------------------------------------------------------

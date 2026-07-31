@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, FileText, Megaphone, ChevronRight, DollarSign, Landmark } from "lucide-react"
+import { ArrowLeft, Calendar, FileText, Megaphone, ChevronRight, DollarSign, Landmark, Wrench } from "lucide-react"
 import { NewMeetingDialog } from "@/app/dashboard/board/meetings/new-meeting-dialog"
 import { MeetingMinutesDialog } from "@/app/dashboard/board/meetings/minutes-dialog"
 import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
@@ -17,7 +17,7 @@ export default async function OwnerBoardManagementPage() {
     redirect("/dashboard")
   }
 
-  const [announcements, meetings, documents, budgetCount] = await Promise.all([
+  const [announcements, meetings, documents, budgetCount, pendingPMContractCount] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: {
@@ -30,6 +30,7 @@ export default async function OwnerBoardManagementPage() {
     db.meeting.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { date: "desc" } }),
     db.document.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { createdAt: "desc" } }),
     db.budget.count({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.pMContract.count({ where: { orgId: session.user.orgId ?? undefined, status: "PENDING" } }),
   ])
 
   const groupedDocs = documents.reduce<Record<string, typeof documents>>((acc, d) => {
@@ -195,6 +196,24 @@ export default async function OwnerBoardManagementPage() {
                 <div>
                   <p className="text-sm font-semibold">Key Information</p>
                   <p className="text-xs text-gray-400">Bank details & institutional contacts</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-300" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/dashboard/owner/governance/board/pm">
+          <Card className="hover:border-gray-300 transition-colors">
+            <CardContent className="py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-4 w-4" />
+                <div>
+                  <p className="text-sm font-semibold">Property Manager</p>
+                  <p className="text-xs text-gray-400">
+                    {pendingPMContractCount > 0
+                      ? `${pendingPMContractCount} contract${pendingPMContractCount !== 1 ? "s" : ""} awaiting approval`
+                      : "Contracted PM company or individual"}
+                  </p>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-gray-300" />

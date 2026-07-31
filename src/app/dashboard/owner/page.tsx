@@ -59,7 +59,7 @@ export default async function OwnerDashboard() {
 
   const now = new Date()
 
-  const [ownerships, latestMeeting, latestAnnouncement] = await Promise.all([
+  const [ownerships, latestMeeting, latestAnnouncement, yearExpenses] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -80,6 +80,10 @@ export default async function OwnerDashboard() {
     session.user.orgId
       ? db.announcement.findFirst({ where: { orgId: session.user.orgId }, orderBy: { createdAt: "desc" } })
       : Promise.resolve(null),
+    db.ownerExpense.findMany({
+      where: { ownerId: session.user.id, date: { gte: new Date(now.getFullYear(), 0, 1) } },
+      select: { amount: true },
+    }),
   ])
 
   const openTickets = ownerships
@@ -89,6 +93,7 @@ export default async function OwnerDashboard() {
     .flatMap((o) => o.unit.leases)
     .filter((l) => l.isActive && l.monthlyRent)
     .reduce((s, l) => s + (l.monthlyRent ?? 0), 0)
+  const yearExpenseTotal = yearExpenses.reduce((s, e) => s + e.amount, 0)
 
   // Today's signals - the "why am I here" summary. Each is a real query
   // result, not a placeholder - v1 is state-based (what's true right now),
@@ -209,7 +214,11 @@ export default async function OwnerDashboard() {
             <div className="flex items-center gap-2">
               <div className="text-right">
                 <p className="text-xs text-gray-400">Expenses</p>
-                <p className="text-xs text-gray-400">Dues &amp; expense tracking coming soon</p>
+                <p className="text-xs text-gray-400">
+                  {yearExpenseTotal > 0
+                    ? `$${yearExpenseTotal.toLocaleString()} logged this year`
+                    : "No expenses logged this year"}
+                </p>
               </div>
               <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
             </div>
@@ -221,12 +230,16 @@ export default async function OwnerDashboard() {
         <Card>
           <CardContent className="pt-4">
             <TodayOccupancy
-              units={ownerships.map((o) => ({
-                id: o.unit.id,
-                number: o.unit.number,
-                building: o.unit.building,
-                entries: o.unit.occupancyEntries,
-              }))}
+              units={ownerships.map((o) => {
+                const lease = o.unit.leases[0]
+                return {
+                  id: o.unit.id,
+                  number: o.unit.number,
+                  building: o.unit.building,
+                  entries: o.unit.occupancyEntries,
+                  activeLease: lease ? { renterName: lease.renter.name, startDate: lease.startDate } : null,
+                }
+              })}
             />
           </CardContent>
         </Card>

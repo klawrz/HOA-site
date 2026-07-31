@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -29,6 +29,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign },
     { label: "Dues & Assessments", href: "/dashboard/owner/financial/dues", icon: Receipt, indent: true },
     { label: "Contracts", href: "/dashboard/owner/financial/contracts", icon: FileText, indent: true },
+    { label: "Expenses", href: "/dashboard/owner/financial/expenses", icon: TrendingDown, indent: true },
     { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon },
     { label: "Governance", href: "/dashboard/owner/governance", icon: Landmark },
     { label: "Property Manager", href: "/dashboard/owner/property-manager", icon: Wrench },
@@ -71,6 +72,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt, indent: true },
     { label: "Reserve Fund", href: "/dashboard/board/finances/reserve", icon: PiggyBank, indent: true },
     { label: "Multi-Year Comparison", href: "/dashboard/board/finances/comparison", icon: TableProperties, indent: true },
+    { label: "Property Manager", href: "/dashboard/board/pm", icon: Wrench },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
     { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
