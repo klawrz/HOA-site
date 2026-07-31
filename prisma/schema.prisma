@@ -112,7 +112,9 @@ model Organization {
   // balance itself is never stored here, it's always computed live from
   // ReserveTransaction so it can never drift into a stale "as of April 30"
   // manual snapshot, which was the exact failure this is meant to fix.
-  reserveTarget Float?
+  reserveTarget  Float?
+  reservePolicy  String? // funding/use policy in the Board's own words, e.g. when withdrawals are allowed
+  reserveHeldAt  String? // institution/account the reserve is actually held at, e.g. "Bank of America - Reserve Acct #1234"
 
   members   User[]
   units     Unit[]

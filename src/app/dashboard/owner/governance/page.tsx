@@ -234,7 +234,12 @@ export default async function OwnerGovernancePage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ReserveFundSummary balance={reserveBalance} target={org?.reserveTarget ?? null} />
+          <ReserveFundSummary
+            balance={reserveBalance}
+            target={org?.reserveTarget ?? null}
+            policy={org?.reservePolicy ?? null}
+            heldAt={org?.reserveHeldAt ?? null}
+          />
         </CardContent>
       </Card>
 
