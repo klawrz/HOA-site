@@ -12,7 +12,11 @@ export default async function PropertyManagerAnnouncementsPage() {
 
   const announcements = await db.announcement.findMany({
     where: { orgId: session.user.orgId ?? undefined },
-    include: { author: true },
+    include: {
+      author: true,
+      comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
+      _count: { select: { reads: true } },
+    },
     orderBy: { createdAt: "desc" },
   })
 
@@ -40,8 +44,17 @@ export default async function PropertyManagerAnnouncementsPage() {
               content: a.content,
               createdAt: a.createdAt,
               author: { name: a.author.name, email: a.author.email, role: a.author.role },
+              comments: a.comments.map((c) => ({
+                id: c.id,
+                content: c.content,
+                createdAt: c.createdAt,
+                authorId: c.authorId,
+                author: { name: c.author.name, email: c.author.email, role: c.author.role },
+              })),
+              readCount: a._count.reads,
             }))}
             canManage
+            currentUserId={session.user.id}
           />
         </CardContent>
       </Card>
