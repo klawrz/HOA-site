@@ -2,12 +2,13 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { Trash2, Download } from "lucide-react"
+import { Trash2, Download, FileStack } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineItemDialog } from "./line-item-dialog"
 import { ApproveBudgetDialog } from "./approve-budget-dialog"
-import { deleteLineItem, revertBudgetToDraft, deleteBudget } from "@/app/actions/budgets"
+import { ImportCsvDialog } from "./import-csv-dialog"
+import { deleteLineItem, revertBudgetToDraft, deleteBudget, saveBudgetAsTemplate } from "@/app/actions/budgets"
 import { formatDateISO } from "@/lib/utils"
 import { downloadCsv } from "@/lib/csv"
 
@@ -66,6 +67,7 @@ export function BudgetEditor({
 }) {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [deletingBudget, setDeletingBudget] = useState(false)
+  const [savingTemplate, setSavingTemplate] = useState(false)
 
   async function handleRemoveItem(id: string) {
     setRemovingId(id)
@@ -87,6 +89,17 @@ export function BudgetEditor({
       window.location.href = onDeletedHref
     } else if (!result.success) {
       toast.error("Failed to delete budget")
+    }
+  }
+
+  async function handleSaveTemplate() {
+    setSavingTemplate(true)
+    const result = await saveBudgetAsTemplate(budget.id)
+    setSavingTemplate(false)
+    if (result.success) {
+      toast.success("Saved to Document Repository")
+    } else {
+      toast.error(result.error || "Failed to save template")
     }
   }
 
@@ -153,6 +166,11 @@ export function BudgetEditor({
           <Button size="sm" variant="outline" onClick={handleExport} className="gap-1.5">
             <Download className="h-3.5 w-3.5" /> Export CSV
           </Button>
+          {canManage && (
+            <Button size="sm" variant="outline" onClick={handleSaveTemplate} disabled={savingTemplate} className="gap-1.5">
+              <FileStack className="h-3.5 w-3.5" /> {savingTemplate ? "Saving..." : "Save as Template"}
+            </Button>
+          )}
           {canApprove && (
             <>
               {budget.status === "DRAFT" ? (
@@ -264,7 +282,10 @@ export function BudgetEditor({
       </Card>
 
       {canManage && budget.lineItems.length < 50 && (
-        <LineItemDialog budgetId={budget.id} contracts={contracts} />
+        <div className="flex gap-2">
+          <LineItemDialog budgetId={budget.id} contracts={contracts} />
+          <ImportCsvDialog budgetId={budget.id} />
+        </div>
       )}
     </div>
   )
