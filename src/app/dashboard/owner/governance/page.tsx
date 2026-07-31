@@ -9,6 +9,8 @@ import { AnnouncementList } from "@/components/announcements/announcement-list"
 import { MarkAnnouncementsRead } from "@/components/announcements/mark-announcements-read"
 import { BudgetEditor } from "@/components/budgets/budget-editor"
 import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summary"
+import { BankInfoCard } from "@/components/key-info/bank-info-card"
+import { KeyContactList } from "@/components/key-info/key-contact-list"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
@@ -16,7 +18,7 @@ export default async function OwnerGovernancePage() {
 
   const now = new Date()
 
-  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions] = await Promise.all([
+  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: {
@@ -45,6 +47,10 @@ export default async function OwnerGovernancePage() {
     }),
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     db.reserveTransaction.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.keyContact.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+    }),
   ])
 
   const reserveBalance = reserveTransactions.reduce(
@@ -95,6 +101,38 @@ export default async function OwnerGovernancePage() {
             }))}
             canManage={false}
             currentUserId={session.user.id}
+          />
+        </CardContent>
+      </Card>
+
+      <BankInfoCard
+        bank={{
+          bankName: org?.bankName ?? null,
+          bankAccountName: org?.bankAccountName ?? null,
+          bankSigningAuthority: org?.bankSigningAuthority ?? null,
+          bankPaymentInstructions: org?.bankPaymentInstructions ?? null,
+        }}
+        canManage={false}
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4" /> Key Contacts
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <KeyContactList
+            contacts={keyContacts.map((c) => ({
+              id: c.id,
+              category: c.category,
+              name: c.name,
+              role: c.role,
+              phone: c.phone,
+              email: c.email,
+              notes: c.notes,
+            }))}
+            canManage={false}
           />
         </CardContent>
       </Card>
