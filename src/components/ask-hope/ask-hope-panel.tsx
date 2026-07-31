@@ -62,8 +62,14 @@ export function AskHopePanel({ role, userName }: { role: Role; userName?: string
 
   return (
     <>
-      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Ask HOPE">
-        <Sparkles className="h-4 w-4" />
+      <Button
+        size="sm"
+        onClick={() => setOpen(true)}
+        title="Ask HOPE"
+        className="gap-1.5 bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow-sm hover:from-violet-500 hover:to-blue-500 hover:text-white focus-visible:ring-violet-400/50"
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+        Ask HOPE
       </Button>
 
       {open && (
