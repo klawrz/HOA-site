@@ -17,16 +17,20 @@ function revalidateReservePaths() {
   revalidatePath("/dashboard/property-manager/finances/reserve")
 }
 
-export async function setReserveTarget(amount: number | null) {
+export async function setReserveDetails(data: { target: number | null; policy: string; heldAt: string }) {
   const session = await auth()
   if (!session?.user.orgId || !canManageReserveFund(session.user.role, session.user.isBoardMember)) {
     return { success: false }
   }
-  if (amount != null && amount < 0) return { success: false, error: "Target can't be negative" }
+  if (data.target != null && data.target < 0) return { success: false, error: "Target can't be negative" }
 
   await db.organization.update({
     where: { id: session.user.orgId },
-    data: { reserveTarget: amount },
+    data: {
+      reserveTarget: data.target,
+      reservePolicy: data.policy.trim() || null,
+      reserveHeldAt: data.heldAt.trim() || null,
+    },
   })
 
   revalidateReservePaths()

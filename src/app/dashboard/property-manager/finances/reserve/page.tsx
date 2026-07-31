@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summary"
 import { ReserveTransactionDialog } from "@/components/reserve-fund/reserve-transaction-dialog"
-import { SetTargetDialog } from "@/components/reserve-fund/set-target-dialog"
+import { ReserveDetailsDialog } from "@/components/reserve-fund/reserve-details-dialog"
 import { TransactionList } from "@/components/reserve-fund/transaction-list"
 
 export default async function PropertyManagerReservePage() {
@@ -39,14 +39,23 @@ export default async function PropertyManagerReservePage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-base">Balance</CardTitle>
+          <CardTitle className="text-base">Reserve Fund</CardTitle>
           <div className="flex gap-2">
-            <SetTargetDialog currentTarget={org?.reserveTarget ?? null} />
+            <ReserveDetailsDialog
+              currentTarget={org?.reserveTarget ?? null}
+              currentPolicy={org?.reservePolicy ?? null}
+              currentHeldAt={org?.reserveHeldAt ?? null}
+            />
             <ReserveTransactionDialog />
           </div>
         </CardHeader>
         <CardContent>
-          <ReserveFundSummary balance={balance} target={org?.reserveTarget ?? null} />
+          <ReserveFundSummary
+            balance={balance}
+            target={org?.reserveTarget ?? null}
+            policy={org?.reservePolicy ?? null}
+            heldAt={org?.reserveHeldAt ?? null}
+          />
         </CardContent>
       </Card>
 
