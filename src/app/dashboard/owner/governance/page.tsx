@@ -6,6 +6,7 @@ import { Users, Calendar, FileText, Mail, Phone, Megaphone, DollarSign, PiggyBan
 import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
 import { formatDateISO } from "@/lib/utils"
 import { AnnouncementList } from "@/components/announcements/announcement-list"
+import { MarkAnnouncementsRead } from "@/components/announcements/mark-announcements-read"
 import { BudgetEditor } from "@/components/budgets/budget-editor"
 import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summary"
 
@@ -18,7 +19,10 @@ export default async function OwnerGovernancePage() {
   const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
-      include: { author: true },
+      include: {
+        author: true,
+        comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     db.boardPosition.findMany({
@@ -73,6 +77,7 @@ export default async function OwnerGovernancePage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <MarkAnnouncementsRead announcementIds={announcements.map((a) => a.id)} />
           <AnnouncementList
             announcements={announcements.map((a) => ({
               id: a.id,
@@ -80,8 +85,16 @@ export default async function OwnerGovernancePage() {
               content: a.content,
               createdAt: a.createdAt,
               author: { name: a.author.name, email: a.author.email, role: a.author.role },
+              comments: a.comments.map((c) => ({
+                id: c.id,
+                content: c.content,
+                createdAt: c.createdAt,
+                authorId: c.authorId,
+                author: { name: c.author.name, email: c.author.email, role: c.author.role },
+              })),
             }))}
             canManage={false}
+            currentUserId={session.user.id}
           />
         </CardContent>
       </Card>

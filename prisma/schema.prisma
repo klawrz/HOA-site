@@ -162,8 +162,40 @@ model Announcement {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  author User         @relation(fields: [authorId], references: [id])
+  org      Organization           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  author   User                   @relation(fields: [authorId], references: [id])
+  comments AnnouncementComment[]
+  reads    AnnouncementRead[]
+}
+
+// Structured Q&A on a specific announcement, replacing the reply-all/
+// side-channel email the original review flagged - any org member can ask
+// or answer, so the whole thread (and its answer) stays attached to the
+// announcement instead of living in one board member's inbox.
+model AnnouncementComment {
+  id             String   @id @default(cuid())
+  announcementId String
+  authorId       String
+  content        String
+  createdAt      DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id])
+}
+
+// One row per (announcement, user) - marks that this user has seen it, so
+// Board/PM get a real read count instead of a one-way broadcast with no
+// visible record of who's actually seen it.
+model AnnouncementRead {
+  id             String   @id @default(cuid())
+  announcementId String
+  userId         String
+  readAt         DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
 }
 
 // The board roster - who holds which seat, for how long. Deliberately
@@ -267,6 +299,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   createdAssessments Assessment[]
   reserveTransactions ReserveTransaction[]
+  announcementComments AnnouncementComment[]
+  announcementReads AnnouncementRead[]
 }
 
 model Unit {
