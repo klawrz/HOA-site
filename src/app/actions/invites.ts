@@ -5,9 +5,15 @@ import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 
+// General-purpose invite panel is only ever shown on the Account Owner's
+// page - restricted to that role here too, since it can invite to any
+// role including ACCOUNT_OWNER/BOARD_MEMBER. Narrower invite flows (renter,
+// unit manager) mint their own Invite rows directly rather than going
+// through this function, so they can apply their own, more specific
+// authorization instead of being widened to match this one.
 export async function createInvite(formData: FormData) {
   const session = await auth()
-  if (!session?.user.orgId) throw new Error("Unauthorized")
+  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") throw new Error("Unauthorized")
 
   const email = (formData.get("email") as string)?.trim()
   const role = formData.get("role") as string

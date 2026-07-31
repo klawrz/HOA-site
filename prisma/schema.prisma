@@ -233,6 +233,14 @@ model Invite {
   acceptedAt DateTime?
   createdAt  DateTime  @default(now())
 
+  // Only meaningful when role is RENTER - the arranged lease's terms,
+  // captured at invite time so accepting the invite can create the real
+  // Lease record immediately rather than leaving a renter with an account
+  // but no actual tenancy on file.
+  monthlyRent    Float?
+  leaseStartDate DateTime?
+  leaseEndDate   DateTime?
+
   org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   unit   Unit?        @relation(fields: [unitId], references: [id])
   sentBy User         @relation("SentInvites", fields: [sentById], references: [id])

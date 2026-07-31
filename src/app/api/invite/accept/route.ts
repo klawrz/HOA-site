@@ -37,6 +37,25 @@ export async function POST(req: Request) {
         await tx.unitOwnership.create({ data: { unitId: invite.unitId, ownerId: user.id } })
         await tx.unit.update({ where: { id: invite.unitId }, data: { status: "OWNER_OCCUPIED" } })
       }
+      if (invite.unitId && invite.role === "RENTER") {
+        // Whoever arranged this (Owner, delegated Unit Manager, or Board/PM)
+        // already set the terms when the invite was sent - accepting just
+        // turns those terms into the real, active Lease.
+        await tx.lease.updateMany({
+          where: { unitId: invite.unitId, isActive: true },
+          data: { isActive: false, endDate: new Date() },
+        })
+        await tx.lease.create({
+          data: {
+            unitId: invite.unitId,
+            renterId: user.id,
+            startDate: invite.leaseStartDate ?? new Date(),
+            endDate: invite.leaseEndDate,
+            monthlyRent: invite.monthlyRent,
+          },
+        })
+        await tx.unit.update({ where: { id: invite.unitId }, data: { status: "RENTED" } })
+      }
       await tx.invite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } })
     })
 

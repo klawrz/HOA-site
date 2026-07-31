@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RentalPolicyForm } from "../rental-policy-form"
+import { LeaseStatusCard } from "@/components/lease/lease-status-card"
 
 export default async function OwnerRentalSettingsPage() {
   const session = await auth()
@@ -10,7 +11,7 @@ export default async function OwnerRentalSettingsPage() {
 
   const ownerships = await db.unitOwnership.findMany({
     where: { ownerId: session.user.id, isCurrent: true },
-    include: { unit: true },
+    include: { unit: { include: { leases: { where: { isActive: true }, include: { renter: true } } } } },
     orderBy: { unit: { number: "asc" } },
   })
 
@@ -21,24 +22,42 @@ export default async function OwnerRentalSettingsPage() {
         <p className="text-gray-500 mt-1">Who can rent each of your units, and notes for your property manager</p>
       </div>
 
-      {ownerships.map((o) => (
-        <Card key={o.unit.id}>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Unit {o.unit.number}
-              {o.unit.building && ` — Building ${o.unit.building}`}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RentalPolicyForm
-              ownershipId={o.id}
-              unitId={o.unit.id}
-              currentPolicy={o.rentalPolicy}
-              currentNotes={o.notes ?? ""}
-            />
-          </CardContent>
-        </Card>
-      ))}
+      {ownerships.map((o) => {
+        const lease = o.unit.leases[0]
+        return (
+          <Card key={o.unit.id}>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Unit {o.unit.number}
+                {o.unit.building && ` — Building ${o.unit.building}`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <LeaseStatusCard
+                unitId={o.unit.id}
+                lease={
+                  lease
+                    ? {
+                        id: lease.id,
+                        renterName: lease.renter.name,
+                        renterEmail: lease.renter.email,
+                        monthlyRent: lease.monthlyRent,
+                        startDate: lease.startDate,
+                        endDate: lease.endDate,
+                      }
+                    : null
+                }
+              />
+              <RentalPolicyForm
+                ownershipId={o.id}
+                unitId={o.unit.id}
+                currentPolicy={o.rentalPolicy}
+                currentNotes={o.notes ?? ""}
+              />
+            </CardContent>
+          </Card>
+        )
+      })}
 
       {ownerships.length === 0 && (
         <Card>
