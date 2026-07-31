@@ -352,6 +352,7 @@ model User {
   reserveTransactions ReserveTransaction[]
   announcementComments AnnouncementComment[]
   announcementReads AnnouncementRead[]
+  recordedRentPayments RentPayment[]
 }
 
 model Unit {
@@ -367,6 +368,12 @@ model Unit {
   civicRoll   String?    // municipal civic/assessment roll number for this unit
   status      UnitStatus @default(AVAILABLE)
   selfManaged Boolean    @default(true) // Owner handles the unit themselves, no delegated Unit Manager
+  // Handed off to whoever currently needs to get in - the active Renter,
+  // a delegated Unit Manager, Board/PM. Deliberately just two free-text
+  // fields (not a rotation/expiry system) since a gate or door code is
+  // usually a single current value the Owner updates when it changes.
+  accessCode      String?
+  accessCodeNotes String? // e.g. "gate code, changes quarterly" or "front door lockbox"
   // This unit's fixed share of common budget/dues, per the governing
   // documents - HOAs rarely split costs evenly across units. Null until
   // the Board/PM sets it; dues can't be estimated for a unit without one.
@@ -426,8 +433,28 @@ model Lease {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  unit   Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  renter User @relation(fields: [renterId], references: [id], onDelete: Cascade)
+  unit     Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  renter   User          @relation(fields: [renterId], references: [id], onDelete: Cascade)
+  payments RentPayment[]
+}
+
+// A simple rent ledger per lease - lets the Owner (this is their private
+// income, not HOA money) see at a glance whether a given period's rent
+// actually came in, the same "expected vs. received" pattern Assessments
+// already uses for HOA dues, just scoped to one lease instead of every unit.
+model RentPayment {
+  id            String         @id @default(cuid())
+  leaseId       String
+  amount        Float
+  dueDate       DateTime
+  paidAt        DateTime?
+  paymentMethod PaymentMethod?
+  notes         String?
+  createdById   String
+  createdAt     DateTime       @default(now())
+
+  lease     Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  createdBy User  @relation(fields: [createdById], references: [id])
 }
 
 model TroubleTicket {

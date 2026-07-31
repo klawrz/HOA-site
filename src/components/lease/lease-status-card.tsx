@@ -4,8 +4,19 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { InviteRenterDialog } from "./invite-renter-dialog"
+import { RentPaymentsPanel } from "./rent-payments-panel"
 import { endLease } from "@/app/actions/lease"
 import { formatDateISO } from "@/lib/utils"
+import { PaymentMethod } from "@/generated/prisma"
+
+interface RentPaymentRow {
+  id: string
+  amount: number
+  dueDate: Date
+  paidAt: Date | null
+  paymentMethod: PaymentMethod | null
+  notes: string | null
+}
 
 interface CurrentLease {
   id: string
@@ -14,10 +25,12 @@ interface CurrentLease {
   monthlyRent: number | null
   startDate: Date
   endDate: Date | null
+  payments: RentPaymentRow[]
 }
 
 export function LeaseStatusCard({ unitId, lease }: { unitId: string; lease: CurrentLease | null }) {
   const [ending, setEnding] = useState(false)
+  const [showLedger, setShowLedger] = useState(false)
 
   async function handleEnd() {
     setEnding(true)
@@ -51,10 +64,18 @@ export function LeaseStatusCard({ unitId, lease }: { unitId: string; lease: Curr
             {lease.endDate && ` · Until ${formatDateISO(lease.endDate)}`}
           </p>
         </div>
-        <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={handleEnd} disabled={ending}>
-          {ending ? "Ending..." : "End Lease"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowLedger((v) => !v)}>
+            {showLedger ? "Hide" : "Rent Ledger"}
+          </Button>
+          <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={handleEnd} disabled={ending}>
+            {ending ? "Ending..." : "End Lease"}
+          </Button>
+        </div>
       </div>
+      {showLedger && (
+        <RentPaymentsPanel leaseId={lease.id} monthlyRent={lease.monthlyRent} payments={lease.payments} />
+      )}
     </div>
   )
 }
