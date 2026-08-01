@@ -139,6 +139,13 @@ model Organization {
   currentExchangeRate   Float? // MXN per 1 USD, by convention
   exchangeRateUpdatedAt DateTime?
 
+  // Declarative statements only - never enforced. An owner's own
+  // per-unit visibility/pool-membership choice always wins, even in
+  // conflict with what's stated here; that's a matter for the HOA and
+  // the owner to work out outside the system, not something HOPE gates.
+  occupancyVisibilityPolicy String?
+  rentalPoolGuidelines      String?
+
   members   User[]
   units     Unit[]
   invites   Invite[]
@@ -357,6 +364,7 @@ model User {
   unitManagerAssignments UnitManagerAssignment[]
   uploadedComplianceDocuments ComplianceDocument[]
   createdOccupancyEntries OccupancyEntry[]
+  createdOccupancyShareLinks OccupancyShareLink[]
   boardPositions BoardPosition[]
   announcements Announcement[]
   createdBudgets Budget[]
@@ -413,6 +421,7 @@ model Unit {
   managers   UnitManagerAssignment[]
   contracts  Contract[]
   occupancyEntries OccupancyEntry[]
+  occupancyShareLinks OccupancyShareLink[]
   assessmentCharges AssessmentCharge[]
   ownerExpenses OwnerExpense[]
 
@@ -434,6 +443,17 @@ model UnitOwnership {
   divestedAt   DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+
+  // Occupancy visibility - entirely this owner's call, independent per
+  // audience, private/opted-out by default. Never enforced against the
+  // org's stated occupancyVisibilityPolicy (see Organization) - and never
+  // surfaced to Board/PM as a compliance signal (i.e. don't build a "who
+  // opted out" report anywhere, that defeats the point).
+  occupancyVisibleToBoard Boolean @default(false)
+  occupancyVisibleToPM    Boolean @default(false)
+  // Mutual: seeing other pool members' occupancy requires this unit to
+  // also be a member. See Organization.rentalPoolGuidelines.
+  rentalPoolMember        Boolean @default(false)
 
   unit  Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -1019,6 +1039,24 @@ model OccupancyEntry {
   createdById     String
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  unit      Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
+}
+
+// A persistent, revocable, unguessable link an Owner generates for a named
+// contact (e.g. a family member) - read-only view of this one unit's
+// occupancy, no HOPE account needed. No expiresAt (this is an ongoing
+// reference, not a one-time action like Invite) - revokedAt is the kill
+// switch instead, so the owner keeps total control over who can see it.
+model OccupancyShareLink {
+  id          String    @id @default(cuid())
+  unitId      String
+  token       String    @unique
+  label       String // the owner's own reference, e.g. "Mom"
+  createdById String
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
 
   unit      Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
   createdBy User @relation(fields: [createdById], references: [id])

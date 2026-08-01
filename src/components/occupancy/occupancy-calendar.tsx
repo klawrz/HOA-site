@@ -263,14 +263,22 @@ function EntryFormDialog({
   )
 }
 
+type ActiveLease = {
+  renterName: string | null
+  startDate: Date
+  endDate: Date | null
+}
+
 export function OccupancyCalendar({
   unitId,
   entries,
   canManage,
+  activeLease,
 }: {
   unitId: string
   entries: OccupancyEntryRow[]
   canManage: boolean
+  activeLease?: ActiveLease | null
 }) {
   const [removingId, setRemovingId] = useState<string | null>(null)
 
@@ -282,6 +290,7 @@ export function OccupancyCalendar({
   }
 
   const sorted = [...entries].sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+  const hasAnyRows = sorted.length > 0 || !!activeLease
 
   function conflictsFor(entry: OccupancyEntryRow) {
     return sorted.filter(
@@ -302,7 +311,7 @@ export function OccupancyCalendar({
         </div>
       )}
 
-      {sorted.length === 0 ? (
+      {!hasAnyRows ? (
         <Card>
           <CardContent className="py-8 text-center text-gray-400">
             <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-40" />
@@ -312,6 +321,21 @@ export function OccupancyCalendar({
       ) : (
         <Card className="py-0 overflow-hidden">
           <div className="divide-y max-h-[420px] overflow-y-auto">
+            {activeLease && (
+              <div className="flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-50/40">
+                <span
+                  className={`shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-medium ${occupancyTypeColor.LONG_TERM_RENTER}`}
+                >
+                  {occupancyTypeLabel.LONG_TERM_RENTER}
+                </span>
+                <span className="shrink-0 text-xs text-gray-500 tabular-nums whitespace-nowrap">
+                  {formatDate(activeLease.startDate)} –{" "}
+                  {activeLease.endDate ? formatDate(activeLease.endDate) : "present"}
+                </span>
+                <span className="truncate font-medium">{activeLease.renterName ?? "—"}</span>
+                <span className="ml-auto shrink-0 text-[11px] text-gray-400">From lease</span>
+              </div>
+            )}
             {sorted.map((e) => {
               const conflicting = conflictsFor(e)
               return (

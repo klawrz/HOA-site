@@ -41,6 +41,37 @@ export async function setBankInfo(data: {
   return { success: true }
 }
 
+export async function setOccupancyPolicy(policy: string) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageKeyInfo(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+
+  await db.organization.update({
+    where: { id: session.user.orgId },
+    data: { occupancyVisibilityPolicy: policy.trim() || null },
+  })
+
+  revalidateKeyInfoPaths()
+  return { success: true }
+}
+
+export async function setRentalPoolGuidelines(guidelines: string) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageKeyInfo(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+
+  await db.organization.update({
+    where: { id: session.user.orgId },
+    data: { rentalPoolGuidelines: guidelines.trim() || null },
+  })
+
+  revalidateKeyInfoPaths()
+  revalidatePath("/dashboard/owner/rental-pool")
+  return { success: true }
+}
+
 export async function createKeyContact(data: {
   category: KeyContactCategory
   name: string

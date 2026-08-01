@@ -17,6 +17,8 @@ import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summa
 import { BankInfoCard } from "@/components/key-info/bank-info-card"
 import { KeyContactList } from "@/components/key-info/key-contact-list"
 import { KeyContactDialog } from "@/components/key-info/key-contact-dialog"
+import { PolicyTextCard } from "@/components/key-info/policy-text-card"
+import { setOccupancyPolicy, setRentalPoolGuidelines } from "@/app/actions/key-info"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
@@ -148,6 +150,28 @@ export default async function OwnerGovernancePage() {
           />
         </CardContent>
       </Card>
+
+      <PolicyTextCard
+        icon="eye"
+        title="Occupancy Visibility Policy"
+        description="Whether this HOA expects occupancy to be visible to the Board/PM - a statement of intent, never enforced. Each owner's own choice on their unit always stands."
+        placeholder="e.g. For security and access purposes, we ask owners to make occupancy visible to the Board..."
+        value={org?.occupancyVisibilityPolicy ?? null}
+        canManage={isBoardMember}
+        action={setOccupancyPolicy}
+        successMessage="Occupancy visibility policy updated"
+      />
+
+      <PolicyTextCard
+        icon="home"
+        title="Rental Pool Guidelines"
+        description="Shown to any owner considering joining the property's shared rental coordination pool."
+        placeholder="e.g. Pool members agree to a minimum 2-night notice before referring overflow guests..."
+        value={org?.rentalPoolGuidelines ?? null}
+        canManage={isBoardMember}
+        action={setRentalPoolGuidelines}
+        successMessage="Rental pool guidelines updated"
+      />
 
       <Card>
         <CardHeader>

@@ -9,6 +9,8 @@ import { UserCog, Phone, Mail } from "lucide-react"
 import { ContractList } from "@/components/contracts/contract-list"
 import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
 import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
+import { OccupancyVisibilityForm } from "./occupancy-visibility-form"
+import { ShareLinksPanel } from "./share-links-panel"
 import { parseSpecialties } from "@/lib/unit-manager-specialties"
 
 function addressLines(u: {
@@ -41,6 +43,8 @@ export default async function UnitDetailPage({
           managers: { include: { user: true, grants: true } },
           contracts: { include: { contractor: true }, orderBy: { createdAt: "desc" } },
           occupancyEntries: { orderBy: { startDate: "asc" } },
+          leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
+          occupancyShareLinks: { where: { revokedAt: null }, orderBy: { createdAt: "desc" } },
         },
       },
     },
@@ -49,11 +53,15 @@ export default async function UnitDetailPage({
   if (!ownership) notFound()
 
   const { unit } = ownership
+  const activeLease = unit.leases[0]
 
-  const contractors = await db.user.findMany({
-    where: { role: "CONTRACTOR" },
-    orderBy: { name: "asc" },
-  })
+  const [contractors, org] = await Promise.all([
+    db.user.findMany({
+      where: { role: "CONTRACTOR" },
+      orderBy: { name: "asc" },
+    }),
+    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
+  ])
 
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
@@ -137,9 +145,32 @@ export default async function UnitDetailPage({
           </p>
         </CardHeader>
         <CardContent>
-          <OccupancyCalendar unitId={unit.id} entries={unit.occupancyEntries} canManage />
+          <OccupancyCalendar
+            unitId={unit.id}
+            entries={unit.occupancyEntries}
+            canManage
+            activeLease={
+              activeLease
+                ? { renterName: activeLease.renter.name, startDate: activeLease.startDate, endDate: activeLease.endDate }
+                : null
+            }
+          />
         </CardContent>
       </Card>
+
+      <OccupancyVisibilityForm
+        ownershipId={ownership.id}
+        visibleToBoard={ownership.occupancyVisibleToBoard}
+        visibleToPM={ownership.occupancyVisibleToPM}
+        poolMember={ownership.rentalPoolMember}
+        occupancyPolicy={org?.occupancyVisibilityPolicy ?? null}
+        poolGuidelines={org?.rentalPoolGuidelines ?? null}
+      />
+
+      <ShareLinksPanel
+        unitId={unit.id}
+        links={unit.occupancyShareLinks.map((l) => ({ id: l.id, token: l.token, label: l.label }))}
+      />
 
       <Card>
         <CardHeader>

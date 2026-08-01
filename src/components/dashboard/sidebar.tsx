@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -26,6 +26,7 @@ const navByRole: Record<Role, NavItem[]> = {
   OWNER: [
     { label: "My Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
     { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2 },
+    { label: "Rental Pool", href: "/dashboard/owner/rental-pool", icon: Home, indent: true },
     { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign },
     { label: "Dues & Assessments", href: "/dashboard/owner/financial/dues", icon: Receipt, indent: true },
     { label: "Contracts", href: "/dashboard/owner/financial/contracts", icon: FileText, indent: true },
@@ -43,6 +44,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/property-manager", icon: LayoutDashboard },
     { label: "Unit Availability", href: "/dashboard/property-manager/units", icon: Building2 },
     { label: "Owner Directory", href: "/dashboard/property-manager/owners", icon: Users },
+    { label: "Occupancy", href: "/dashboard/property-manager/occupancy", icon: CalendarDays },
     { label: "Announcements", href: "/dashboard/property-manager/announcements", icon: Megaphone },
     { label: "Documents", href: "/dashboard/property-manager/documents", icon: FileText },
     { label: "Key Information", href: "/dashboard/property-manager/key-info", icon: Landmark },
@@ -64,6 +66,7 @@ const navByRole: Record<Role, NavItem[]> = {
   ],
   BOARD_MEMBER: [
     { label: "Dashboard", href: "/dashboard/board", icon: LayoutDashboard },
+    { label: "Occupancy", href: "/dashboard/board/occupancy", icon: CalendarDays },
     { label: "Announcements", href: "/dashboard/board/announcements", icon: Megaphone },
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
     { label: "Documents", href: "/dashboard/board/documents", icon: FileText },

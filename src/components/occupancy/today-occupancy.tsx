@@ -48,7 +48,7 @@ function leaseHasStarted(lease: ActiveLease, now: Date) {
   return lease.startDate <= now
 }
 
-export function TodayOccupancy({ units }: { units: UnitOccupancy[] }) {
+export function TodayOccupancy({ units, canManage = true }: { units: UnitOccupancy[]; canManage?: boolean }) {
   const [openUnitId, setOpenUnitId] = useState<string | null>(null)
   const now = new Date()
 
@@ -96,7 +96,12 @@ export function TodayOccupancy({ units }: { units: UnitOccupancy[] }) {
             </button>
             {open && (
               <div className="mt-3">
-                <OccupancyCalendar unitId={unit.id} entries={unit.entries} canManage />
+                <OccupancyCalendar
+                  unitId={unit.id}
+                  entries={unit.entries}
+                  canManage={canManage}
+                  activeLease={leaseActive ? { renterName: leaseActive.renterName, startDate: leaseActive.startDate, endDate: null } : null}
+                />
               </div>
             )}
           </div>
