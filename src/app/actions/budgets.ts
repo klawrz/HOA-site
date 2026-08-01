@@ -3,7 +3,7 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { BudgetType } from "@/generated/prisma"
+import { BudgetType, Currency } from "@/generated/prisma"
 import { parseCsv, findColumn, parseMoney } from "@/lib/csv-parse"
 import { saveUploadedFile } from "@/lib/file-upload"
 
@@ -102,9 +102,16 @@ export async function approveBudget(id: string, meetingId?: string) {
   const budget = await db.budget.findUnique({ where: { id } })
   if (!budget || budget.orgId !== session.user.orgId) return { success: false }
 
+  const org = await db.organization.findUnique({ where: { id: session.user.orgId } })
+
   await db.budget.update({
     where: { id },
-    data: { status: "APPROVED", approvedAt: new Date(), meetingId: meetingId || null },
+    data: {
+      status: "APPROVED",
+      approvedAt: new Date(),
+      meetingId: meetingId || null,
+      approvalExchangeRate: org?.currentExchangeRate ?? null,
+    },
   })
 
   revalidateBudgetPaths()
@@ -122,7 +129,31 @@ export async function revertBudgetToDraft(id: string) {
 
   await db.budget.update({
     where: { id },
-    data: { status: "DRAFT", approvedAt: null, meetingId: null },
+    data: { status: "DRAFT", approvedAt: null, meetingId: null, approvalExchangeRate: null },
+  })
+
+  revalidateBudgetPaths()
+  return { success: true }
+}
+
+// Manually maintained (no external FX API) - the Board/PM updates this
+// whenever convenient. Budgeted figures lock to whatever this was at
+// approval time (see approveBudget); actual figures always convert using
+// the current value, live, whenever the report is viewed.
+export async function setExchangeRate(rate: number, baseCurrency?: Currency) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageBudget(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+  if (!(rate > 0)) return { success: false, error: "Rate must be a positive number" }
+
+  await db.organization.update({
+    where: { id: session.user.orgId },
+    data: {
+      currentExchangeRate: rate,
+      exchangeRateUpdatedAt: new Date(),
+      ...(baseCurrency ? { baseCurrency } : {}),
+    },
   })
 
   revalidateBudgetPaths()

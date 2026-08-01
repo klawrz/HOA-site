@@ -14,7 +14,7 @@ export default async function OwnerBoardBudgetDetailPage({
   const session = await auth()
   if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) redirect("/dashboard")
 
-  const [budget, contracts, meetings] = await Promise.all([
+  const [budget, contracts, meetings, org] = await Promise.all([
     db.budget.findUnique({
       where: { id: budgetId },
       include: { lineItems: { include: { contract: true }, orderBy: { sortOrder: "asc" } }, meeting: true },
@@ -24,6 +24,7 @@ export default async function OwnerBoardBudgetDetailPage({
       orderBy: { title: "asc" },
     }),
     db.meeting.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { date: "desc" } }),
+    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
   ])
 
   if (!budget || budget.orgId !== session.user.orgId) notFound()
@@ -45,6 +46,7 @@ export default async function OwnerBoardBudgetDetailPage({
           status: budget.status,
           notes: budget.notes,
           approvedAt: budget.approvedAt,
+          approvalExchangeRate: budget.approvalExchangeRate,
           meetingTitle: budget.meeting?.title ?? null,
           lineItems: budget.lineItems.map((i) => ({
             id: i.id,
@@ -61,6 +63,9 @@ export default async function OwnerBoardBudgetDetailPage({
         canManage
         canApprove
         onDeletedHref="/dashboard/owner/governance/board/finances"
+        baseCurrency={org?.baseCurrency}
+        currentExchangeRate={org?.currentExchangeRate ?? null}
+        exchangeRateUpdatedAt={org?.exchangeRateUpdatedAt ?? null}
       />
     </div>
   )

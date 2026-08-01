@@ -91,6 +91,11 @@ enum DocumentVisibility {
   BOARD_AND_PM
 }
 
+enum Currency {
+  USD
+  MXN
+}
+
 model Organization {
   id                 String   @id @default(cuid())
   name               String
@@ -125,6 +130,14 @@ model Organization {
   bankAccountName          String? // e.g. "Sunrise Heights HOA Operating Account"
   bankSigningAuthority     String? // who is authorized to sign/approve on the account
   bankPaymentInstructions  String? // how to pay dues / send funds - e-transfer, wire, etc.
+
+  // The currency all budget/actual figures are entered in. The other
+  // currency (USD<->MXN, a fixed pair) is always a derived, computed
+  // display using currentExchangeRate - never a second source of truth.
+  // No external FX API - manually maintained by the Board/PM.
+  baseCurrency          Currency @default(USD)
+  currentExchangeRate   Float? // MXN per 1 USD, by convention
+  exchangeRateUpdatedAt DateTime?
 
   members   User[]
   units     Unit[]
@@ -658,6 +671,12 @@ model Budget {
   status      BudgetStatus @default(DRAFT)
   approvedAt  DateTime?
   meetingId   String? // the AGM (or other meeting) where it was approved
+  // Snapshot of Organization.currentExchangeRate at the moment this budget
+  // was approved - frozen forever after, same lifecycle as approvedAt/
+  // meetingId (set together in approveBudget, cleared together in
+  // revertBudgetToDraft). Null for a still-DRAFT budget or one approved
+  // before this feature existed.
+  approvalExchangeRate Float?
   notes       String?
   createdById String
   createdAt   DateTime     @default(now())

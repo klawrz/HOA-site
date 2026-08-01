@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button"
 import { LineItemDialog } from "./line-item-dialog"
 import { ApproveBudgetDialog } from "./approve-budget-dialog"
 import { ImportCsvDialog } from "./import-csv-dialog"
+import { ExchangeRateBar } from "./exchange-rate-bar"
 import { deleteLineItem, revertBudgetToDraft, deleteBudget, saveBudgetAsTemplate } from "@/app/actions/budgets"
 import { formatDateISO } from "@/lib/utils"
 import { downloadCsv } from "@/lib/csv"
+import { convertToSecondary, secondaryCurrency, formatMoney } from "@/lib/currency"
+import { Currency } from "@/generated/prisma"
 
 interface ContractOption {
   id: string
@@ -42,6 +45,7 @@ interface BudgetData {
   status: string
   notes: string | null
   approvedAt: Date | null
+  approvalExchangeRate: number | null
   meetingTitle: string | null
   lineItems: LineItem[]
 }
@@ -57,6 +61,9 @@ export function BudgetEditor({
   canManage,
   canApprove,
   onDeletedHref,
+  baseCurrency = "USD",
+  currentExchangeRate = null,
+  exchangeRateUpdatedAt = null,
 }: {
   budget: BudgetData
   contracts: ContractOption[]
@@ -64,10 +71,30 @@ export function BudgetEditor({
   canManage: boolean
   canApprove: boolean
   onDeletedHref?: string
+  baseCurrency?: Currency
+  currentExchangeRate?: number | null
+  exchangeRateUpdatedAt?: Date | null
 }) {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [deletingBudget, setDeletingBudget] = useState(false)
   const [savingTemplate, setSavingTemplate] = useState(false)
+
+  const secondary = secondaryCurrency(baseCurrency)
+  // Budgeted figures lock to the rate in effect when the budget was
+  // approved; while still DRAFT there's no locked rate yet, so fall back
+  // to the live rate as an estimate. Actual figures always use the live
+  // rate, regardless of approval status - that's the whole point.
+  const budgetedRate = budget.status === "APPROVED" ? budget.approvalExchangeRate : currentExchangeRate
+  const actualRate = currentExchangeRate
+
+  function secondaryLine(amount: number, rate: number | null) {
+    if (!rate) return null
+    return (
+      <span className="block text-xs text-gray-400 font-normal">
+        {formatMoney(convertToSecondary(amount, rate, baseCurrency), secondary)}
+      </span>
+    )
+  }
 
   async function handleRemoveItem(id: string) {
     setRemovingId(id)
@@ -104,16 +131,25 @@ export function BudgetEditor({
   }
 
   function handleExport() {
-    const rows: (string | number)[][] = [["Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual"]]
+    const headers = ["Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual"]
+    if (budgetedRate || actualRate) headers.push(`Budgeted (${secondary})`, `Actual (${secondary})`)
+    const rows: (string | number)[][] = [headers]
     for (const item of budget.lineItems) {
       const variance = item.actualAmount != null ? item.actualAmount - item.budgetedAmount : ""
-      rows.push([
+      const row: (string | number)[] = [
         item.label,
         item.budgetedAmount,
         item.actualAmount ?? "",
         variance,
         item.previousYearActual ?? "",
-      ])
+      ]
+      if (budgetedRate || actualRate) {
+        row.push(
+          budgetedRate ? convertToSecondary(item.budgetedAmount, budgetedRate, baseCurrency) : "",
+          actualRate && item.actualAmount != null ? convertToSecondary(item.actualAmount, actualRate, baseCurrency) : ""
+        )
+      }
+      rows.push(row)
     }
     downloadCsv(`budget-${budget.year}-${budget.version.toLowerCase().replace(/\s+/g, "-")}.csv`, rows)
   }
@@ -194,6 +230,13 @@ export function BudgetEditor({
         </div>
       </div>
 
+      <ExchangeRateBar
+        baseCurrency={baseCurrency}
+        currentExchangeRate={currentExchangeRate}
+        exchangeRateUpdatedAt={exchangeRateUpdatedAt}
+        canManage={canManage}
+      />
+
       <Card className="py-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -218,9 +261,19 @@ export function BudgetEditor({
                         <p className="text-xs text-gray-400">from contract: {item.contractTitle}</p>
                       )}
                     </td>
-                    <td className="text-right px-3 py-2 tabular-nums">{money(item.budgetedAmount)}</td>
                     <td className="text-right px-3 py-2 tabular-nums">
-                      {item.actualAmount != null ? money(item.actualAmount) : "—"}
+                      {money(item.budgetedAmount)}
+                      {secondaryLine(item.budgetedAmount, budgetedRate)}
+                    </td>
+                    <td className="text-right px-3 py-2 tabular-nums">
+                      {item.actualAmount != null ? (
+                        <>
+                          {money(item.actualAmount)}
+                          {secondaryLine(item.actualAmount, actualRate)}
+                        </>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td
                       className={`text-right px-3 py-2 tabular-nums ${
@@ -261,8 +314,20 @@ export function BudgetEditor({
               <tfoot>
                 <tr className="border-t bg-gray-50 font-semibold">
                   <td className="px-3 py-2">Total</td>
-                  <td className="text-right px-3 py-2 tabular-nums">{money(totals.budgeted)}</td>
-                  <td className="text-right px-3 py-2 tabular-nums">{totals.hasActual ? money(totals.actual) : "—"}</td>
+                  <td className="text-right px-3 py-2 tabular-nums">
+                    {money(totals.budgeted)}
+                    {secondaryLine(totals.budgeted, budgetedRate)}
+                  </td>
+                  <td className="text-right px-3 py-2 tabular-nums">
+                    {totals.hasActual ? (
+                      <>
+                        {money(totals.actual)}
+                        {secondaryLine(totals.actual, actualRate)}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td
                     className={`text-right px-3 py-2 tabular-nums ${
                       totalVariance == null ? "" : totalVariance > 0 ? "text-red-600" : "text-green-600"

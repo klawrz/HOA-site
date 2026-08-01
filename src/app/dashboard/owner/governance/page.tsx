@@ -267,6 +267,7 @@ export default async function OwnerGovernancePage() {
                 status: latestApprovedBudget.status,
                 notes: latestApprovedBudget.notes,
                 approvedAt: latestApprovedBudget.approvedAt,
+                approvalExchangeRate: latestApprovedBudget.approvalExchangeRate,
                 meetingTitle: latestApprovedBudget.meeting?.title ?? null,
                 lineItems: latestApprovedBudget.lineItems.map((i) => ({
                   id: i.id,
@@ -282,6 +283,9 @@ export default async function OwnerGovernancePage() {
               meetings={[]}
               canManage={false}
               canApprove={false}
+              baseCurrency={org?.baseCurrency}
+              currentExchangeRate={org?.currentExchangeRate ?? null}
+              exchangeRateUpdatedAt={org?.exchangeRateUpdatedAt ?? null}
             />
           ) : (
             <p className="text-sm text-gray-500">No approved budget yet.</p>
