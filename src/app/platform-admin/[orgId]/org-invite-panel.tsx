@@ -1,12 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, CheckCheck, Plus, X } from "lucide-react"
+import { toast } from "sonner"
+import { Copy, CheckCheck, Plus, X, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { sendOrgInvite, revokeOrgInvite } from "@/app/actions/platform-admin"
+import { sendOrgInvite, revokeOrgInvite, quickAcceptInvite } from "@/app/actions/platform-admin"
 
 type Unit = { id: string; number: string }
 type Invite = { id: string; email: string; role: string; token: string; acceptedAt: Date | null }
@@ -65,9 +66,30 @@ export function OrgInvitePanel({
     setInvites((prev) => prev.filter((i) => i.id !== inviteId))
   }
 
+  async function handleQuickAccept(inv: Invite) {
+    try {
+      const result = await quickAcceptInvite(inv.id, orgId)
+      setInvites((prev) => prev.map((i) => (i.id === inv.id ? { ...i, acceptedAt: new Date() } : i)))
+      toast.success(
+        result.password
+          ? `Account created - log in as ${inv.email} / ${result.password}`
+          : `${inv.email} now has a membership in this org - log in and pick it from the org list`,
+        { duration: 8000 }
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to accept")
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <h2 className="font-semibold text-gray-700">Invites</h2>
+      <div>
+        <h2 className="font-semibold text-gray-700">Invites</h2>
+        <p className="text-xs text-gray-400 mt-0.5">
+          No live email delivery yet - copy a link to share it yourself, or use Quick accept to
+          skip straight to a working login for testing.
+        </p>
+      </div>
       <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-5 space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
@@ -126,6 +148,13 @@ export function OrgInvitePanel({
                     ) : (
                       <><Copy className="h-3.5 w-3.5" /> Copy</>
                     )}
+                  </button>
+                  <button
+                    onClick={() => handleQuickAccept(inv)}
+                    className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 transition-colors"
+                    title="Dev only - simulates the recipient accepting the invite"
+                  >
+                    <Zap className="h-3.5 w-3.5" /> Quick accept
                   </button>
                   <button
                     onClick={() => handleRevoke(inv.id)}

@@ -4,8 +4,14 @@ import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { requirePlatformAdmin } from "@/lib/require-platform-admin"
 import { createInviteForOrg } from "@/app/actions/invites"
+import { acceptInvite } from "@/lib/accept-invite"
 import { slugify } from "@/lib/slugify"
 import { Role } from "@/generated/prisma"
+
+// Same default password used by every seeded demo account, so a
+// quick-accepted test account logs in the same way as the rest of the
+// app's test data.
+const DEV_DEFAULT_PASSWORD = "password123"
 
 export async function createOrganization(formData: FormData) {
   const session = await requirePlatformAdmin()
@@ -57,4 +63,29 @@ export async function revokeOrgInvite(inviteId: string, orgId: string) {
 
   await db.invite.delete({ where: { id: inviteId, orgId } })
   revalidatePath(`/platform-admin/${orgId}`)
+}
+
+// Stopgap for testing while HOPE has no live email delivery - simulates a
+// recipient clicking their invite link and accepting it, without needing
+// to actually copy/paste the link. A brand-new email gets a real account
+// with DEV_DEFAULT_PASSWORD so it's immediately usable; an existing email
+// just gains the Membership, same branching as the real accept route.
+// Platform-admin-gated only - remove once real email delivery lands.
+export async function quickAcceptInvite(inviteId: string, orgId: string) {
+  const session = await requirePlatformAdmin()
+  if (!session) throw new Error("Unauthorized")
+
+  const invite = await db.invite.findUnique({ where: { id: inviteId } })
+  if (!invite || invite.orgId !== orgId || invite.acceptedAt || invite.expiresAt < new Date()) {
+    throw new Error("Invite is invalid or expired")
+  }
+
+  const existing = await db.user.findUnique({ where: { email: invite.email } })
+  const result = await acceptInvite(
+    invite,
+    existing ? {} : { name: invite.email.split("@")[0], password: DEV_DEFAULT_PASSWORD }
+  )
+
+  revalidatePath(`/platform-admin/${orgId}`)
+  return { ...result, password: existing ? null : DEV_DEFAULT_PASSWORD }
 }

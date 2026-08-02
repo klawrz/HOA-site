@@ -128,7 +128,9 @@ export function DashboardSidebar({ role, isBoardMember }: { role: Role; isBoardM
   return (
     <aside className="w-64 bg-white border-r flex flex-col shrink-0">
       <div className="p-4 border-b">
-        <Image src="/HOPE-logo.png" alt="HOPE" height={36} width={120} className="object-contain" />
+        <Link href="/dashboard">
+          <Image src="/HOPE-logo.png" alt="HOPE" height={36} width={120} className="object-contain" />
+        </Link>
         <p className="text-xs text-gray-400 mt-1">{roleLabels[role]}</p>
       </div>
       <nav className="flex-1 p-3 space-y-1">
