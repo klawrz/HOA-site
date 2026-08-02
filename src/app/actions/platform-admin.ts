@@ -65,6 +65,61 @@ export async function revokeOrgInvite(inviteId: string, orgId: string) {
   revalidatePath(`/platform-admin/${orgId}`)
 }
 
+// Platform-admin-only variant of updateOrgAddress (src/app/actions/org.ts) -
+// that one is gated on the caller's own session.user.orgId/role, which a
+// platform admin has neither of, so it needs an explicit orgId param here.
+export async function updateOrgAddressAdmin(orgId: string, formData: FormData) {
+  const session = await requirePlatformAdmin()
+  if (!session) throw new Error("Unauthorized")
+
+  await db.organization.update({
+    where: { id: orgId },
+    data: {
+      addressLine1: (formData.get("addressLine1") as string) || null,
+      addressLine2: (formData.get("addressLine2") as string) || null,
+      city: (formData.get("city") as string) || null,
+      state: (formData.get("state") as string) || null,
+      postalCode: (formData.get("postalCode") as string) || null,
+      country: (formData.get("country") as string) || null,
+    },
+  })
+  revalidatePath(`/platform-admin/${orgId}`)
+}
+
+// Billing/account-owner record a platform admin keeps for their own
+// tracking - independent of whether the invited Account Owner has accepted
+// their invite yet (there may be no User row at all for this org's owner).
+export async function updateOrgBillingProfile(orgId: string, formData: FormData) {
+  const session = await requirePlatformAdmin()
+  if (!session) throw new Error("Unauthorized")
+
+  const str = (name: string) => (formData.get(name) as string)?.trim() || null
+  const expiryRaw = formData.get("billingExpiry") as string
+  const billingExpiry = expiryRaw ? new Date(expiryRaw) : null
+
+  await db.organization.update({
+    where: { id: orgId },
+    data: {
+      accountNumber: str("accountNumber"),
+      pricingPlan: str("pricingPlan"),
+      billingExpiry,
+      accountOwnerName: str("accountOwnerName"),
+      accountOwnerEmail: str("accountOwnerEmail"),
+      accountOwnerPhone: str("accountOwnerPhone"),
+      accountOwnerAddressLine1: str("accountOwnerAddressLine1"),
+      accountOwnerAddressLine2: str("accountOwnerAddressLine2"),
+      accountOwnerCity: str("accountOwnerCity"),
+      accountOwnerState: str("accountOwnerState"),
+      accountOwnerPostalCode: str("accountOwnerPostalCode"),
+      accountOwnerCountry: str("accountOwnerCountry"),
+      altContactName: str("altContactName"),
+      altContactEmail: str("altContactEmail"),
+      altContactPhone: str("altContactPhone"),
+    },
+  })
+  revalidatePath(`/platform-admin/${orgId}`)
+}
+
 // Stopgap for testing while HOPE has no live email delivery - simulates a
 // recipient clicking their invite link and accepting it, without needing
 // to actually copy/paste the link. A brand-new email gets a real account

@@ -5,6 +5,9 @@ import { db } from "@/lib/db"
 import { requirePlatformAdmin } from "@/lib/require-platform-admin"
 import { OrgNameForm } from "./org-name-form"
 import { OrgInvitePanel } from "./org-invite-panel"
+import { OrgAddressCard } from "./org-address-card"
+import { BillingProfileCard } from "./billing-profile-card"
+import { PropertyManagerCard } from "./property-manager-card"
 
 export default async function PlatformAdminOrgDetailPage({
   params,
@@ -16,14 +19,21 @@ export default async function PlatformAdminOrgDetailPage({
 
   const { orgId } = await params
 
-  const org = await db.organization.findUnique({
-    where: { id: orgId },
-    include: {
-      memberships: { include: { user: true }, orderBy: { createdAt: "asc" } },
-      invites: { orderBy: { createdAt: "desc" } },
-      units: { select: { id: true, number: true }, orderBy: { number: "asc" } },
-    },
-  })
+  const [org, activePMContract] = await Promise.all([
+    db.organization.findUnique({
+      where: { id: orgId },
+      include: {
+        memberships: { include: { user: true }, orderBy: { createdAt: "asc" } },
+        invites: { orderBy: { createdAt: "desc" } },
+        units: { select: { id: true, number: true }, orderBy: { number: "asc" } },
+      },
+    }),
+    db.pMContract.findFirst({
+      where: { orgId, status: "ACTIVE" },
+      include: { company: true },
+      orderBy: { startDate: "desc" },
+    }),
+  ])
   if (!org) notFound()
 
   return (
@@ -39,6 +49,42 @@ export default async function PlatformAdminOrgDetailPage({
           {org.createdAt.toLocaleDateString()}
         </p>
       </div>
+
+      <OrgAddressCard
+        orgId={org.id}
+        address={{
+          addressLine1: org.addressLine1,
+          addressLine2: org.addressLine2,
+          city: org.city,
+          state: org.state,
+          postalCode: org.postalCode,
+          country: org.country,
+        }}
+      />
+
+      <BillingProfileCard
+        orgId={org.id}
+        createdAt={org.createdAt}
+        profile={{
+          accountNumber: org.accountNumber,
+          pricingPlan: org.pricingPlan,
+          billingExpiry: org.billingExpiry,
+          accountOwnerName: org.accountOwnerName,
+          accountOwnerEmail: org.accountOwnerEmail,
+          accountOwnerPhone: org.accountOwnerPhone,
+          accountOwnerAddressLine1: org.accountOwnerAddressLine1,
+          accountOwnerAddressLine2: org.accountOwnerAddressLine2,
+          accountOwnerCity: org.accountOwnerCity,
+          accountOwnerState: org.accountOwnerState,
+          accountOwnerPostalCode: org.accountOwnerPostalCode,
+          accountOwnerCountry: org.accountOwnerCountry,
+          altContactName: org.altContactName,
+          altContactEmail: org.altContactEmail,
+          altContactPhone: org.altContactPhone,
+        }}
+      />
+
+      <PropertyManagerCard company={activePMContract?.company ?? null} />
 
       <div className="space-y-3">
         <h2 className="font-semibold text-gray-700">Members ({org.memberships.length})</h2>

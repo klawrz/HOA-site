@@ -150,6 +150,28 @@ model Organization {
   // Free text, defaults to the generic "Unit" so existing orgs see no change.
   unitLabel String @default("Unit")
 
+  // Platform admin's billing/account record - independent of whether the
+  // invited Account Owner has accepted their invite yet, since admin should
+  // be able to record these before any User exists for this org. Free text
+  // throughout, same convention as bankName/bankAccountName above.
+  accountNumber String?
+  pricingPlan   String? // free text, e.g. "$49/mo Standard" - no rigid Plan model yet
+  billingExpiry DateTime?
+
+  accountOwnerName         String?
+  accountOwnerEmail        String?
+  accountOwnerPhone        String?
+  accountOwnerAddressLine1 String?
+  accountOwnerAddressLine2 String?
+  accountOwnerCity         String?
+  accountOwnerState        String?
+  accountOwnerPostalCode   String?
+  accountOwnerCountry      String?
+
+  altContactName  String?
+  altContactEmail String?
+  altContactPhone String?
+
   memberships         Membership[]
   units               Unit[]
   invites             Invite[]
