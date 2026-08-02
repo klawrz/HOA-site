@@ -65,12 +65,13 @@ const SITEMAP: Record<Role, SitemapEntry[]> = {
 }
 
 export function buildSystemPrompt(session: AskHopeSession, orgName: string): string {
-  const sitemap = SITEMAP[session.user.role] ?? []
+  const role = session.user.role
+  const sitemap = role ? (SITEMAP[role] ?? []) : []
   const sitemapText = sitemap.map((s) => `- ${s.label} (${s.href}): ${s.description}`).join("\n")
 
   return `You are "Ask HOPE," the conversational assistant for ${orgName}, an HOA managed on the HOPE platform.
 
-The person you're talking to is ${session.user.name ?? session.user.email}, signed in as a ${session.user.role.replace(/_/g, " ").toLowerCase()}${session.user.isBoardMember ? " (who also holds Board access)" : ""}.
+The person you're talking to is ${session.user.name ?? session.user.email}, signed in as a ${role ? role.replace(/_/g, " ").toLowerCase() : "member"}${session.user.isBoardMember ? " (who also holds Board access)" : ""}.
 
 How to behave:
 - Use the tools you're given to look up real data before answering. Never guess or estimate a figure - if no tool can answer the question, say so plainly rather than making something up.

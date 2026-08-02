@@ -4,7 +4,7 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 
-function canManageGovernance(role: string, isBoardMember: boolean) {
+function canManageGovernance(role: string | null, isBoardMember: boolean) {
   return role === "BOARD_MEMBER" || isBoardMember
 }
 

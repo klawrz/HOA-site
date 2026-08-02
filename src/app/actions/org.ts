@@ -70,8 +70,8 @@ export async function updateMemberContactInfo(
   const session = await auth()
   if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") return { success: false }
 
-  const member = await db.user.findUnique({ where: { id: memberId } })
-  if (!member || member.orgId !== session.user.orgId) return { success: false }
+  const membership = await db.membership.findFirst({ where: { userId: memberId, orgId: session.user.orgId } })
+  if (!membership) return { success: false }
 
   await db.user.update({
     where: { id: memberId },
@@ -92,10 +92,13 @@ export async function setBoardMember(memberId: string, isBoardMember: boolean) {
   const session = await auth()
   if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") return { success: false }
 
-  const member = await db.user.findUnique({ where: { id: memberId } })
-  if (!member || member.orgId !== session.user.orgId) return { success: false }
+  const membership = await db.membership.findFirst({ where: { userId: memberId, orgId: session.user.orgId } })
+  if (!membership) return { success: false }
 
-  await db.user.update({ where: { id: memberId }, data: { isBoardMember } })
+  await db.membership.update({
+    where: { userId_orgId: { userId: memberId, orgId: session.user.orgId } },
+    data: { isBoardMember },
+  })
 
   revalidatePath("/dashboard/account/members")
   revalidatePath(`/dashboard/account/members/${memberId}`)

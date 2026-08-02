@@ -27,7 +27,7 @@ export default async function OwnerGovernancePage() {
   const now = new Date()
   const isBoardMember = session.user.isBoardMember
 
-  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts] = await Promise.all([
+  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts, orgMemberships] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: {
@@ -63,7 +63,9 @@ export default async function OwnerGovernancePage() {
       where: { orgId: session.user.orgId ?? undefined },
       orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
     }),
+    db.membership.findMany({ where: { orgId: session.user.orgId ?? undefined }, select: { userId: true, role: true } }),
   ])
+  const roleByUserId = new Map(orgMemberships.map((m) => [m.userId, m.role]))
 
   const reserveBalance = reserveTransactions.reduce(
     (s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount),
@@ -103,13 +105,13 @@ export default async function OwnerGovernancePage() {
               title: a.title,
               content: a.content,
               createdAt: a.createdAt,
-              author: { name: a.author.name, email: a.author.email, role: a.author.role },
+              author: { name: a.author.name, email: a.author.email, role: roleByUserId.get(a.authorId) ?? "OWNER" },
               comments: a.comments.map((c) => ({
                 id: c.id,
                 content: c.content,
                 createdAt: c.createdAt,
                 authorId: c.authorId,
-                author: { name: c.author.name, email: c.author.email, role: c.author.role },
+                author: { name: c.author.name, email: c.author.email, role: roleByUserId.get(c.authorId) ?? "OWNER" },
               })),
             }))}
             canManage={isBoardMember}

@@ -28,7 +28,7 @@ async function unitManagerCanManageOccupancy(userId: string, unitId: string) {
   return assignment?.grants.some((g) => g.area === "OCCUPANCY" && g.level === "MANAGE") ?? false
 }
 
-async function canManageOccupancy(role: string, userId: string, unitId: string) {
+async function canManageOccupancy(role: string | null, userId: string, unitId: string) {
   if (role === "OWNER") return !!(await requireCurrentOwner(unitId, userId))
   if (role === "UNIT_MANAGER") return unitManagerCanManageOccupancy(userId, unitId)
   return false

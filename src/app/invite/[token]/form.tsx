@@ -7,24 +7,26 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export function AcceptInviteForm({ token, email }: { token: string; email: string }) {
+export function AcceptInviteForm({
+  token,
+  email,
+  existingAccount,
+}: {
+  token: string
+  email: string
+  existingAccount: boolean
+}) {
   const router = useRouter()
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  async function accept(body: { name?: string; password?: string }) {
     setLoading(true)
     setError("")
-    const form = new FormData(e.currentTarget)
     const res = await fetch("/api/invite/accept", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token,
-        name: form.get("name"),
-        password: form.get("password"),
-      }),
+      body: JSON.stringify({ token, ...body }),
     })
     const json = await res.json()
     setLoading(false)
@@ -33,6 +35,39 @@ export function AcceptInviteForm({ token, email }: { token: string; email: strin
     } else {
       router.push("/login?registered=1")
     }
+  }
+
+  if (existingAccount) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Add this organization to your account</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1">
+            <Label>Email</Label>
+            <Input value={email} disabled />
+          </div>
+          <p className="text-sm text-gray-500">
+            You already have a HOPE account with this email. Accepting will add this
+            organization to it - sign in as usual afterward and pick it from the org list.
+          </p>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <Button onClick={() => accept({})} className="w-full" disabled={loading}>
+            {loading ? "Adding..." : "Accept invite"}
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    await accept({
+      name: form.get("name") as string,
+      password: form.get("password") as string,
+    })
   }
 
   return (

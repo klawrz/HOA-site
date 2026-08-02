@@ -12,7 +12,7 @@ export default async function AllTicketsPage() {
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const [tickets, contractors] = await Promise.all([
+  const [tickets, contractorMemberships] = await Promise.all([
     db.troubleTicket.findMany({
       include: {
         unit: true,
@@ -21,8 +21,9 @@ export default async function AllTicketsPage() {
       },
       orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
     }),
-    db.user.findMany({ where: { role: "CONTRACTOR" }, orderBy: { name: "asc" } }),
+    db.membership.findMany({ where: { role: "CONTRACTOR" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
   ])
+  const contractors = contractorMemberships.map((m) => m.user)
 
   return (
     <div className="space-y-6">

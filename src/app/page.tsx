@@ -2,10 +2,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import { Building2, Users, FileText, Wrench, Shield, MapPin, UserSquare2 } from "lucide-react"
+import { Building2, Users, FileText, Wrench, Shield } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { db } from "@/lib/db"
 
 const roles = [
   {
@@ -40,71 +39,43 @@ const roles = [
   },
 ]
 
-function addressLines(org: {
-  addressLine1: string | null
-  addressLine2: string | null
-  city: string | null
-  state: string | null
-  postalCode: string | null
-  country: string | null
-}) {
-  const line2 = [org.city, org.state, org.postalCode].filter(Boolean).join(", ")
-  return [org.addressLine1, org.addressLine2, line2, org.country].filter(Boolean)
-}
-
 export default async function HomePage() {
   const session = await auth()
   if (session) redirect("/dashboard")
-
-  const org = await db.organization.findFirst({
-    include: {
-      members: { where: { role: "BOARD_MEMBER" }, orderBy: { name: "asc" } },
-    },
-  })
-  const address = org ? addressLines(org) : []
-  const boardMembers = org?.members ?? []
 
   return (
     <div className="min-h-full flex flex-col">
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <Image
           src="/HOPE-logo.png"
-          alt="Sunrise HOA"
+          alt="HOPE"
           height={56}
           width={200}
           className="object-contain"
         />
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-4 py-2 rounded-full hover:bg-gray-100"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/register"
-            className="text-sm font-medium bg-gray-900 text-white px-5 py-2 rounded-full hover:bg-gray-700 transition-colors"
-          >
-            Register
-          </Link>
-        </div>
+        <Link
+          href="/login"
+          className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-4 py-2 rounded-full hover:bg-gray-100"
+        >
+          Sign In
+        </Link>
       </header>
 
       <main className="flex-1">
         <section className="relative h-[500px] flex items-center justify-center text-white text-center">
           <Image
             src="/sampaguita-hero.png"
-            alt="Sunrise HOA community"
+            alt="HOA community"
             fill
             className="object-cover"
             priority
           />
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 px-6 max-w-3xl mx-auto">
-            <h1 className="text-4xl font-bold mb-4">Welcome to Sunrise HOA</h1>
+            <h1 className="text-4xl font-bold mb-4">Welcome to HOPE</h1>
             <p className="text-xl text-gray-100 max-w-2xl mx-auto mb-8">
-              A unified portal for owners, renters, property managers, contractors,
-              and board members to manage community life.
+              HOA management for every community - a unified portal for owners, renters,
+              property managers, contractors, and board members to manage community life.
             </p>
             <Link
               href="/login"
@@ -114,37 +85,6 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
-
-        {(address.length > 0 || boardMembers.length > 0) && (
-          <section className="max-w-4xl mx-auto py-12 px-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {address.length > 0 && (
-                <div className="bg-white rounded-xl border p-6">
-                  <h2 className="font-semibold text-gray-800 flex items-center gap-2 mb-3">
-                    <MapPin className="h-4 w-4 text-gray-400" /> Property Address
-                  </h2>
-                  <div className="text-sm text-gray-600 space-y-0.5">
-                    {address.map((line, i) => (
-                      <p key={i}>{line}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {boardMembers.length > 0 && (
-                <div className="bg-white rounded-xl border p-6">
-                  <h2 className="font-semibold text-gray-800 flex items-center gap-2 mb-3">
-                    <UserSquare2 className="h-4 w-4 text-gray-400" /> Board of Directors
-                  </h2>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    {boardMembers.map((m) => (
-                      <li key={m.id}>{m.name ?? m.email}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
 
         <section className="max-w-5xl mx-auto py-16 px-6">
           <h2 className="text-2xl font-bold text-center mb-10 text-gray-800">

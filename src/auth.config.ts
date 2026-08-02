@@ -8,8 +8,9 @@ export const authConfig = {
       const isLoggedIn = !!auth?.user
       const isDashboard = nextUrl.pathname.startsWith("/dashboard")
       const isOnboarding = nextUrl.pathname.startsWith("/onboarding")
-      if (isDashboard || isOnboarding) return isLoggedIn
-      if (isLoggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/register")) {
+      const isPlatformAdmin = nextUrl.pathname.startsWith("/platform-admin")
+      if (isDashboard || isOnboarding || isPlatformAdmin) return isLoggedIn
+      if (isLoggedIn && nextUrl.pathname === "/login") {
         return Response.redirect(new URL("/dashboard", nextUrl))
       }
       return true

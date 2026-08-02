@@ -21,10 +21,12 @@ export default async function PMContractsPage() {
       })
     : []
 
-  const contractors = await db.user.findMany({
+  const contractorMemberships = await db.membership.findMany({
     where: { role: "CONTRACTOR" },
-    orderBy: { name: "asc" },
+    include: { user: true },
+    orderBy: { user: { name: "asc" } },
   })
+  const contractors = contractorMemberships.map((m) => m.user)
 
   const orgSections = await Promise.all(
     contractGrants.map(async (grant) => ({

@@ -97,10 +97,10 @@ enum Currency {
 }
 
 model Organization {
-  id                 String   @id @default(cuid())
+  id                 String  @id @default(cuid())
   name               String
-  slug               String   @unique
-  onboardingComplete Boolean  @default(false)
+  slug               String  @unique
+  onboardingComplete Boolean @default(false)
 
   // Property address, shown on the public property home page
   addressLine1 String?
@@ -110,32 +110,32 @@ model Organization {
   postalCode   String?
   country      String?
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Board-approved reserve savings goal (e.g. $100,000) - the running
   // balance itself is never stored here, it's always computed live from
   // ReserveTransaction so it can never drift into a stale "as of April 30"
   // manual snapshot, which was the exact failure this is meant to fix.
-  reserveTarget  Float?
-  reservePolicy  String? // funding/use policy in the Board's own words, e.g. when withdrawals are allowed
-  reserveHeldAt  String? // institution/account the reserve is actually held at, e.g. "Bank of America - Reserve Acct #1234"
+  reserveTarget Float?
+  reservePolicy String? // funding/use policy in the Board's own words, e.g. when withdrawals are allowed
+  reserveHeldAt String? // institution/account the reserve is actually held at, e.g. "Bank of America - Reserve Acct #1234"
 
   // Bank Information - part of the Governance "Key Information" tab. Wire/
   // e-transfer receiving details are ordinary business info HOAs already
   // hand out to paying owners (same as any invoice), so this is deliberately
   // free text rather than a rigid account-number field - the Board controls
   // exactly what's shared.
-  bankName                 String?
-  bankAccountName          String? // e.g. "Sunrise Heights HOA Operating Account"
-  bankSigningAuthority     String? // who is authorized to sign/approve on the account
-  bankPaymentInstructions  String? // how to pay dues / send funds - e-transfer, wire, etc.
+  bankName                String?
+  bankAccountName         String? // e.g. "Sunrise Heights HOA Operating Account"
+  bankSigningAuthority    String? // who is authorized to sign/approve on the account
+  bankPaymentInstructions String? // how to pay dues / send funds - e-transfer, wire, etc.
 
   // The currency all budget/actual figures are entered in. The other
   // currency (USD<->MXN, a fixed pair) is always a derived, computed
   // display using currentExchangeRate - never a second source of truth.
   // No external FX API - manually maintained by the Board/PM.
-  baseCurrency          Currency @default(USD)
+  baseCurrency          Currency  @default(USD)
   currentExchangeRate   Float? // MXN per 1 USD, by convention
   exchangeRateUpdatedAt DateTime?
 
@@ -146,22 +146,42 @@ model Organization {
   occupancyVisibilityPolicy String?
   rentalPoolGuidelines      String?
 
-  members   User[]
-  units     Unit[]
-  invites   Invite[]
-  meetings  Meeting[]
-  pmContracts    PMContract[]
-  pmAccessGrants PMAccessGrant[]
-  documents Document[]
-  contracts Contract[]
-  tickets   TroubleTicket[]
+  memberships         Membership[]
+  units               Unit[]
+  invites             Invite[]
+  meetings            Meeting[]
+  pmContracts         PMContract[]
+  pmAccessGrants      PMAccessGrant[]
+  documents           Document[]
+  contracts           Contract[]
+  tickets             TroubleTicket[]
   complianceDocuments ComplianceDocument[]
-  boardPositions BoardPosition[]
-  announcements Announcement[]
-  budgets Budget[]
-  assessments Assessment[]
+  boardPositions      BoardPosition[]
+  announcements       Announcement[]
+  budgets             Budget[]
+  assessments         Assessment[]
   reserveTransactions ReserveTransaction[]
-  keyContacts KeyContact[]
+  keyContacts         KeyContact[]
+}
+
+// A User's membership in one Organization, with a role and board-member
+// status scoped to that org specifically - the same login can be Account
+// Owner of one HOA and a plain Owner of another. This replaced a single
+// User.orgId/role/isBoardMember scalar set; session.user.{orgId,role,
+// isBoardMember} still exists and represents "the currently active
+// membership," just sourced from here instead of directly off User.
+model Membership {
+  id            String   @id @default(cuid())
+  userId        String
+  orgId         String
+  role          Role
+  isBoardMember Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
 }
 
 enum ReserveTransactionType {
@@ -225,8 +245,8 @@ model Announcement {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  org      Organization           @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  author   User                   @relation(fields: [authorId], references: [id])
+  org      Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  author   User                  @relation(fields: [authorId], references: [id])
   comments AnnouncementComment[]
   reads    AnnouncementRead[]
 }
@@ -323,24 +343,21 @@ model PasswordResetToken {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String              @id @default(cuid())
   name      String?
-  email     String   @unique
+  email     String              @unique
   password  String?
-  role      Role     @default(OWNER)
   phone     String?
   company   String?
   category  ContractorCategory? // service type, Contractor role only
-  orgId     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
 
-  // Independent of the primary role - lets an Owner (most commonly) also
-  // hold Board governance capability without a second account or a
-  // combined role enum value, since in practice Board members are usually
-  // elected from among the ownership. Set by the Account Owner. Does not
-  // affect users whose primary role is already BOARD_MEMBER.
-  isBoardMember Boolean @default(false)
+  // Platform-level operator flag - orthogonal to Role/Membership entirely.
+  // A platform admin isn't a member of any particular org; they provision
+  // new Organizations (see requirePlatformAdmin). Unrelated to isBoardMember
+  // on Membership, which is scoped per-org instead.
+  isPlatformAdmin Boolean @default(false)
 
   // Unit Manager directory profile - lets a registered Unit Manager promote
   // themselves to Owners browsing the directory, instead of being just a
@@ -351,59 +368,59 @@ model User {
   yearsExperience  Int?
   directoryVisible Boolean @default(true) // opt out to stay assignable but unlisted
 
-  org              Organization?      @relation(fields: [orgId], references: [id])
-  sentInvites      Invite[]           @relation("SentInvites")
-  ownedUnits       UnitOwnership[]
-  leases           Lease[]
-  assignedTickets  TicketAssignment[]
-  contracts        Contract[]
-  submittedTickets TroubleTicket[]    @relation("SubmittedBy")
-  ticketComments   TicketComment[]
-  pmMemberships    PMStaffMembership[]
-  createdPMCompanies PropertyManagementCompany[]
-  unitManagerAssignments UnitManagerAssignment[]
+  memberships                 Membership[]
+  sentInvites                 Invite[]                    @relation("SentInvites")
+  ownedUnits                  UnitOwnership[]
+  leases                      Lease[]
+  assignedTickets             TicketAssignment[]
+  contracts                   Contract[]
+  submittedTickets            TroubleTicket[]             @relation("SubmittedBy")
+  ticketComments              TicketComment[]
+  pmMemberships               PMStaffMembership[]
+  createdPMCompanies          PropertyManagementCompany[]
+  unitManagerAssignments      UnitManagerAssignment[]
   uploadedComplianceDocuments ComplianceDocument[]
-  createdOccupancyEntries OccupancyEntry[]
-  createdOccupancyShareLinks OccupancyShareLink[]
-  boardPositions BoardPosition[]
-  announcements Announcement[]
-  createdBudgets Budget[]
-  passwordResetTokens PasswordResetToken[]
-  createdAssessments Assessment[]
-  reserveTransactions ReserveTransaction[]
-  announcementComments AnnouncementComment[]
-  announcementReads AnnouncementRead[]
-  recordedRentPayments RentPayment[]
-  createdPMContracts  PMContract[] @relation("PMContractCreator")
-  approvedPMContracts PMContract[] @relation("PMContractApprover")
-  ownerExpenses OwnerExpense[]
+  createdOccupancyEntries     OccupancyEntry[]
+  createdOccupancyShareLinks  OccupancyShareLink[]
+  boardPositions              BoardPosition[]
+  announcements               Announcement[]
+  createdBudgets              Budget[]
+  passwordResetTokens         PasswordResetToken[]
+  createdAssessments          Assessment[]
+  reserveTransactions         ReserveTransaction[]
+  announcementComments        AnnouncementComment[]
+  announcementReads           AnnouncementRead[]
+  recordedRentPayments        RentPayment[]
+  createdPMContracts          PMContract[]                @relation("PMContractCreator")
+  approvedPMContracts         PMContract[]                @relation("PMContractApprover")
+  ownerExpenses               OwnerExpense[]
 }
 
 model Unit {
-  id          String     @id @default(cuid())
-  orgId       String
-  number      String
-  building    String?
-  floor       Int?
-  bedrooms    Int?
-  bathrooms   Float?
-  sqft        Int?
-  description String?
-  civicRoll   String?    // municipal civic/assessment roll number for this unit
-  status      UnitStatus @default(AVAILABLE)
-  selfManaged Boolean    @default(true) // Owner handles the unit themselves, no delegated Unit Manager
+  id                String     @id @default(cuid())
+  orgId             String
+  number            String
+  building          String?
+  floor             Int?
+  bedrooms          Int?
+  bathrooms         Float?
+  sqft              Int?
+  description       String?
+  civicRoll         String? // municipal civic/assessment roll number for this unit
+  status            UnitStatus @default(AVAILABLE)
+  selfManaged       Boolean    @default(true) // Owner handles the unit themselves, no delegated Unit Manager
   // Handed off to whoever currently needs to get in - the active Renter,
   // a delegated Unit Manager, Board/PM. Deliberately just two free-text
   // fields (not a rotation/expiry system) since a gate or door code is
   // usually a single current value the Owner updates when it changes.
-  accessCode      String?
-  accessCodeNotes String? // e.g. "gate code, changes quarterly" or "front door lockbox"
+  accessCode        String?
+  accessCodeNotes   String? // e.g. "gate code, changes quarterly" or "front door lockbox"
   // This unit's fixed share of common budget/dues, per the governing
   // documents - HOAs rarely split costs evenly across units. Null until
   // the Board/PM sets it; dues can't be estimated for a unit without one.
   allocationPercent Float?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
   addressLine1 String?
   addressLine2 String?
@@ -412,18 +429,18 @@ model Unit {
   postalCode   String?
   country      String?
 
-  org        Organization           @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  ownerships UnitOwnership[]
-  leases     Lease[]
-  tickets    TroubleTicket[]
-  invites    Invite[]
-  contacts   UnitContact[]
-  managers   UnitManagerAssignment[]
-  contracts  Contract[]
-  occupancyEntries OccupancyEntry[]
+  org                 Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  ownerships          UnitOwnership[]
+  leases              Lease[]
+  tickets             TroubleTicket[]
+  invites             Invite[]
+  contacts            UnitContact[]
+  managers            UnitManagerAssignment[]
+  contracts           Contract[]
+  occupancyEntries    OccupancyEntry[]
   occupancyShareLinks OccupancyShareLink[]
-  assessmentCharges AssessmentCharge[]
-  ownerExpenses OwnerExpense[]
+  assessmentCharges   AssessmentCharge[]
+  ownerExpenses       OwnerExpense[]
 
   @@unique([orgId, number])
 }
@@ -556,7 +573,7 @@ model Document {
 }
 
 model Meeting {
-  id        String     @id @default(cuid())
+  id        String   @id @default(cuid())
   orgId     String
   title     String
   date      DateTime
@@ -564,8 +581,8 @@ model Meeting {
   agenda    String?
   minutes   String?
   attendees String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   documents   Document[]
@@ -602,27 +619,27 @@ enum BillingPeriod {
 }
 
 model Contract {
-  id                 String        @id @default(cuid())
+  id                 String         @id @default(cuid())
   orgId              String
-  scope              ContractScope @default(PROPERTY)
+  scope              ContractScope  @default(PROPERTY)
   unitId             String?
-  type               ContractType  @default(PROJECT)
+  type               ContractType   @default(PROJECT)
   title              String
   contractorId       String
   startDate          DateTime
   endDate            DateTime?
-  reminderDaysBefore Int           @default(30)
+  reminderDaysBefore Int            @default(30)
   amount             Float?
   billingPeriod      BillingPeriod?
   description        String?
-  status             String        @default("ACTIVE")
+  status             String         @default("ACTIVE")
   fileUrl            String?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
-  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  unit       Unit?        @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  contractor User         @relation(fields: [contractorId], references: [id])
+  org             Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  unit            Unit?            @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  contractor      User             @relation(fields: [contractorId], references: [id])
   budgetLineItems BudgetLineItem[]
 }
 
@@ -683,29 +700,29 @@ enum BudgetType {
 }
 
 model Budget {
-  id          String       @id @default(cuid())
-  orgId       String
-  year        Int
-  version     String       @default("Draft") // e.g. "Proposed", "Revised", "Final"
-  type        BudgetType   @default(OPERATING)
-  status      BudgetStatus @default(DRAFT)
-  approvedAt  DateTime?
-  meetingId   String? // the AGM (or other meeting) where it was approved
+  id                   String       @id @default(cuid())
+  orgId                String
+  year                 Int
+  version              String       @default("Draft") // e.g. "Proposed", "Revised", "Final"
+  type                 BudgetType   @default(OPERATING)
+  status               BudgetStatus @default(DRAFT)
+  approvedAt           DateTime?
+  meetingId            String? // the AGM (or other meeting) where it was approved
   // Snapshot of Organization.currentExchangeRate at the moment this budget
   // was approved - frozen forever after, same lifecycle as approvedAt/
   // meetingId (set together in approveBudget, cleared together in
   // revertBudgetToDraft). Null for a still-DRAFT budget or one approved
   // before this feature existed.
   approvalExchangeRate Float?
-  notes       String?
-  createdById String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  notes                String?
+  createdById          String
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
-  org       Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  createdBy User             @relation(fields: [createdById], references: [id])
-  meeting   Meeting?         @relation(fields: [meetingId], references: [id])
-  lineItems BudgetLineItem[]
+  org         Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  meeting     Meeting?         @relation(fields: [meetingId], references: [id])
+  lineItems   BudgetLineItem[]
   assessments Assessment[]
 }
 
@@ -840,10 +857,10 @@ model PropertyManagementCompany {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy         User                      @relation(fields: [createdById], references: [id])
-  staff             PMStaffMembership[]
-  contracts         PMContract[]
-  emergencyContacts PMEmergencyContact[]
+  createdBy           User                 @relation(fields: [createdById], references: [id])
+  staff               PMStaffMembership[]
+  contracts           PMContract[]
+  emergencyContacts   PMEmergencyContact[]
   complianceDocuments ComplianceDocument[]
 }
 
@@ -906,10 +923,10 @@ enum PMContractStatus {
 }
 
 model PMContract {
-  id        String            @id @default(cuid())
+  id        String           @id @default(cuid())
   companyId String
   orgId     String
-  status    PMContractStatus  @default(ACTIVE)
+  status    PMContractStatus @default(ACTIVE)
   startDate DateTime
   endDate   DateTime?
 
@@ -922,7 +939,7 @@ model PMContract {
   terms            String?
   fileUrl          String?
 
-  createdById String
+  createdById  String
   approvedById String?
   approvedAt   DateTime?
   meetingId    String?
@@ -976,8 +993,8 @@ model UnitManagerAssignment {
   notes     String?
   createdAt DateTime @default(now())
 
-  unit   Unit                @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  user   User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit   Unit               @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  user   User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
   grants UnitManagerGrant[]
 
   @@unique([unitId, userId])
@@ -1119,9 +1136,9 @@ model ComplianceDocument {
   minutesFiled          Boolean?
   minutesFiledAt        DateTime?
 
-  uploadedById       String
-  createdAt          DateTime                   @default(now())
-  updatedAt          DateTime                   @updatedAt
+  uploadedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   org        Organization?              @relation(fields: [orgId], references: [id], onDelete: Cascade)
   company    PropertyManagementCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)

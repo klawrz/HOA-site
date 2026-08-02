@@ -20,17 +20,55 @@ async function main() {
   // --- Users ---
   const [accountOwner, owner1, owner2, owner3, renter1, renter2, manager, contractor1, contractor2, board] =
     await Promise.all([
-      db.user.upsert({ where: { email: "admin@sunrise.hoa" }, update: {}, create: { name: "Elena Torres", email: "admin@sunrise.hoa", password: await hash("password123"), role: "ACCOUNT_OWNER", orgId: org.id } }),
-      db.user.upsert({ where: { email: "owner@sunrise.hoa" }, update: {}, create: { name: "Margaret Chen", email: "owner@sunrise.hoa", password: await hash("password123"), role: "OWNER", orgId: org.id, phone: "555-201-0001" } }),
-      db.user.upsert({ where: { email: "owner2@sunrise.hoa" }, update: {}, create: { name: "David Okafor", email: "owner2@sunrise.hoa", password: await hash("password123"), role: "OWNER", orgId: org.id, phone: "555-201-0002" } }),
-      db.user.upsert({ where: { email: "owner3@sunrise.hoa" }, update: {}, create: { name: "Sandra Williams", email: "owner3@sunrise.hoa", password: await hash("password123"), role: "OWNER", orgId: org.id, phone: "555-201-0003" } }),
-      db.user.upsert({ where: { email: "renter@sunrise.hoa" }, update: {}, create: { name: "Carlos Rivera", email: "renter@sunrise.hoa", password: await hash("password123"), role: "RENTER", orgId: org.id, phone: "555-301-0001" } }),
-      db.user.upsert({ where: { email: "renter2@sunrise.hoa" }, update: {}, create: { name: "Priya Patel", email: "renter2@sunrise.hoa", password: await hash("password123"), role: "RENTER", orgId: org.id, phone: "555-301-0002" } }),
-      db.user.upsert({ where: { email: "manager@sunrise.hoa" }, update: {}, create: { name: "Jordan Kim", email: "manager@sunrise.hoa", password: await hash("password123"), role: "PROPERTY_MANAGER", orgId: org.id, phone: "555-100-0001" } }),
-      db.user.upsert({ where: { email: "contractor@sunrise.hoa" }, update: {}, create: { name: "Tony Marcello", email: "contractor@sunrise.hoa", password: await hash("password123"), role: "CONTRACTOR", orgId: org.id, phone: "555-400-0001", company: "Marcello Plumbing & HVAC" } }),
-      db.user.upsert({ where: { email: "contractor2@sunrise.hoa" }, update: {}, create: { name: "Lisa Park", email: "contractor2@sunrise.hoa", password: await hash("password123"), role: "CONTRACTOR", orgId: org.id, phone: "555-400-0002", company: "GreenLeaf Landscaping" } }),
-      db.user.upsert({ where: { email: "board@sunrise.hoa" }, update: {}, create: { name: "Robert Ashford", email: "board@sunrise.hoa", password: await hash("password123"), role: "BOARD_MEMBER", orgId: org.id, phone: "555-500-0001" } }),
+      db.user.upsert({ where: { email: "admin@sunrise.hoa" }, update: {}, create: { name: "Elena Torres", email: "admin@sunrise.hoa", password: await hash("password123") } }),
+      db.user.upsert({ where: { email: "owner@sunrise.hoa" }, update: {}, create: { name: "Margaret Chen", email: "owner@sunrise.hoa", password: await hash("password123"), phone: "555-201-0001" } }),
+      db.user.upsert({ where: { email: "owner2@sunrise.hoa" }, update: {}, create: { name: "David Okafor", email: "owner2@sunrise.hoa", password: await hash("password123"), phone: "555-201-0002" } }),
+      db.user.upsert({ where: { email: "owner3@sunrise.hoa" }, update: {}, create: { name: "Sandra Williams", email: "owner3@sunrise.hoa", password: await hash("password123"), phone: "555-201-0003" } }),
+      db.user.upsert({ where: { email: "renter@sunrise.hoa" }, update: {}, create: { name: "Carlos Rivera", email: "renter@sunrise.hoa", password: await hash("password123"), phone: "555-301-0001" } }),
+      db.user.upsert({ where: { email: "renter2@sunrise.hoa" }, update: {}, create: { name: "Priya Patel", email: "renter2@sunrise.hoa", password: await hash("password123"), phone: "555-301-0002" } }),
+      db.user.upsert({ where: { email: "manager@sunrise.hoa" }, update: {}, create: { name: "Jordan Kim", email: "manager@sunrise.hoa", password: await hash("password123"), phone: "555-100-0001" } }),
+      db.user.upsert({ where: { email: "contractor@sunrise.hoa" }, update: {}, create: { name: "Tony Marcello", email: "contractor@sunrise.hoa", password: await hash("password123"), phone: "555-400-0001", company: "Marcello Plumbing & HVAC" } }),
+      db.user.upsert({ where: { email: "contractor2@sunrise.hoa" }, update: {}, create: { name: "Lisa Park", email: "contractor2@sunrise.hoa", password: await hash("password123"), phone: "555-400-0002", company: "GreenLeaf Landscaping" } }),
+      db.user.upsert({ where: { email: "board@sunrise.hoa" }, update: {}, create: { name: "Robert Ashford", email: "board@sunrise.hoa", password: await hash("password123"), phone: "555-500-0001" } }),
     ])
+
+  async function ensureMembership(userId: string, orgId: string, role: string, isBoardMember = false) {
+    await db.membership.upsert({
+      where: { userId_orgId: { userId, orgId } },
+      update: {},
+      create: { userId, orgId, role: role as import("../src/generated/prisma").Role, isBoardMember },
+    })
+  }
+
+  await Promise.all([
+    ensureMembership(accountOwner.id, org.id, "ACCOUNT_OWNER"),
+    ensureMembership(owner1.id, org.id, "OWNER"),
+    ensureMembership(owner2.id, org.id, "OWNER"),
+    ensureMembership(owner3.id, org.id, "OWNER"),
+    ensureMembership(renter1.id, org.id, "RENTER"),
+    ensureMembership(renter2.id, org.id, "RENTER"),
+    ensureMembership(manager.id, org.id, "PROPERTY_MANAGER"),
+    ensureMembership(contractor1.id, org.id, "CONTRACTOR"),
+    ensureMembership(contractor2.id, org.id, "CONTRACTOR"),
+    ensureMembership(board.id, org.id, "BOARD_MEMBER"),
+  ])
+
+  // --- Platform admin, second org, and a cross-org membership ---
+  // Exercises the multi-org login picker and account-menu org switcher:
+  // owner@sunrise.hoa is OWNER at Sunrise and also BOARD_MEMBER at Willow
+  // Creek, so logging in with that email naturally shows the org picker.
+  await db.user.upsert({
+    where: { email: "platformadmin@hope.app" },
+    update: {},
+    create: { name: "HOPE Platform Admin", email: "platformadmin@hope.app", password: await hash("password123"), isPlatformAdmin: true },
+  })
+
+  const org2 = await db.organization.upsert({
+    where: { slug: "willow-creek-hoa-demo" },
+    update: {},
+    create: { name: "Willow Creek HOA", slug: "willow-creek-hoa-demo", onboardingComplete: true },
+  })
+  await ensureMembership(owner1.id, org2.id, "BOARD_MEMBER")
 
   // --- Units ---
   const units = await Promise.all([
@@ -108,6 +146,8 @@ async function main() {
   console.log("  Property Manager: manager@sunrise.hoa")
   console.log("  Contractor:       contractor@sunrise.hoa")
   console.log("  Board Member:     board@sunrise.hoa")
+  console.log("  Platform Admin:   platformadmin@hope.app")
+  console.log("  Multi-org (2 orgs): owner@sunrise.hoa")
 }
 
 main().catch(console.error).finally(() => db.$disconnect())

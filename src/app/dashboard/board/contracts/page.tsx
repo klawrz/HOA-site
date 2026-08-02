@@ -14,10 +14,12 @@ export default async function ContractsPage() {
     orderBy: { createdAt: "desc" },
   })
 
-  const contractors = await db.user.findMany({
+  const contractorMemberships = await db.membership.findMany({
     where: { role: "CONTRACTOR" },
-    orderBy: { name: "asc" },
+    include: { user: true },
+    orderBy: { user: { name: "asc" } },
   })
+  const contractors = contractorMemberships.map((m) => m.user)
 
   const totalValue = contracts
     .filter((c) => c.status === "ACTIVE" && c.amount)

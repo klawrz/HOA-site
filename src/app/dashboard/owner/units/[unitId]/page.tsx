@@ -55,22 +55,26 @@ export default async function UnitDetailPage({
   const { unit } = ownership
   const activeLease = unit.leases[0]
 
-  const [contractors, org] = await Promise.all([
-    db.user.findMany({
+  const [contractorMemberships, org] = await Promise.all([
+    db.membership.findMany({
       where: { role: "CONTRACTOR" },
-      orderBy: { name: "asc" },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } },
     }),
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
   ])
+  const contractors = contractorMemberships.map((m) => m.user)
 
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
   // opted into directoryVisible is visible here so other Owners can pick
   // them instead of typing an email blind.
-  const unitManagerDirectory = await db.user.findMany({
-    where: { role: "UNIT_MANAGER", directoryVisible: true },
-    orderBy: { name: "asc" },
+  const unitManagerMemberships = await db.membership.findMany({
+    where: { role: "UNIT_MANAGER", user: { directoryVisible: true } },
+    include: { user: true },
+    orderBy: { user: { name: "asc" } },
   })
+  const unitManagerDirectory = unitManagerMemberships.map((m) => m.user)
 
   return (
     <div className="max-w-2xl space-y-4">

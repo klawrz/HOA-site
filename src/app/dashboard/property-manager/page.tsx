@@ -25,8 +25,8 @@ export default async function PropertyManagerDashboard() {
     db.unit.count({ where: { status: "AVAILABLE" } }),
     db.unit.count({ where: { status: "RENTED" } }),
     db.troubleTicket.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] } } }),
-    db.user.count({ where: { role: "OWNER" } }),
-    db.user.count({ where: { role: "CONTRACTOR" } }),
+    db.membership.count({ where: { role: "OWNER" } }),
+    db.membership.count({ where: { role: "CONTRACTOR" } }),
     session.user.orgId ? getAttentionItems(session.user.orgId, "/dashboard/property-manager") : Promise.resolve([]),
   ])
 

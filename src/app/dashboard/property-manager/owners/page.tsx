@@ -8,19 +8,24 @@ export default async function OwnersDirectoryPage() {
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const owners = await db.user.findMany({
+  const ownerMemberships = await db.membership.findMany({
     where: { role: "OWNER" },
     include: {
-      ownedUnits: {
+      user: {
         include: {
-          unit: {
-            include: { leases: { where: { isActive: true } } },
+          ownedUnits: {
+            include: {
+              unit: {
+                include: { leases: { where: { isActive: true } } },
+              },
+            },
           },
         },
       },
     },
-    orderBy: { name: "asc" },
+    orderBy: { user: { name: "asc" } },
   })
+  const owners = ownerMemberships.map((m) => m.user)
 
   const policyColor: Record<RentalPolicy, string> = {
     ANYONE: "bg-green-100 text-green-800",

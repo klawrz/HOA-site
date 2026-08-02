@@ -35,7 +35,7 @@ async function unitManagerCanManageGuests(userId: string, unitId: string) {
 // its current Owner, a Unit Manager the Owner delegated GUESTS access to,
 // or the Board/PM (who may need to step in, e.g. a non-responsive Owner).
 async function canArrangeRental(
-  role: string,
+  role: string | null,
   userId: string,
   unitId: string,
   isBoardMember: boolean

@@ -21,7 +21,7 @@ function revalidateTicketPaths() {
 // Contractors fulfill requests, they don't originate them. Common-area
 // requests are a stakeholder concern (owner/board/management), not a
 // renter one.
-function canCreateTicket(role: Role, scope: TicketScope) {
+function canCreateTicket(role: Role | null, scope: TicketScope) {
   if (role === "CONTRACTOR") return false
   if (scope === "COMMON_AREA") {
     return role === "OWNER" || role === "BOARD_MEMBER" || role === "PROPERTY_MANAGER"
@@ -34,7 +34,7 @@ function canCreateTicket(role: Role, scope: TicketScope) {
 // authority is scoped to common-property requests only. Unit Managers
 // never get assign/prioritize authority - same limited scope as an
 // Owner or Renter submitting their own ticket.
-function canManageTicket(role: Role, scope: TicketScope) {
+function canManageTicket(role: Role | null, scope: TicketScope) {
   if (role === "PROPERTY_MANAGER") return true
   if (role === "BOARD_MEMBER" && scope === "COMMON_AREA") return true
   return false

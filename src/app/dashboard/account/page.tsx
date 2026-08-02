@@ -16,7 +16,7 @@ export default async function AccountDashboardPage() {
     where: { id: session.user.orgId },
     include: {
       units: true,
-      members: { where: { role: { not: "ACCOUNT_OWNER" } } },
+      memberships: { where: { role: { not: "ACCOUNT_OWNER" } } },
       invites: { orderBy: { createdAt: "desc" } },
     },
   })
@@ -53,7 +53,7 @@ export default async function AccountDashboardPage() {
         </Link>
         <div className="bg-white border rounded-xl p-5">
           <Users className="h-5 w-5 text-green-600 mb-3" />
-          <p className="text-2xl font-bold">{org.members.length}</p>
+          <p className="text-2xl font-bold">{org.memberships.length}</p>
           <p className="text-sm text-gray-500">Members</p>
         </div>
         <div className="bg-white border rounded-xl p-5">

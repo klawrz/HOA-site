@@ -24,8 +24,8 @@ export async function createBoardPosition(data: {
   if (!title) return { success: false, error: "Title required" }
 
   if (data.userId) {
-    const member = await db.user.findUnique({ where: { id: data.userId } })
-    if (!member || member.orgId !== session.user.orgId) return { success: false, error: "Invalid member" }
+    const member = await db.membership.findFirst({ where: { userId: data.userId, orgId: session.user.orgId } })
+    if (!member) return { success: false, error: "Invalid member" }
   }
 
   await db.boardPosition.create({
@@ -42,7 +42,10 @@ export async function createBoardPosition(data: {
   // One-time convenience default when a seat is filled - not tied to the
   // term afterward, so removing/ending the term later doesn't revoke it.
   if (data.userId) {
-    await db.user.update({ where: { id: data.userId }, data: { isBoardMember: true } })
+    await db.membership.update({
+      where: { userId_orgId: { userId: data.userId, orgId: session.user.orgId } },
+      data: { isBoardMember: true },
+    })
   }
 
   revalidateBoardPaths()
@@ -63,8 +66,8 @@ export async function updateBoardPosition(
   if (!title) return { success: false, error: "Title required" }
 
   if (data.userId) {
-    const member = await db.user.findUnique({ where: { id: data.userId } })
-    if (!member || member.orgId !== session.user.orgId) return { success: false, error: "Invalid member" }
+    const member = await db.membership.findFirst({ where: { userId: data.userId, orgId: session.user.orgId } })
+    if (!member) return { success: false, error: "Invalid member" }
   }
 
   await db.boardPosition.update({
@@ -79,7 +82,10 @@ export async function updateBoardPosition(
   })
 
   if (data.userId) {
-    await db.user.update({ where: { id: data.userId }, data: { isBoardMember: true } })
+    await db.membership.update({
+      where: { userId_orgId: { userId: data.userId, orgId: session.user.orgId } },
+      data: { isBoardMember: true },
+    })
   }
 
   revalidateBoardPaths()

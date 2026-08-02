@@ -7,13 +7,13 @@ export default async function AccountMembersPage() {
   const session = await auth()
   if (!session?.user.orgId) redirect("/login")
 
-  const members = await db.user.findMany({
+  const memberships = await db.membership.findMany({
     where: { orgId: session.user.orgId },
-    include: { ownedUnits: { where: { isCurrent: true }, include: { unit: true } } },
+    include: { user: { include: { ownedUnits: { where: { isCurrent: true }, include: { unit: true } } } } },
   })
 
-  const sorted = [...members].sort((a, b) =>
-    (a.name ?? a.email).localeCompare(b.name ?? b.email)
+  const sorted = [...memberships].sort((a, b) =>
+    (a.user.name ?? a.user.email).localeCompare(b.user.name ?? b.user.email)
   )
 
   return (
@@ -21,17 +21,17 @@ export default async function AccountMembersPage() {
       <div>
         <h1 className="text-2xl font-bold">Members</h1>
         <p className="text-gray-500 text-sm">
-          {members.length} member{members.length !== 1 ? "s" : ""} in your organization.
+          {memberships.length} member{memberships.length !== 1 ? "s" : ""} in your organization.
         </p>
       </div>
 
       <MembersList
         members={sorted.map((m) => ({
-          id: m.id,
-          name: m.name,
-          email: m.email,
+          id: m.user.id,
+          name: m.user.name,
+          email: m.user.email,
           role: m.role,
-          units: m.ownedUnits.map((o) => o.unit.number),
+          units: m.user.ownedUnits.map((o) => o.unit.number),
         }))}
       />
     </div>

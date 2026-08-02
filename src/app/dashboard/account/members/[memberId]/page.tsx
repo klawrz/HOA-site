@@ -37,15 +37,20 @@ export default async function MemberDetailPage({
   const session = await auth()
   if (!session?.user.orgId) redirect("/login")
 
-  const member = await db.user.findUnique({
-    where: { id: memberId },
+  const membership = await db.membership.findFirst({
+    where: { userId: memberId, orgId: session.user.orgId },
     include: {
-      ownedUnits: { where: { isCurrent: true }, include: { unit: true } },
-      leases: { include: { unit: true } },
+      user: {
+        include: {
+          ownedUnits: { where: { isCurrent: true }, include: { unit: true } },
+          leases: { include: { unit: true } },
+        },
+      },
     },
   })
 
-  if (!member || member.orgId !== session.user.orgId) notFound()
+  if (!membership) notFound()
+  const member = { ...membership.user, role: membership.role, isBoardMember: membership.isBoardMember }
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">

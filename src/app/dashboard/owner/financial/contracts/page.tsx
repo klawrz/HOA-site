@@ -8,7 +8,7 @@ export default async function OwnerContractsPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const [ownerships, contractors] = await Promise.all([
+  const [ownerships, contractorMemberships] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -17,8 +17,9 @@ export default async function OwnerContractsPage() {
         },
       },
     }),
-    db.user.findMany({ where: { role: "CONTRACTOR" }, orderBy: { name: "asc" } }),
+    db.membership.findMany({ where: { role: "CONTRACTOR" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
   ])
+  const contractors = contractorMemberships.map((m) => m.user)
 
   return (
     <div className="space-y-6">

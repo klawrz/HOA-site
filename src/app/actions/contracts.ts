@@ -46,7 +46,7 @@ function readContractFormData(formData: FormData) {
 // or PM staff holding a MANAGE grant on the CONTRACTS area for that org -
 // mirrors the DOCUMENTS access-grant pattern used for compliance records.
 async function canManagePropertyContracts(
-  role: string,
+  role: string | null,
   userId: string,
   orgId: string,
   sessionOrgId: string | null | undefined

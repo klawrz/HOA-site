@@ -8,17 +8,19 @@ export default async function AccountBoardPage() {
   const session = await auth()
   if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") redirect("/dashboard")
 
-  const [positions, members] = await Promise.all([
+  const [positions, memberMemberships] = await Promise.all([
     db.boardPosition.findMany({
       where: { orgId: session.user.orgId },
       include: { user: true },
       orderBy: { title: "asc" },
     }),
-    db.user.findMany({
+    db.membership.findMany({
       where: { orgId: session.user.orgId, role: { not: "ACCOUNT_OWNER" } },
-      orderBy: { name: "asc" },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } },
     }),
   ])
+  const members = memberMemberships.map((m) => m.user)
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

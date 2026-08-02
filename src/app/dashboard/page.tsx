@@ -14,5 +14,5 @@ const roleRedirect: Record<string, string> = {
 export default async function DashboardIndexPage() {
   const session = await auth()
   if (!session) redirect("/login")
-  redirect(roleRedirect[session.user.role] ?? "/dashboard/owner")
+  redirect(roleRedirect[session.user.role ?? ""] ?? "/dashboard/owner")
 }

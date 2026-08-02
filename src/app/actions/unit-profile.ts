@@ -68,7 +68,8 @@ export async function assignUnitManager(unitId: string, userEmail: string) {
   if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
 
   const user = await db.user.findUnique({ where: { email: userEmail } })
-  if (!user || user.role !== "UNIT_MANAGER") {
+  const isUnitManager = user && (await db.membership.findFirst({ where: { userId: user.id, role: "UNIT_MANAGER" } }))
+  if (!user || !isUnitManager) {
     return { success: false, error: "No Unit Manager account found with that email" }
   }
 

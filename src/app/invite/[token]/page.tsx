@@ -15,6 +15,8 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     notFound()
   }
 
+  const existingAccount = !!(await db.user.findUnique({ where: { email: invite.email }, select: { id: true } }))
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 py-10">
       <div className="w-full max-w-md space-y-6">
@@ -35,7 +37,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
             </div>
           )}
         </div>
-        <AcceptInviteForm token={token} email={invite.email} />
+        <AcceptInviteForm token={token} email={invite.email} existingAccount={existingAccount} />
       </div>
     </div>
   )

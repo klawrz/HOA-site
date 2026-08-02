@@ -7,16 +7,21 @@ export default async function BoardContractorsPage() {
   const session = await auth()
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
-  const contractors = await db.user.findMany({
+  const memberships = await db.membership.findMany({
     where: { role: "CONTRACTOR" },
     include: {
-      assignedTickets: {
-        include: { ticket: { select: { status: true, title: true, id: true } } },
+      user: {
+        include: {
+          assignedTickets: {
+            include: { ticket: { select: { status: true, title: true, id: true } } },
+          },
+          contracts: { orderBy: { createdAt: "desc" }, take: 2 },
+        },
       },
-      contracts: { orderBy: { createdAt: "desc" }, take: 2 },
     },
-    orderBy: { name: "asc" },
+    orderBy: { user: { name: "asc" } },
   })
+  const contractors = memberships.map((m) => m.user)
 
   return (
     <div className="space-y-6">
