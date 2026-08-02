@@ -146,6 +146,10 @@ model Organization {
   occupancyVisibilityPolicy String?
   rentalPoolGuidelines      String?
 
+  // What to call a unit throughout the app - "Villa", "Apt", "Condo", etc.
+  // Free text, defaults to the generic "Unit" so existing orgs see no change.
+  unitLabel String @default("Unit")
+
   memberships         Membership[]
   units               Unit[]
   invites             Invite[]
@@ -421,13 +425,6 @@ model Unit {
   allocationPercent Float?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
-
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  postalCode   String?
-  country      String?
 
   org                 Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
   ownerships          UnitOwnership[]

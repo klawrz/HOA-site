@@ -25,7 +25,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           <p className="text-gray-500 mt-1">
             Join <strong>{invite.org.name}</strong> as a{" "}
             <strong>{invite.role.replace(/_/g, " ").toLowerCase()}</strong>
-            {invite.unit ? ` for Unit ${invite.unit.number}` : ""}.
+            {invite.unit ? ` for ${invite.org.unitLabel} ${invite.unit.number}` : ""}.
           </p>
           {invite.role === "RENTER" && invite.monthlyRent != null && (
             <div className="mt-3 text-sm bg-white border rounded-lg px-3 py-2 text-left">

@@ -4,12 +4,13 @@ import Link from "next/link"
 import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { ExpenseLogPanel } from "@/components/owner-expenses/expense-log-panel"
+import { getUnitLabel } from "@/lib/unit-label"
 
 export default async function OwnerExpensesPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const [expenses, ownerships] = await Promise.all([
+  const [expenses, ownerships, unitLabel] = await Promise.all([
     db.ownerExpense.findMany({
       where: { ownerId: session.user.id },
       include: { unit: true },
@@ -19,6 +20,7 @@ export default async function OwnerExpensesPage() {
       where: { ownerId: session.user.id, isCurrent: true },
       include: { unit: true },
     }),
+    getUnitLabel(session.user.orgId),
   ])
 
   return (
@@ -39,6 +41,7 @@ export default async function OwnerExpensesPage() {
       <ExpenseLogPanel
         expenses={expenses}
         units={ownerships.map((o) => ({ id: o.unit.id, number: o.unit.number, building: o.unit.building }))}
+        unitLabel={unitLabel}
       />
     </div>
   )

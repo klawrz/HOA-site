@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, TrendingDown, ChevronRight, Receipt } from "lucide-react"
 import { billingPeriodLabel } from "@/lib/contract-styles"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 // Only meaningful for a fair "per month" comparison across contracts billed
 // on different cadences - not a substitute for the contract's own terms.
@@ -18,7 +19,7 @@ export default async function OwnerFinancialPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const [ownerships, latestApprovedBudget] = await Promise.all([
+  const [ownerships, latestApprovedBudget, unitLabel] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -37,6 +38,7 @@ export default async function OwnerFinancialPage() {
           orderBy: { year: "desc" },
         })
       : Promise.resolve(null),
+    getUnitLabel(session.user.orgId),
   ])
 
   const totalApprovedBudget = latestApprovedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
@@ -92,8 +94,7 @@ export default async function OwnerFinancialPage() {
                 <div key={o.unit.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                   <div>
                     <p className="text-sm font-medium">
-                      Unit {o.unit.number}
-                      {o.unit.building && ` — Building ${o.unit.building}`}
+                      {unitDisplayName(unitLabel, o.unit.number, o.unit.building)}
                     </p>
                     {lease ? (
                       <p className="text-xs text-gray-500 mt-0.5">
@@ -158,8 +159,7 @@ export default async function OwnerFinancialPage() {
                 <div key={`dues-${o.unit.id}`} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                   <div>
                     <p className="text-sm font-medium">
-                      HOA Dues — Unit {o.unit.number}
-                      {o.unit.building && ` — Building ${o.unit.building}`}
+                      HOA Dues — {unitDisplayName(unitLabel, o.unit.number, o.unit.building)}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {estimatedDues != null
@@ -183,7 +183,7 @@ export default async function OwnerFinancialPage() {
                   <div>
                     <p className="text-sm font-medium">{c.title}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Unit {c.unit.number} · {c.contractor.name ?? c.contractor.email}
+                      {unitDisplayName(unitLabel, c.unit.number)} · {c.contractor.name ?? c.contractor.email}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-red-700">
@@ -199,7 +199,7 @@ export default async function OwnerFinancialPage() {
                 <div>
                   <p className="text-sm font-medium">{c.title}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Unit {c.unit.number} · {c.contractor.name ?? c.contractor.email} · one-time
+                    {unitDisplayName(unitLabel, c.unit.number)} · {c.contractor.name ?? c.contractor.email} · one-time
                   </p>
                 </div>
                 <p className="text-sm font-semibold text-red-700">-${c.amount!.toLocaleString()}</p>

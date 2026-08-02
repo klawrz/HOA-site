@@ -63,6 +63,7 @@ export default async function PlatformAdminOrgDetailPage({
 
       <OrgInvitePanel
         orgId={org.id}
+        unitLabel={org.unitLabel}
         units={org.units}
         invites={org.invites.map((i) => ({
           id: i.id,

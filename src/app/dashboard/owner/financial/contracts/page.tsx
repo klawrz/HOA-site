@@ -3,12 +3,13 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ContractList } from "@/components/contracts/contract-list"
 import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function OwnerContractsPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const [ownerships, contractorMemberships] = await Promise.all([
+  const [ownerships, contractorMemberships, unitLabel] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -18,6 +19,7 @@ export default async function OwnerContractsPage() {
       },
     }),
     db.membership.findMany({ where: { role: "CONTRACTOR" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
+    getUnitLabel(session.user.orgId),
   ])
   const contractors = contractorMemberships.map((m) => m.user)
 
@@ -32,8 +34,7 @@ export default async function OwnerContractsPage() {
         <div key={o.unit.id} className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-700">
-              Unit {o.unit.number}
-              {o.unit.building && ` — Building ${o.unit.building}`}
+              {unitDisplayName(unitLabel, o.unit.number, o.unit.building)}
             </h2>
             <NewContractDialog scope="unit" unitId={o.unit.id} contractors={contractors} />
           </div>

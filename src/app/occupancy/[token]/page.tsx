@@ -20,6 +20,7 @@ export default async function SharedOccupancyPage({
     include: {
       unit: {
         include: {
+          org: { select: { unitLabel: true } },
           occupancyEntries: { orderBy: { startDate: "asc" } },
           leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
         },
@@ -38,7 +39,7 @@ export default async function SharedOccupancyPage({
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
             <CalendarDays className="h-5 w-5" />
-            Unit {unit.number}
+            {unit.org.unitLabel} {unit.number}
             {unit.building && ` — Building ${unit.building}`}
           </h1>
           <p className="text-gray-500 text-sm mt-1">Shared with {link.label} - occupancy calendar, read-only.</p>

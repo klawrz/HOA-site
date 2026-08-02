@@ -5,18 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Home, Users } from "lucide-react"
 import { TodayOccupancy } from "@/components/occupancy/today-occupancy"
 import { RentalPoolToggleList } from "./rental-pool-toggle-list"
+import { getUnitLabel } from "@/lib/unit-label"
 
 export default async function RentalPoolPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const [org, ownerships] = await Promise.all([
+  const [org, ownerships, unitLabel] = await Promise.all([
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: { unit: true },
       orderBy: { unit: { number: "asc" } },
     }),
+    getUnitLabel(session.user.orgId),
   ])
 
   const isMemberAnywhere = ownerships.some((o) => o.rentalPoolMember)
@@ -76,6 +78,7 @@ export default async function RentalPoolPage() {
             <p className="text-sm text-gray-400">No units on file yet.</p>
           ) : (
             <RentalPoolToggleList
+              unitLabel={unitLabel}
               units={ownerships.map((o) => ({
                 ownershipId: o.id,
                 number: o.unit.number,
@@ -97,6 +100,7 @@ export default async function RentalPoolPage() {
           </CardHeader>
           <CardContent>
             <TodayOccupancy
+              unitLabel={unitLabel}
               units={poolUnits.map((o) => ({
                 id: o.unit.id,
                 number: o.unit.number,

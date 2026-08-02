@@ -21,12 +21,14 @@ export function OnboardingWizard({
   invites,
   step,
   baseUrl,
+  unitLabel,
 }: {
   org: { id: string; name: string }
   units: Unit[]
   invites: Invite[]
   step: number
   baseUrl: string
+  unitLabel: string
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -125,7 +127,7 @@ export function OnboardingWizard({
           <form onSubmit={handleAddUnit} className="bg-white border rounded-xl p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1 col-span-2 sm:col-span-1">
-                <Label>Unit Number *</Label>
+                <Label>{unitLabel} Number *</Label>
                 <Input name="number" placeholder="e.g. 1A, 101, B2" required />
               </div>
               <div className="space-y-1 col-span-2 sm:col-span-1">
@@ -152,7 +154,7 @@ export function OnboardingWizard({
               {units.map((u) => (
                 <div key={u.id} className="flex items-center justify-between px-4 py-3">
                   <div>
-                    <span className="font-medium">Unit {u.number}</span>
+                    <span className="font-medium">{unitLabel} {u.number}</span>
                     {u.building && <span className="text-sm text-gray-500 ml-2">{u.building}</span>}
                     {u.bedrooms && <span className="text-sm text-gray-400 ml-2">· {u.bedrooms}bd</span>}
                   </div>
@@ -214,12 +216,12 @@ export function OnboardingWizard({
               </div>
               {(unitRole === "OWNER" || unitRole === "RENTER") && (
                 <div className="space-y-1">
-                  <Label>Assign to Unit</Label>
+                  <Label>Assign to {unitLabel}</Label>
                   <Select name="unitId">
-                    <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={`Select ${unitLabel.toLowerCase()}`} /></SelectTrigger>
                     <SelectContent>
                       {units.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>Unit {u.number}</SelectItem>
+                        <SelectItem key={u.id} value={u.id}>{unitLabel} {u.number}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -275,7 +277,7 @@ export function OnboardingWizard({
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">You&apos;re all set!</h2>
             <p className="text-gray-500">
-              {org.name} is configured with {units.length} unit{units.length !== 1 ? "s" : ""} and{" "}
+              {org.name} is configured with {units.length} {unitLabel.toLowerCase()}{units.length !== 1 ? "s" : ""} and{" "}
               {invites.length} invite{invites.length !== 1 ? "s" : ""} sent.
             </p>
           </div>

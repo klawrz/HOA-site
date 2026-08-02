@@ -11,7 +11,7 @@ interface UnitRow {
   member: boolean
 }
 
-export function RentalPoolToggleList({ units }: { units: UnitRow[] }) {
+export function RentalPoolToggleList({ units, unitLabel }: { units: UnitRow[]; unitLabel: string }) {
   const [state, setState] = useState<Record<string, boolean>>(
     Object.fromEntries(units.map((u) => [u.ownershipId, u.member]))
   )
@@ -36,7 +36,7 @@ export function RentalPoolToggleList({ units }: { units: UnitRow[] }) {
           className="flex items-center justify-between gap-3 bg-gray-50 rounded-lg px-3 py-2 text-sm cursor-pointer"
         >
           <span>
-            Unit {u.number}
+            {unitLabel} {u.number}
             {u.building && ` — Building ${u.building}`}
           </span>
           <input

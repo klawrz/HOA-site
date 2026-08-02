@@ -3,28 +3,32 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RentalPolicy } from "@/generated/prisma"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function OwnersDirectoryPage() {
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const ownerMemberships = await db.membership.findMany({
-    where: { role: "OWNER" },
-    include: {
-      user: {
-        include: {
-          ownedUnits: {
-            include: {
-              unit: {
-                include: { leases: { where: { isActive: true } } },
+  const [ownerMemberships, unitLabel] = await Promise.all([
+    db.membership.findMany({
+      where: { role: "OWNER" },
+      include: {
+        user: {
+          include: {
+            ownedUnits: {
+              include: {
+                unit: {
+                  include: { leases: { where: { isActive: true } } },
+                },
               },
             },
           },
         },
       },
-    },
-    orderBy: { user: { name: "asc" } },
-  })
+      orderBy: { user: { name: "asc" } },
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
   const owners = ownerMemberships.map((m) => m.user)
 
   const policyColor: Record<RentalPolicy, string> = {
@@ -75,7 +79,7 @@ export default async function OwnersDirectoryPage() {
                         key={ou.id}
                         className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5 border text-sm"
                       >
-                        <span className="font-semibold">Unit {ou.unit.number}</span>
+                        <span className="font-semibold">{unitDisplayName(unitLabel, ou.unit.number)}</span>
                         <span
                           className={`text-xs px-1.5 py-0.5 rounded-full ${policyColor[ou.rentalPolicy]}`}
                         >

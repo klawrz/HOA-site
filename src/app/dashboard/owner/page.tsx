@@ -21,6 +21,7 @@ import { RentalPolicyForm } from "./rental-policy-form"
 import { TodayOccupancy } from "@/components/occupancy/today-occupancy"
 import { priorityColor as sharedPriorityColor, statusColor as sharedStatusColor } from "@/lib/ticket-styles"
 import { formatDateTime, cn } from "@/lib/utils"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 function greeting() {
   const hour = new Date().getHours()
@@ -59,7 +60,7 @@ export default async function OwnerDashboard() {
 
   const now = new Date()
 
-  const [ownerships, latestMeeting, latestAnnouncement, yearExpenses] = await Promise.all([
+  const [ownerships, latestMeeting, latestAnnouncement, yearExpenses, unitLabel] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -84,6 +85,7 @@ export default async function OwnerDashboard() {
       where: { ownerId: session.user.id, date: { gte: new Date(now.getFullYear(), 0, 1) } },
       select: { amount: true },
     }),
+    getUnitLabel(session.user.orgId),
   ])
 
   const openTickets = ownerships
@@ -127,8 +129,8 @@ export default async function OwnerDashboard() {
     signals.push({
       icon: <CalendarDays className="h-4 w-4 text-blue-500" />,
       text: isCurrent
-        ? `Unit ${upcomingStay.unit.number} is currently occupied${upcomingStay.occupantName ? ` by ${upcomingStay.occupantName}` : ""}, through ${upcomingStay.endDate.toLocaleDateString()}.`
-        : `Next stay at Unit ${upcomingStay.unit.number} starts ${upcomingStay.startDate.toLocaleDateString()}${upcomingStay.occupantName ? ` (${upcomingStay.occupantName})` : ""}.`,
+        ? `${unitDisplayName(unitLabel, upcomingStay.unit.number)} is currently occupied${upcomingStay.occupantName ? ` by ${upcomingStay.occupantName}` : ""}, through ${upcomingStay.endDate.toLocaleDateString()}.`
+        : `Next stay at ${unitDisplayName(unitLabel, upcomingStay.unit.number)} starts ${upcomingStay.startDate.toLocaleDateString()}${upcomingStay.occupantName ? ` (${upcomingStay.occupantName})` : ""}.`,
       href: `/dashboard/owner/units/${upcomingStay.unit.id}#occupancy-calendar`,
     })
   }
@@ -144,7 +146,7 @@ export default async function OwnerDashboard() {
   if (unmanagedUnits.length > 0) {
     signals.push({
       icon: <UserCog className="h-4 w-4 text-teal-600" />,
-      text: `Unit ${unmanagedUnits[0].unit.number} has no Unit Manager assigned yet.`,
+      text: `${unitDisplayName(unitLabel, unmanagedUnits[0].unit.number)} has no Unit Manager assigned yet.`,
       href: `/dashboard/owner/units/${unmanagedUnits[0].unit.id}`,
     })
   }
@@ -230,6 +232,7 @@ export default async function OwnerDashboard() {
         <Card>
           <CardContent className="pt-4">
             <TodayOccupancy
+              unitLabel={unitLabel}
               units={ownerships.map((o) => {
                 const lease = o.unit.leases[0]
                 return {
@@ -258,8 +261,7 @@ export default async function OwnerDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
-                  Unit {unit.number}
-                  {unit.building && ` — Building ${unit.building}`}
+                  {unitDisplayName(unitLabel, unit.number, unit.building)}
                 </CardTitle>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${sb.color}`}>
                   {sb.label}

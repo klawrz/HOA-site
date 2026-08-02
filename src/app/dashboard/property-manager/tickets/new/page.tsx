@@ -3,19 +3,23 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketRequestForm } from "@/app/dashboard/_components/ticket-request-form"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function NewPropertyManagerTicketPage() {
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const allUnits = await db.unit.findMany({
-    where: { orgId: session.user.orgId ?? undefined },
-    orderBy: { number: "asc" },
-  })
+  const [allUnits, unitLabel] = await Promise.all([
+    db.unit.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      orderBy: { number: "asc" },
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   const units = allUnits.map((u) => ({
     id: u.id,
-    label: `Unit ${u.number}${u.building ? ` — Building ${u.building}` : ""}`,
+    label: unitDisplayName(unitLabel, u.number, u.building),
   }))
 
   return (

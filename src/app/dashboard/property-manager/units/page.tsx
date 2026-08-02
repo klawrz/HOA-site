@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { RentalPolicy, UnitStatus } from "@/generated/prisma"
+import { getUnitLabel } from "@/lib/unit-label"
 
 const policyConfig: Record<
   RentalPolicy,
@@ -40,13 +41,16 @@ export default async function UnitAvailabilityPage() {
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const units = await db.unit.findMany({
-    include: {
-      ownerships: { where: { isCurrent: true }, include: { owner: true } },
-      leases: { where: { isActive: true }, include: { renter: true } },
-    },
-    orderBy: { number: "asc" },
-  })
+  const [units, unitLabel] = await Promise.all([
+    db.unit.findMany({
+      include: {
+        ownerships: { where: { isCurrent: true }, include: { owner: true } },
+        leases: { where: { isActive: true }, include: { renter: true } },
+      },
+      orderBy: { number: "asc" },
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   const legend = [
     { dot: "bg-green-500", label: "Open to anyone" },
@@ -60,7 +64,7 @@ export default async function UnitAvailabilityPage() {
       <div>
         <h1 className="text-2xl font-bold">Unit Availability Board</h1>
         <p className="text-gray-500 mt-1">
-          Rental availability and policy for all {units.length} units
+          Rental availability and policy for all {units.length} {unitLabel.toLowerCase()}s
         </p>
       </div>
 
@@ -77,7 +81,7 @@ export default async function UnitAvailabilityPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
             <tr>
-              <th className="px-4 py-3 text-left">Unit</th>
+              <th className="px-4 py-3 text-left">{unitLabel}</th>
               <th className="px-4 py-3 text-left">Owner</th>
               <th className="px-4 py-3 text-left">Rental Policy</th>
               <th className="px-4 py-3 text-left">Current Renter</th>

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MemberEditCard } from "./member-edit-card"
 import { BoardMemberToggle } from "./board-member-toggle"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 const roleLabels: Record<string, string> = {
   ACCOUNT_OWNER: "Account Owner",
@@ -37,17 +38,20 @@ export default async function MemberDetailPage({
   const session = await auth()
   if (!session?.user.orgId) redirect("/login")
 
-  const membership = await db.membership.findFirst({
-    where: { userId: memberId, orgId: session.user.orgId },
-    include: {
-      user: {
-        include: {
-          ownedUnits: { where: { isCurrent: true }, include: { unit: true } },
-          leases: { include: { unit: true } },
+  const [membership, unitLabel] = await Promise.all([
+    db.membership.findFirst({
+      where: { userId: memberId, orgId: session.user.orgId },
+      include: {
+        user: {
+          include: {
+            ownedUnits: { where: { isCurrent: true }, include: { unit: true } },
+            leases: { include: { unit: true } },
+          },
         },
       },
-    },
-  })
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   if (!membership) notFound()
   const member = { ...membership.user, role: membership.role, isBoardMember: membership.isBoardMember }
@@ -93,8 +97,7 @@ export default async function MemberDetailPage({
           <CardContent className="space-y-1">
             {member.ownedUnits.map((o) => (
               <p key={o.id} className="text-sm text-gray-600">
-                Unit {o.unit.number}
-                {o.unit.building && ` — Building ${o.unit.building}`}
+                {unitDisplayName(unitLabel, o.unit.number, o.unit.building)}
               </p>
             ))}
           </CardContent>
@@ -111,7 +114,7 @@ export default async function MemberDetailPage({
           <CardContent className="space-y-1">
             {member.leases.map((l) => (
               <p key={l.id} className="text-sm text-gray-600">
-                Unit {l.unit.number}
+                {unitDisplayName(unitLabel, l.unit.number)}
                 {l.isActive ? " (active)" : ""}
               </p>
             ))}

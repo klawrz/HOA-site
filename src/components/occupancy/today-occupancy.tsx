@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, CalendarDays } from "lucide-react"
 import { OccupancyCalendar } from "./occupancy-calendar"
 import { occupancyTypeLabel } from "@/lib/occupancy-styles"
 import { formatDate } from "@/lib/utils"
+import { unitDisplayName } from "@/lib/unit-label-format"
 
 type Entry = {
   id: string
@@ -48,7 +49,15 @@ function leaseHasStarted(lease: ActiveLease, now: Date) {
   return lease.startDate <= now
 }
 
-export function TodayOccupancy({ units, canManage = true }: { units: UnitOccupancy[]; canManage?: boolean }) {
+export function TodayOccupancy({
+  units,
+  unitLabel = "Unit",
+  canManage = true,
+}: {
+  units: UnitOccupancy[]
+  unitLabel?: string
+  canManage?: boolean
+}) {
   const [openUnitId, setOpenUnitId] = useState<string | null>(null)
   const now = new Date()
 
@@ -78,8 +87,7 @@ export function TodayOccupancy({ units, canManage = true }: { units: UnitOccupan
               <div className="flex items-center gap-2 text-sm min-w-0">
                 <CalendarDays className="h-4 w-4 text-blue-500 shrink-0" />
                 <span className="font-medium shrink-0">
-                  Unit {unit.number}
-                  {unit.building && ` — Building ${unit.building}`}
+                  {unitDisplayName(unitLabel, unit.number, unit.building)}
                 </span>
                 <span className="text-gray-500 truncate">
                   {statusText}

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { AssessmentEditor } from "@/components/assessments/assessment-editor"
+import { getUnitLabel } from "@/lib/unit-label"
 
 export default async function PropertyManagerAssessmentDetailPage({
   params,
@@ -14,15 +15,18 @@ export default async function PropertyManagerAssessmentDetailPage({
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const assessment = await db.assessment.findUnique({
-    where: { id },
-    include: {
-      budget: true,
-      charges: {
-        include: { unit: { include: { ownerships: { where: { isCurrent: true }, include: { owner: true } } } } },
+  const [assessment, unitLabel] = await Promise.all([
+    db.assessment.findUnique({
+      where: { id },
+      include: {
+        budget: true,
+        charges: {
+          include: { unit: { include: { ownerships: { where: { isCurrent: true }, include: { owner: true } } } } },
+        },
       },
-    },
-  })
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   if (!assessment || assessment.orgId !== session.user.orgId) notFound()
 
@@ -59,6 +63,7 @@ export default async function PropertyManagerAssessmentDetailPage({
         canManage
         canIssue={false}
         onDeletedHref="/dashboard/property-manager/finances/assessments"
+        unitLabel={unitLabel}
       />
     </div>
   )

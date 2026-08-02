@@ -15,10 +15,12 @@ export function InvitePanel({
   units,
   invites: initialInvites,
   baseUrl,
+  unitLabel,
 }: {
   units: Unit[]
   invites: Invite[]
   baseUrl: string
+  unitLabel: string
 }) {
   const [role, setRole] = useState("")
   const [error, setError] = useState("")
@@ -89,12 +91,12 @@ export function InvitePanel({
           </div>
           {(role === "OWNER" || role === "RENTER") && (
             <div className="space-y-1">
-              <Label>Unit</Label>
+              <Label>{unitLabel}</Label>
               <Select name="unitId">
-                <SelectTrigger><SelectValue placeholder="Unit" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={unitLabel} /></SelectTrigger>
                 <SelectContent>
                   {units.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>Unit {u.number}</SelectItem>
+                    <SelectItem key={u.id} value={u.id}>{unitLabel} {u.number}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

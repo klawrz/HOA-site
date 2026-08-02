@@ -18,7 +18,7 @@ export default async function ContractorDashboard() {
     where: { contractorId: session.user.id },
     include: {
       ticket: {
-        include: { unit: true, submittedBy: true },
+        include: { unit: { include: { org: { select: { unitLabel: true } } } }, submittedBy: true },
       },
     },
     orderBy: { assignedAt: "desc" },
@@ -117,7 +117,7 @@ export default async function ContractorDashboard() {
                       <p className="font-semibold">{a.ticket.title}</p>
                       <p className="text-sm text-gray-500 mt-0.5">{a.ticket.description}</p>
                       <div className="flex gap-3 text-xs text-gray-400 mt-2">
-                        <span>{a.ticket.unit ? `Unit ${a.ticket.unit.number}` : scopeLabel[a.ticket.scope]}</span>
+                        <span>{a.ticket.unit ? `${a.ticket.unit.org.unitLabel} ${a.ticket.unit.number}` : scopeLabel[a.ticket.scope]}</span>
                         <span>
                           Reported by {a.ticket.submittedBy.name ?? a.ticket.submittedBy.email} on {formatDateTime(a.ticket.createdAt)}
                         </span>

@@ -14,7 +14,7 @@ interface UnitRow {
   allocationPercent: number | null
 }
 
-function AllocationRow({ unit }: { unit: UnitRow }) {
+function AllocationRow({ unit, unitLabel }: { unit: UnitRow; unitLabel: string }) {
   const [value, setValue] = useState(unit.allocationPercent != null ? String(unit.allocationPercent) : "")
   const [saving, setSaving] = useState(false)
 
@@ -30,7 +30,7 @@ function AllocationRow({ unit }: { unit: UnitRow }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
       <p className="text-sm font-medium">
-        Unit {unit.number}
+        {unitLabel} {unit.number}
         {unit.building && ` — Building ${unit.building}`}
       </p>
       <div className="flex items-center gap-1">
@@ -52,23 +52,23 @@ function AllocationRow({ unit }: { unit: UnitRow }) {
   )
 }
 
-export function UnitAllocationTable({ units }: { units: UnitRow[] }) {
+export function UnitAllocationTable({ units, unitLabel }: { units: UnitRow[]; unitLabel: string }) {
   const total = units.reduce((s, u) => s + (u.allocationPercent ?? 0), 0)
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Percent className="h-4 w-4" /> Unit Allocations
+          <Percent className="h-4 w-4" /> {unitLabel} Allocations
         </CardTitle>
         <p className="text-xs text-gray-400">
-          Each unit&apos;s fixed share of common budget/dues, per the governing documents. Drives the dues
+          Each {unitLabel.toLowerCase()}&apos;s fixed share of common budget/dues, per the governing documents. Drives the dues
           estimate shown to Owners.
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
         {units.map((u) => (
-          <AllocationRow key={u.id} unit={u} />
+          <AllocationRow key={u.id} unit={u} unitLabel={unitLabel} />
         ))}
         {units.length === 0 && <p className="text-sm text-gray-500">No units yet.</p>}
         {units.length > 0 && (

@@ -61,11 +61,13 @@ export function AssessmentEditor({
   canManage,
   canIssue,
   onDeletedHref,
+  unitLabel,
 }: {
   assessment: AssessmentData
   canManage: boolean
   canIssue: boolean
   onDeletedHref?: string
+  unitLabel: string
 }) {
   const [issuing, setIssuing] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -159,7 +161,7 @@ export function AssessmentEditor({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
-                <th className="text-left font-medium px-3 py-2">Unit</th>
+                <th className="text-left font-medium px-3 py-2">{unitLabel}</th>
                 <th className="text-left font-medium px-3 py-2">Owner</th>
                 <th className="text-right font-medium px-3 py-2">Due</th>
                 <th className="text-right font-medium px-3 py-2">Paid</th>
@@ -174,7 +176,7 @@ export function AssessmentEditor({
                 return (
                   <tr key={c.id}>
                     <td className="px-3 py-2 font-medium">
-                      Unit {c.unitNumber}
+                      {unitLabel} {c.unitNumber}
                       {c.unitBuilding && ` — ${c.unitBuilding}`}
                     </td>
                     <td className="px-3 py-2 text-gray-500">{c.ownerName ?? "—"}</td>
@@ -193,7 +195,7 @@ export function AssessmentEditor({
                       <td className="px-3 py-2">
                         <RecordPaymentDialog
                           chargeId={c.id}
-                          unitLabel={`Unit ${c.unitNumber}`}
+                          unitLabel={`${unitLabel} ${c.unitNumber}`}
                           amountDue={c.amountDue}
                           amountPaid={c.amountPaid}
                           paymentMethod={c.paymentMethod}

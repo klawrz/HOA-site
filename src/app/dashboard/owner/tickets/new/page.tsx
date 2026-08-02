@@ -3,19 +3,23 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketRequestForm } from "@/app/dashboard/_components/ticket-request-form"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function NewOwnerTicketPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const ownerships = await db.unitOwnership.findMany({
-    where: { ownerId: session.user.id },
-    include: { unit: true },
-  })
+  const [ownerships, unitLabel] = await Promise.all([
+    db.unitOwnership.findMany({
+      where: { ownerId: session.user.id },
+      include: { unit: true },
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   const units = ownerships.map((o) => ({
     id: o.unit.id,
-    label: `Unit ${o.unit.number}${o.unit.building ? ` — Building ${o.unit.building}` : ""}`,
+    label: unitDisplayName(unitLabel, o.unit.number, o.unit.building),
   }))
 
   return (

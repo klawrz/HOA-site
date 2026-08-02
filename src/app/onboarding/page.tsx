@@ -31,6 +31,7 @@ export default async function OnboardingPage({
       invites={org.invites}
       step={currentStep}
       baseUrl={process.env.NEXTAUTH_URL ?? "http://localhost:3000"}
+      unitLabel={org.unitLabel}
     />
   )
 }

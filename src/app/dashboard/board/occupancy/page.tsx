@@ -2,20 +2,24 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { TodayOccupancy } from "@/components/occupancy/today-occupancy"
+import { getUnitLabel } from "@/lib/unit-label"
 
 export default async function BoardOccupancyPage() {
   const session = await auth()
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
-  const units = await db.unit.findMany({
-    where: { orgId: session.user.orgId ?? undefined },
-    include: {
-      ownerships: { where: { isCurrent: true }, take: 1 },
-      occupancyEntries: { orderBy: { startDate: "asc" } },
-      leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
-    },
-    orderBy: { number: "asc" },
-  })
+  const [units, unitLabel] = await Promise.all([
+    db.unit.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: {
+        ownerships: { where: { isCurrent: true }, take: 1 },
+        occupancyEntries: { orderBy: { startDate: "asc" } },
+        leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
+      },
+      orderBy: { number: "asc" },
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   return (
     <div className="space-y-6">
@@ -28,6 +32,7 @@ export default async function BoardOccupancyPage() {
         </p>
       </div>
       <TodayOccupancy
+        unitLabel={unitLabel}
         units={units.map((u) => {
           const visible = u.ownerships[0]?.occupancyVisibleToBoard ?? false
           const lease = u.leases[0]

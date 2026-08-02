@@ -5,22 +5,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RentalPolicyForm } from "../rental-policy-form"
 import { LeaseStatusCard } from "@/components/lease/lease-status-card"
 import { AccessCodeSection } from "@/components/lease/access-code-section"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function OwnerRentalSettingsPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const ownerships = await db.unitOwnership.findMany({
-    where: { ownerId: session.user.id, isCurrent: true },
-    include: {
-      unit: {
-        include: {
-          leases: { where: { isActive: true }, include: { renter: true, payments: true } },
+  const [ownerships, unitLabel] = await Promise.all([
+    db.unitOwnership.findMany({
+      where: { ownerId: session.user.id, isCurrent: true },
+      include: {
+        unit: {
+          include: {
+            leases: { where: { isActive: true }, include: { renter: true, payments: true } },
+          },
         },
       },
-    },
-    orderBy: { unit: { number: "asc" } },
-  })
+      orderBy: { unit: { number: "asc" } },
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   return (
     <div className="space-y-6">
@@ -35,8 +39,7 @@ export default async function OwnerRentalSettingsPage() {
           <Card key={o.unit.id}>
             <CardHeader>
               <CardTitle className="text-base">
-                Unit {o.unit.number}
-                {o.unit.building && ` — Building ${o.unit.building}`}
+                {unitDisplayName(unitLabel, o.unit.number, o.unit.building)}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

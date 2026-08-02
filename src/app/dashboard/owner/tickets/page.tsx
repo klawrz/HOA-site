@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { buttonVariants } from "@/components/ui/button"
 import { cn, formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function OwnerTicketsPage() {
   const session = await auth()
@@ -17,13 +18,16 @@ export default async function OwnerTicketsPage() {
   })
   const ownedUnitIds = ownerships.map((o) => o.unitId)
 
-  const tickets = await db.troubleTicket.findMany({
-    where: {
-      OR: [{ unitId: { in: ownedUnitIds } }, { scope: "COMMON_AREA" }],
-    },
-    include: { unit: true, submittedBy: true },
-    orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
-  })
+  const [tickets, unitLabel] = await Promise.all([
+    db.troubleTicket.findMany({
+      where: {
+        OR: [{ unitId: { in: ownedUnitIds } }, { scope: "COMMON_AREA" }],
+      },
+      include: { unit: true, submittedBy: true },
+      orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   return (
     <div className="space-y-6">
@@ -51,7 +55,7 @@ export default async function OwnerTicketsPage() {
                   {t.status.replace("_", " ")}
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
-                  {t.unit ? `Unit ${t.unit.number}` : scopeLabel[t.scope]}
+                  {t.unit ? unitDisplayName(unitLabel, t.unit.number, t.unit.building) : scopeLabel[t.scope]}
                 </span>
               </div>
               <p className="font-semibold">{t.title}</p>

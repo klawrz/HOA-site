@@ -33,7 +33,7 @@ type Member = {
   units: string[]
 }
 
-export function MembersList({ members }: { members: Member[] }) {
+export function MembersList({ members, unitLabel }: { members: Member[]; unitLabel: string }) {
   const [query, setQuery] = useState("")
 
   const filtered = members.filter((m) => {
@@ -71,7 +71,7 @@ export function MembersList({ members }: { members: Member[] }) {
               <p className="text-sm font-medium truncate">{m.name ?? m.email}</p>
               <p className="text-xs text-gray-400 truncate">
                 {m.email}
-                {m.units.length > 0 && ` · Unit ${m.units.join(", ")}`}
+                {m.units.length > 0 && ` · ${unitLabel} ${m.units.join(", ")}`}
               </p>
             </div>
             <span

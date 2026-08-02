@@ -27,11 +27,13 @@ export function OrgInvitePanel({
   units,
   invites: initialInvites,
   baseUrl,
+  unitLabel,
 }: {
   orgId: string
   units: Unit[]
   invites: Invite[]
   baseUrl: string
+  unitLabel: string
 }) {
   const [role, setRole] = useState("")
   const [error, setError] = useState("")
@@ -110,12 +112,12 @@ export function OrgInvitePanel({
         </div>
         {(role === "OWNER" || role === "RENTER") && units.length > 0 && (
           <div className="space-y-1">
-            <Label>Unit (optional)</Label>
+            <Label>{unitLabel} (optional)</Label>
             <Select name="unitId">
-              <SelectTrigger><SelectValue placeholder="Unit" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={unitLabel} /></SelectTrigger>
               <SelectContent>
                 {units.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>Unit {u.number}</SelectItem>
+                  <SelectItem key={u.id} value={u.id}>{unitLabel} {u.number}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

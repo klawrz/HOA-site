@@ -10,12 +10,12 @@ export default async function NewUnitManagerTicketPage() {
 
   const assignments = await db.unitManagerAssignment.findMany({
     where: { userId: session.user.id, grants: { some: { area: "TICKETS", level: "MANAGE" } } },
-    include: { unit: true },
+    include: { unit: { include: { org: { select: { unitLabel: true } } } } },
   })
 
   const units = assignments.map((a) => ({
     id: a.unit.id,
-    label: `Unit ${a.unit.number}${a.unit.building ? ` — Building ${a.unit.building}` : ""}`,
+    label: `${a.unit.org.unitLabel} ${a.unit.number}${a.unit.building ? ` — Building ${a.unit.building}` : ""}`,
   }))
 
   if (units.length === 0) {

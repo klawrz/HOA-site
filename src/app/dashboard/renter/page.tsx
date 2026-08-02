@@ -8,22 +8,26 @@ import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
 import { cn, formatDateTime, formatDateISO } from "@/lib/utils"
 import { statusColor } from "@/lib/ticket-styles"
+import { getUnitLabel } from "@/lib/unit-label"
 
 export default async function RenterDashboard() {
   const session = await auth()
   if (!session || session.user.role !== "RENTER") redirect("/dashboard")
 
-  const lease = await db.lease.findFirst({
-    where: { renterId: session.user.id, isActive: true },
-    include: {
-      unit: {
-        include: {
-          ownerships: { where: { isCurrent: true }, include: { owner: true } },
+  const [lease, unitLabel] = await Promise.all([
+    db.lease.findFirst({
+      where: { renterId: session.user.id, isActive: true },
+      include: {
+        unit: {
+          include: {
+            ownerships: { where: { isCurrent: true }, include: { owner: true } },
+          },
         },
+        payments: { orderBy: { dueDate: "desc" }, take: 6 },
       },
-      payments: { orderBy: { dueDate: "desc" }, take: 6 },
-    },
-  })
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   const myTickets = await db.troubleTicket.findMany({
     where: { submittedById: session.user.id },
@@ -49,7 +53,7 @@ export default async function RenterDashboard() {
           <CardContent className="space-y-3">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-2xl font-bold">Unit {lease.unit.number}</p>
+                <p className="text-2xl font-bold">{unitLabel} {lease.unit.number}</p>
                 {lease.unit.building && (
                   <p className="text-sm text-gray-500">Building {lease.unit.building}</p>
                 )}

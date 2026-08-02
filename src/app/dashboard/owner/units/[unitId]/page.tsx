@@ -12,18 +12,7 @@ import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
 import { OccupancyVisibilityForm } from "./occupancy-visibility-form"
 import { ShareLinksPanel } from "./share-links-panel"
 import { parseSpecialties } from "@/lib/unit-manager-specialties"
-
-function addressLines(u: {
-  addressLine1: string | null
-  addressLine2: string | null
-  city: string | null
-  state: string | null
-  postalCode: string | null
-  country: string | null
-}) {
-  const line2 = [u.city, u.state, u.postalCode].filter(Boolean).join(", ")
-  return [u.addressLine1, u.addressLine2, line2, u.country].filter(Boolean)
-}
+import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
 
 export default async function UnitDetailPage({
   params,
@@ -55,15 +44,17 @@ export default async function UnitDetailPage({
   const { unit } = ownership
   const activeLease = unit.leases[0]
 
-  const [contractorMemberships, org] = await Promise.all([
+  const [contractorMemberships, org, unitLabel] = await Promise.all([
     db.membership.findMany({
       where: { role: "CONTRACTOR" },
       include: { user: true },
       orderBy: { user: { name: "asc" } },
     }),
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
+    getUnitLabel(session.user.orgId),
   ])
   const contractors = contractorMemberships.map((m) => m.user)
+  const unitName = unitDisplayName(unitLabel, unit.number, unit.building)
 
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
@@ -79,10 +70,7 @@ export default async function UnitDetailPage({
   return (
     <div className="max-w-2xl space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">
-          Unit {unit.number}
-          {unit.building && ` — Building ${unit.building}`}
-        </h1>
+        <h1 className="text-2xl font-bold">{unitName}</h1>
         <p className="text-gray-500 mt-1">
           Owned since {formatDateTime(ownership.since)}
         </p>
@@ -130,11 +118,23 @@ export default async function UnitDetailPage({
             {unit.bathrooms && <span>{unit.bathrooms} bath</span>}
             {unit.sqft && <span>{unit.sqft.toLocaleString()} sqft</span>}
           </div>
-          {addressLines(unit).length > 0 ? (
-            addressLines(unit).map((line, i) => <p key={i}>{line}</p>)
-          ) : (
-            <p className="text-gray-400">No address on file - contact your Property Manager to add one.</p>
-          )}
+          {(() => {
+            const { unitName: name, propertyLines } = unitAddressLines(org ?? {
+              addressLine1: null, addressLine2: null, city: null, state: null, postalCode: null, country: null,
+            }, unitName)
+            return (
+              <div>
+                <p className="font-medium text-gray-700">{name}</p>
+                {propertyLines.length > 0 ? (
+                  propertyLines.map((line, i) => <p key={i}>{line}</p>)
+                ) : (
+                  <p className="text-gray-400">
+                    Property address not on file - the Account Owner can add one from the dashboard.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
           {unit.civicRoll && (
             <p className="text-xs text-gray-400 pt-1">Civic Roll Number: {unit.civicRoll}</p>
           )}

@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { ArrowLeft, Receipt } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatDateISO } from "@/lib/utils"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 const typeLabel: Record<string, string> = {
   REGULAR_DUES: "Regular Dues",
@@ -31,13 +32,16 @@ export default async function OwnerDuesPage() {
   })
   const unitIds = ownerships.map((o) => o.unitId)
 
-  const charges = unitIds.length
-    ? await db.assessmentCharge.findMany({
-        where: { unitId: { in: unitIds }, assessment: { status: "ISSUED" } },
-        include: { assessment: true, unit: true },
-        orderBy: { assessment: { dueDate: "desc" } },
-      })
-    : []
+  const [charges, unitLabel] = await Promise.all([
+    unitIds.length
+      ? db.assessmentCharge.findMany({
+          where: { unitId: { in: unitIds }, assessment: { status: "ISSUED" } },
+          include: { assessment: true, unit: true },
+          orderBy: { assessment: { dueDate: "desc" } },
+        })
+      : Promise.resolve([]),
+    getUnitLabel(session.user.orgId),
+  ])
 
   const totalOutstanding = charges.reduce((s, c) => s + Math.max(c.amountDue - c.amountPaid, 0), 0)
 
@@ -84,8 +88,7 @@ export default async function OwnerDuesPage() {
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Unit {c.unit.number}
-                      {c.unit.building && ` — ${c.unit.building}`} · Due {formatDateISO(c.assessment.dueDate)}
+                      {unitDisplayName(unitLabel, c.unit.number, c.unit.building)} · Due {formatDateISO(c.assessment.dueDate)}
                     </p>
                   </div>
                   <div className="text-right">

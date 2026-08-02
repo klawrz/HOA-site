@@ -36,9 +36,11 @@ function money(n: number) {
 export function ExpenseLogPanel({
   expenses,
   units,
+  unitLabel,
 }: {
   expenses: ExpenseRow[]
   units: { id: string; number: string; building: string | null }[]
+  unitLabel: string
 }) {
   const [busyId, setBusyId] = useState<string | null>(null)
   const thisYear = new Date().getFullYear()
@@ -51,12 +53,12 @@ export function ExpenseLogPanel({
   }
 
   function handleExport() {
-    const rows: (string | number)[][] = [["Date", "Category", "Unit", "Description", "Amount", "Notes"]]
+    const rows: (string | number)[][] = [["Date", "Category", unitLabel, "Description", "Amount", "Notes"]]
     for (const e of expenses) {
       rows.push([
         formatDateISO(e.date),
         categoryLabel[e.category],
-        `Unit ${e.unit.number}${e.unit.building ? ` - Building ${e.unit.building}` : ""}`,
+        `${unitLabel} ${e.unit.number}${e.unit.building ? ` - Building ${e.unit.building}` : ""}`,
         e.description,
         e.amount,
         e.notes ?? "",
@@ -89,7 +91,7 @@ export function ExpenseLogPanel({
           <Button size="sm" variant="outline" onClick={handleExport} disabled={expenses.length === 0}>
             <Download className="h-3.5 w-3.5" /> Download CSV
           </Button>
-          <NewExpenseDialog units={units} />
+          <NewExpenseDialog units={units} unitLabel={unitLabel} />
         </div>
       </div>
 
@@ -107,7 +109,7 @@ export function ExpenseLogPanel({
                   </span>
                   <span className="text-xs text-gray-400">{formatDateISO(e.date)}</span>
                   <span className="text-xs text-gray-400">
-                    Unit {e.unit.number}{e.unit.building && ` — Building ${e.unit.building}`}
+                    {unitLabel} {e.unit.number}{e.unit.building && ` — Building ${e.unit.building}`}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5 truncate">

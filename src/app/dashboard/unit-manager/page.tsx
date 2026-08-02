@@ -22,11 +22,14 @@ export default async function UnitManagerDashboard() {
   const session = await auth()
   if (!session || session.user.role !== "UNIT_MANAGER") redirect("/dashboard")
 
+  // Unit Manager assignments can span multiple orgs, each with its own
+  // label - fetched per-unit via the relation, not a single global value.
   const assignments = await db.unitManagerAssignment.findMany({
     where: { userId: session.user.id },
     include: {
       unit: {
         include: {
+          org: { select: { unitLabel: true } },
           occupancyEntries: { orderBy: { startDate: "asc" } },
           leases: { where: { isActive: true }, include: { renter: true, payments: true } },
         },
@@ -54,7 +57,7 @@ export default async function UnitManagerDashboard() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-gray-400" />
-                  Unit {a.unit.number}
+                  {a.unit.org.unitLabel} {a.unit.number}
                   {a.unit.building && ` — Building ${a.unit.building}`}
                 </CardTitle>
               </CardHeader>
@@ -90,7 +93,7 @@ export default async function UnitManagerDashboard() {
                       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>
-                            Occupancy Calendar - Unit {a.unit.number}
+                            Occupancy Calendar - {a.unit.org.unitLabel} {a.unit.number}
                             {a.unit.building && ` — Building ${a.unit.building}`}
                           </DialogTitle>
                         </DialogHeader>

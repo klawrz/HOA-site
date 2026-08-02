@@ -2,15 +2,19 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
 import { MembersList } from "./members-list"
+import { getUnitLabel } from "@/lib/unit-label"
 
 export default async function AccountMembersPage() {
   const session = await auth()
   if (!session?.user.orgId) redirect("/login")
 
-  const memberships = await db.membership.findMany({
-    where: { orgId: session.user.orgId },
-    include: { user: { include: { ownedUnits: { where: { isCurrent: true }, include: { unit: true } } } } },
-  })
+  const [memberships, unitLabel] = await Promise.all([
+    db.membership.findMany({
+      where: { orgId: session.user.orgId },
+      include: { user: { include: { ownedUnits: { where: { isCurrent: true }, include: { unit: true } } } } },
+    }),
+    getUnitLabel(session.user.orgId),
+  ])
 
   const sorted = [...memberships].sort((a, b) =>
     (a.user.name ?? a.user.email).localeCompare(b.user.name ?? b.user.email)
@@ -26,6 +30,7 @@ export default async function AccountMembersPage() {
       </div>
 
       <MembersList
+        unitLabel={unitLabel}
         members={sorted.map((m) => ({
           id: m.user.id,
           name: m.user.name,

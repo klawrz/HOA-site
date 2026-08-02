@@ -7,12 +7,13 @@ import { buttonVariants } from "@/components/ui/button"
 import { TicketManageForm } from "@/app/dashboard/_components/ticket-manage-form"
 import { cn, formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
+import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function BoardTicketsPage() {
   const session = await auth()
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
-  const [tickets, contractorMemberships] = await Promise.all([
+  const [tickets, contractorMemberships, unitLabel] = await Promise.all([
     db.troubleTicket.findMany({
       include: {
         unit: true,
@@ -22,6 +23,7 @@ export default async function BoardTicketsPage() {
       orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
     }),
     db.membership.findMany({ where: { role: "CONTRACTOR" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
+    getUnitLabel(session.user.orgId),
   ])
   const contractors = contractorMemberships.map((m) => m.user)
 
@@ -56,7 +58,7 @@ export default async function BoardTicketsPage() {
                         {t.status.replace("_", " ")}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
-                        {t.unit ? `Unit ${t.unit.number}` : scopeLabel[t.scope]}
+                        {t.unit ? unitDisplayName(unitLabel, t.unit.number, t.unit.building) : scopeLabel[t.scope]}
                       </span>
                     </div>
                     <p className="font-semibold">{t.title}</p>

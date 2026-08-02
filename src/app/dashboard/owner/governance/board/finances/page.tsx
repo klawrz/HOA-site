@@ -6,6 +6,7 @@ import { ArrowLeft, Receipt, ChevronRight, PiggyBank, TableProperties } from "lu
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
+import { getUnitLabel } from "@/lib/unit-label"
 
 function toBudgetRow(b: { id: string; year: number; version: string; status: string; lineItems: { budgetedAmount: number }[] }) {
   return {
@@ -22,13 +23,14 @@ export default async function OwnerBoardFinancesPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) redirect("/dashboard")
 
-  const [budgets, units] = await Promise.all([
+  const [budgets, units, unitLabel] = await Promise.all([
     db.budget.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { lineItems: true },
       orderBy: { year: "desc" },
     }),
     db.unit.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { number: "asc" } }),
+    getUnitLabel(session.user.orgId),
   ])
 
   const operating = budgets.filter((b) => b.type === "OPERATING")
@@ -108,6 +110,7 @@ export default async function OwnerBoardFinancesPage() {
       </div>
 
       <UnitAllocationTable
+        unitLabel={unitLabel}
         units={units.map((u) => ({
           id: u.id,
           number: u.number,

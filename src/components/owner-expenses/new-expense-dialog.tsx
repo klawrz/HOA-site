@@ -31,14 +31,14 @@ interface UnitOption {
   building: string | null
 }
 
-export function NewExpenseDialog({ units }: { units: UnitOption[] }) {
+export function NewExpenseDialog({ units, unitLabel: label }: { units: UnitOption[]; unitLabel: string }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [unitId, setUnitId] = useState(units[0]?.id ?? "")
   const [category, setCategory] = useState<ExpenseCategory>("OTHER")
 
-  const unitLabel = (u: UnitOption) => `Unit ${u.number}${u.building ? ` — Building ${u.building}` : ""}`
+  const unitLabel = (u: UnitOption) => `${label} ${u.number}${u.building ? ` — Building ${u.building}` : ""}`
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -72,7 +72,7 @@ export function NewExpenseDialog({ units }: { units: UnitOption[] }) {
         <form onSubmit={handleSubmit} className="space-y-3">
           {units.length > 1 && (
             <div className="space-y-1">
-              <Label>Unit</Label>
+              <Label>{label}</Label>
               <Select
                 value={unitId}
                 onValueChange={(v) => setUnitId(v ?? "")}

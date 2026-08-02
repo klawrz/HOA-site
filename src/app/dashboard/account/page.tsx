@@ -95,6 +95,7 @@ export default async function AccountDashboardPage() {
 
       {/* Invite panel */}
       <InvitePanel
+        unitLabel={org.unitLabel}
         units={org.units.map((u) => ({ id: u.id, number: u.number }))}
         invites={org.invites.map((i) => ({
           id: i.id,
