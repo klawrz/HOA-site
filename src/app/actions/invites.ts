@@ -39,7 +39,7 @@ export async function createInviteForOrg(input: { email: string; role: Role; org
 
   revalidatePath("/onboarding")
   revalidatePath("/dashboard/account/invites")
-  return invite.token
+  return invite
 }
 
 // General-purpose invite panel is only ever shown on the Account Owner's
@@ -57,7 +57,8 @@ export async function createInvite(formData: FormData) {
 
   if (!email || !role) throw new Error("Email and role required")
 
-  return createInviteForOrg({ email, role: role as Role, orgId: session.user.orgId, unitId })
+  const invite = await createInviteForOrg({ email, role: role as Role, orgId: session.user.orgId, unitId })
+  return invite.token
 }
 
 export async function revokeInvite(inviteId: string) {

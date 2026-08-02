@@ -13,6 +13,7 @@ export function NewOrgForm() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -20,7 +21,8 @@ export function NewOrgForm() {
     setError("")
     try {
       const fd = new FormData(e.currentTarget)
-      const { inviteToken } = await createOrganization(fd)
+      const { orgId, inviteToken } = await createOrganization(fd)
+      setOrgId(orgId)
       setInviteLink(`${window.location.origin}/invite/${inviteToken}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create organization")
@@ -39,7 +41,7 @@ export function NewOrgForm() {
             <Button variant="outline" onClick={() => navigator.clipboard.writeText(inviteLink)}>
               Copy link
             </Button>
-            <Button variant="outline" onClick={() => router.push("/platform-admin")}>
+            <Button variant="outline" onClick={() => router.push(orgId ? `/platform-admin/${orgId}` : "/platform-admin")}>
               Done
             </Button>
           </div>
