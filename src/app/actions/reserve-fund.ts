@@ -67,6 +67,27 @@ export async function createReserveTransaction(data: {
   return { success: true }
 }
 
+export async function setReserveYearComment(year: number, comment: string) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageReserveFund(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+
+  const trimmed = comment.trim()
+  if (!trimmed) {
+    await db.reserveYearNote.deleteMany({ where: { orgId: session.user.orgId, year } })
+  } else {
+    await db.reserveYearNote.upsert({
+      where: { orgId_year: { orgId: session.user.orgId, year } },
+      update: { comment: trimmed },
+      create: { orgId: session.user.orgId, year, comment: trimmed },
+    })
+  }
+
+  revalidateReservePaths()
+  return { success: true }
+}
+
 export async function deleteReserveTransaction(id: string) {
   const session = await auth()
   if (!session?.user.orgId || !canManageReserveFund(session.user.role, session.user.isBoardMember)) {

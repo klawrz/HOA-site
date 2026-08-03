@@ -9,11 +9,13 @@ export function ReserveFundSummary({
   target,
   policy,
   heldAt,
+  signingAuthority,
 }: {
   balance: number
   target: number | null
   policy?: string | null
   heldAt?: string | null
+  signingAuthority?: string | null
 }) {
   const percent = target && target > 0 ? Math.min((balance / target) * 100, 100) : null
 
@@ -46,6 +48,15 @@ export function ReserveFundSummary({
         <div>
           <p className="text-xs text-gray-400">Held At</p>
           <p>{heldAt || <span className="text-gray-400">Not on file</span>}</p>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+        <Landmark className="h-3.5 w-3.5 text-gray-400 mt-0.5 shrink-0" />
+        <div>
+          <p className="text-xs text-gray-400">Signing Authority</p>
+          <p className="whitespace-pre-line">{signingAuthority || <span className="text-gray-400">Not on file</span>}</p>
+          <p className="text-xs text-gray-400 mt-0.5">(edit from Key Information)</p>
         </div>
       </div>
 

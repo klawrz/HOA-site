@@ -7,22 +7,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summary"
 import { ReserveTransactionDialog } from "@/components/reserve-fund/reserve-transaction-dialog"
 import { ReserveDetailsDialog } from "@/components/reserve-fund/reserve-details-dialog"
+import { ReserveYearTable } from "@/components/reserve-fund/reserve-year-table"
 import { TransactionList } from "@/components/reserve-fund/transaction-list"
+import { reserveYearRange, computeReserveYearRows } from "@/lib/reserve-fund"
 
 export default async function PropertyManagerReservePage() {
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const [org, transactions] = await Promise.all([
+  const [org, transactions, yearNotes] = await Promise.all([
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     db.reserveTransaction.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { createdBy: true },
       orderBy: { date: "desc" },
     }),
+    db.reserveYearNote.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
   ])
 
   const balance = transactions.reduce((s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount), 0)
+  const yearRows = computeReserveYearRows(transactions, reserveYearRange())
+  const comments = Object.fromEntries(yearNotes.map((n) => [n.year, n.comment]))
 
   return (
     <div className="space-y-6">
@@ -55,9 +60,12 @@ export default async function PropertyManagerReservePage() {
             target={org?.reserveTarget ?? null}
             policy={org?.reservePolicy ?? null}
             heldAt={org?.reserveHeldAt ?? null}
+            signingAuthority={org?.bankSigningAuthority ?? null}
           />
         </CardContent>
       </Card>
+
+      <ReserveYearTable rows={yearRows} comments={comments} canManage />
 
       <TransactionList
         transactions={transactions.map((t) => ({

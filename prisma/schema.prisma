@@ -187,6 +187,7 @@ model Organization {
   budgets             Budget[]
   assessments         Assessment[]
   reserveTransactions ReserveTransaction[]
+  reserveYearNotes    ReserveYearNote[]
   keyContacts         KeyContact[]
 }
 
@@ -213,6 +214,22 @@ model Membership {
 enum ReserveTransactionType {
   DEPOSIT
   WITHDRAWAL
+}
+
+// One free-text comment per org per calendar year - the only genuinely new
+// data the reserve-fund year table needs, since opening/additions/drawdowns/
+// closing balances are all derived live from ReserveTransaction, same as the
+// running balance always has been.
+model ReserveYearNote {
+  id        String   @id @default(cuid())
+  orgId     String
+  year      Int
+  comment   String
+  updatedAt DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, year])
 }
 
 model ReserveTransaction {
