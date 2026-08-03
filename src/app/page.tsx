@@ -10,7 +10,7 @@ const roles = [
   {
     icon: Building2,
     title: "Owners",
-    desc: "Manage your unit, set rental availability and policy, track maintenance requests.",
+    desc: "Track your dues and costs, manage your unit, and submit maintenance requests.",
     color: "bg-blue-50 text-blue-700",
   },
   {
@@ -22,7 +22,7 @@ const roles = [
   {
     icon: Shield,
     title: "Property Manager",
-    desc: "Full unit availability board, owner & contractor directories, and ticket management.",
+    desc: "Oversee HOA finances and reserve funds, owner & contractor directories, and ticket management.",
     color: "bg-purple-50 text-purple-700",
   },
   {
@@ -34,7 +34,7 @@ const roles = [
   {
     icon: FileText,
     title: "Board of Directors",
-    desc: "Meeting management, document library, contracts, and institutional memory.",
+    desc: "Oversee HOA finances and reserve funds, meeting management, and document library.",
     color: "bg-red-50 text-red-700",
   },
 ]
@@ -113,9 +113,9 @@ export default async function HomePage() {
             Solving the key pain point
           </h3>
           <p className="text-gray-500 max-w-xl mx-auto">
-            Never wonder again which units are available to rent — or whether an
-            owner accepts all applicants or only friends and family. Our
-            availability board makes it instantly clear.
+            Never lose track of where the budget stands. See budgeted vs. actual spend,
+            monitor reserve fund health in real time, and give your Board the numbers
+            they need before every meeting — not after.
           </p>
         </section>
       </main>
