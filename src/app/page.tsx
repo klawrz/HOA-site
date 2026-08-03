@@ -72,10 +72,12 @@ export default async function HomePage() {
           />
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 px-6 max-w-3xl mx-auto">
-            <h1 className="text-4xl font-bold mb-4">Welcome to HOPE</h1>
-            <p className="text-xl text-gray-100 max-w-2xl mx-auto mb-8">
-              HOA management for every community - a unified portal for owners, renters,
-              property managers, contractors, and board members to manage community life.
+            <h1 className="text-4xl font-bold mb-3">Run your property. Easier.</h1>
+            <p className="text-xl text-gray-100 mb-6">The operating system for modern properties.</p>
+            <p className="text-base text-gray-200 max-w-2xl mx-auto mb-8">
+              Connect people, finances, assets, documents, maintenance, and governance in one
+              intelligent system that helps your organization spend less time administering and
+              more time making good decisions.
             </p>
             <Link
               href="/login"
