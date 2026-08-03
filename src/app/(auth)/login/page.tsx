@@ -163,7 +163,13 @@ export default function LoginPage() {
                     />
                   </div>
                   {error && (
-                    <p className="text-sm text-red-600">{error}</p>
+                    <div className="space-y-1">
+                      <p className="text-sm text-red-600">{error}</p>
+                      <p className="text-xs text-gray-500">
+                        New to HOPE? Access is by invite only - ask your HOA&apos;s Account Owner or
+                        Property Manager to send you an invite link.
+                      </p>
+                    </div>
                   )}
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Signing in..." : "Sign in"}
