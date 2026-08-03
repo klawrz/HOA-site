@@ -4,7 +4,7 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Building2 } from "lucide-react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -91,10 +91,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Building2 className="h-7 w-7 text-blue-600" />
-          <span className="text-xl font-semibold">HOPE</span>
-        </div>
+        <Link href="/" className="flex items-center justify-center mb-8">
+          <Image src="/HOPE-logo.png" alt="HOPE" height={48} width={160} className="object-contain" />
+        </Link>
 
         <Card>
           {orgChoices ? (
