@@ -19,7 +19,7 @@ export default async function PropertyManagerAssessmentDetailPage({
     db.assessment.findUnique({
       where: { id },
       include: {
-        budget: true,
+        budget: { include: { lineItems: true } },
         charges: {
           include: { unit: { include: { ownerships: { where: { isCurrent: true }, include: { owner: true } } } } },
         },
@@ -49,6 +49,9 @@ export default async function PropertyManagerAssessmentDetailPage({
           dueDate: assessment.dueDate,
           notes: assessment.notes,
           budgetLabel: assessment.budget ? `${assessment.budget.year} — ${assessment.budget.version}` : null,
+          budgetTotal: assessment.budget
+            ? assessment.budget.lineItems.reduce((s, i) => s + i.budgetedAmount, 0)
+            : null,
           charges: assessment.charges.map((c) => ({
             id: c.id,
             unitNumber: c.unit.number,

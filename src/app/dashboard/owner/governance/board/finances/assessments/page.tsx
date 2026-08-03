@@ -10,7 +10,7 @@ export default async function OwnerBoardAssessmentsPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) redirect("/dashboard")
 
-  const [assessments, budgets] = await Promise.all([
+  const [assessments, budgets, approvedBudget] = await Promise.all([
     db.assessment.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { charges: true },
@@ -20,7 +20,13 @@ export default async function OwnerBoardAssessmentsPage() {
       where: { orgId: session.user.orgId ?? undefined },
       orderBy: { year: "desc" },
     }),
+    db.budget.findFirst({
+      where: { orgId: session.user.orgId ?? undefined, status: "APPROVED", type: "OPERATING" },
+      include: { lineItems: true },
+      orderBy: { year: "desc" },
+    }),
   ])
+  const approvedBudgetTotal = approvedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
 
   return (
     <div className="space-y-6">
@@ -35,6 +41,11 @@ export default async function OwnerBoardAssessmentsPage() {
           <div>
             <h1 className="text-2xl font-bold">Dues & Assessments</h1>
             <p className="text-gray-500 mt-1">Issued charges to owners, and payment reconciliation</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {approvedBudget
+                ? `Drawing from the ${approvedBudget.year} approved Operating Budget: $${approvedBudgetTotal!.toLocaleString()}`
+                : "No approved Operating budget yet"}
+            </p>
           </div>
           <NewAssessmentDialog
             detailBasePath="/dashboard/owner/governance/board/finances/assessments"

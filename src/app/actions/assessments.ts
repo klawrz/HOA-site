@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { AssessmentType, PaymentMethod } from "@/generated/prisma"
 import { parseDateOnly } from "@/lib/occupancy"
+import { effectiveAllocations } from "@/lib/unit-allocation"
 
 function canManageAssessments(role: string, isBoardMember: boolean) {
   return role === "BOARD_MEMBER" || role === "PROPERTY_MANAGER" || isBoardMember
@@ -47,18 +48,15 @@ export async function createAssessment(data: {
   const units = await db.unit.findMany({ where: { orgId: session.user.orgId } })
   if (units.length === 0) return { success: false, error: "No units on file" }
 
-  const missing = units.filter((u) => u.allocationPercent == null)
-  if (missing.length > 0) {
+  const customTotal = units.reduce((s, u) => s + (u.allocationPercent ?? 0), 0)
+  if (customTotal > 100.5) {
     return {
       success: false,
-      error: `Set an allocation percentage for every unit first (missing: ${missing.map((u) => u.number).join(", ")})`,
+      error: `Custom unit allocations exceed 100% (currently ${customTotal.toFixed(2)}%) - adjust them in Unit Allocations first`,
     }
   }
 
-  const totalPercent = units.reduce((s, u) => s + (u.allocationPercent ?? 0), 0)
-  if (Math.abs(totalPercent - 100) > 0.5) {
-    return { success: false, error: `Unit allocations must total 100% (currently ${totalPercent.toFixed(2)}%)` }
-  }
+  const percents = effectiveAllocations(units)
 
   const assessment = await db.assessment.create({
     data: {
@@ -73,7 +71,7 @@ export async function createAssessment(data: {
       charges: {
         create: units.map((u) => ({
           unitId: u.id,
-          amountDue: Math.round(data.totalAmount * ((u.allocationPercent ?? 0) / 100) * 100) / 100,
+          amountDue: Math.round(data.totalAmount * ((percents.get(u.id) ?? 0) / 100) * 100) / 100,
         })),
       },
     },

@@ -30,6 +30,7 @@ interface AssessmentData {
   dueDate: Date
   notes: string | null
   budgetLabel: string | null
+  budgetTotal: number | null
   charges: ChargeRow[]
 }
 
@@ -113,7 +114,10 @@ export function AssessmentEditor({
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
             Due {formatDateISO(assessment.dueDate)}
-            {assessment.budgetLabel && ` · linked to ${assessment.budgetLabel}`}
+            {assessment.budgetLabel &&
+              ` · linked to ${assessment.budgetLabel}${
+                assessment.budgetTotal != null ? ` (${money(assessment.budgetTotal)} budgeted)` : ""
+              }`}
           </p>
           {assessment.notes && <p className="text-sm text-gray-600 mt-1">{assessment.notes}</p>}
         </div>
@@ -163,6 +167,7 @@ export function AssessmentEditor({
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
                 <th className="text-left font-medium px-3 py-2">{unitLabel}</th>
                 <th className="text-left font-medium px-3 py-2">Owner</th>
+                <th className="text-right font-medium px-3 py-2">Allocation</th>
                 <th className="text-right font-medium px-3 py-2">Due</th>
                 <th className="text-right font-medium px-3 py-2">Paid</th>
                 <th className="text-left font-medium px-3 py-2">Status</th>
@@ -180,6 +185,9 @@ export function AssessmentEditor({
                       {c.unitBuilding && ` — ${c.unitBuilding}`}
                     </td>
                     <td className="px-3 py-2 text-gray-500">{c.ownerName ?? "—"}</td>
+                    <td className="text-right px-3 py-2 tabular-nums text-gray-500">
+                      {assessment.totalAmount > 0 ? `${((c.amountDue / assessment.totalAmount) * 100).toFixed(1)}%` : "—"}
+                    </td>
                     <td className="text-right px-3 py-2 tabular-nums">{money(c.amountDue)}</td>
                     <td className="text-right px-3 py-2 tabular-nums">{money(c.amountPaid)}</td>
                     <td className="px-3 py-2">

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, TrendingDown, ChevronRight, Receipt } from "lucide-react"
 import { billingPeriodLabel } from "@/lib/contract-styles"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { effectiveAllocations } from "@/lib/unit-allocation"
 
 // Only meaningful for a fair "per month" comparison across contracts billed
 // on different cadences - not a substitute for the contract's own terms.
@@ -19,7 +20,7 @@ export default async function OwnerFinancialPage() {
   const session = await auth()
   if (!session || session.user.role !== "OWNER") redirect("/dashboard")
 
-  const [ownerships, latestApprovedBudget, unitLabel] = await Promise.all([
+  const [ownerships, latestApprovedBudget, unitLabel, orgUnits] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -39,9 +40,14 @@ export default async function OwnerFinancialPage() {
         })
       : Promise.resolve(null),
     getUnitLabel(session.user.orgId),
+    db.unit.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      select: { id: true, allocationPercent: true },
+    }),
   ])
 
   const totalApprovedBudget = latestApprovedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
+  const allocationPercents = effectiveAllocations(orgUnits)
 
   const unitIds = ownerships.map((o) => o.unitId)
   const issuedCharges = unitIds.length
@@ -152,9 +158,8 @@ export default async function OwnerFinancialPage() {
 
           <div className="space-y-2">
             {ownerships.map((o) => {
-              const percent = o.unit.allocationPercent
-              const estimatedDues =
-                totalApprovedBudget != null && percent != null ? totalApprovedBudget * (percent / 100) : null
+              const percent = allocationPercents.get(o.unit.id) ?? 0
+              const estimatedDues = totalApprovedBudget != null ? totalApprovedBudget * (percent / 100) : null
               return (
                 <div key={`dues-${o.unit.id}`} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                   <div>
@@ -163,10 +168,8 @@ export default async function OwnerFinancialPage() {
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {estimatedDues != null
-                        ? `Est. from ${latestApprovedBudget!.year} approved budget (${percent}% allocation)`
-                        : percent == null
-                          ? "Allocation percentage not set yet - contact your Property Manager"
-                          : "No approved budget yet"}
+                        ? `Est. from ${latestApprovedBudget!.year} approved budget (${percent.toFixed(2)}% allocation)`
+                        : "No approved budget yet"}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-red-700">

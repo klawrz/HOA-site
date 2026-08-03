@@ -13,6 +13,9 @@ import { OccupancyVisibilityForm } from "./occupancy-visibility-form"
 import { ShareLinksPanel } from "./share-links-panel"
 import { parseSpecialties } from "@/lib/unit-manager-specialties"
 import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
+import { effectiveAllocations } from "@/lib/unit-allocation"
+import { Receipt } from "lucide-react"
+import Link from "next/link"
 
 export default async function UnitDetailPage({
   params,
@@ -44,7 +47,7 @@ export default async function UnitDetailPage({
   const { unit } = ownership
   const activeLease = unit.leases[0]
 
-  const [contractorMemberships, org, unitLabel] = await Promise.all([
+  const [contractorMemberships, org, unitLabel, orgUnits, approvedBudget] = await Promise.all([
     db.membership.findMany({
       where: { role: "CONTRACTOR" },
       include: { user: true },
@@ -52,9 +55,22 @@ export default async function UnitDetailPage({
     }),
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     getUnitLabel(session.user.orgId),
+    db.unit.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      select: { id: true, allocationPercent: true },
+    }),
+    db.budget.findFirst({
+      where: { orgId: session.user.orgId ?? undefined, status: "APPROVED", type: "OPERATING" },
+      include: { lineItems: true },
+      orderBy: { year: "desc" },
+    }),
   ])
   const contractors = contractorMemberships.map((m) => m.user)
   const unitName = unitDisplayName(unitLabel, unit.number, unit.building)
+
+  const allocationPercent = effectiveAllocations(orgUnits).get(unit.id) ?? 0
+  const approvedBudgetTotal = approvedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
+  const estimatedDues = approvedBudgetTotal != null ? approvedBudgetTotal * (allocationPercent / 100) : null
 
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
@@ -138,6 +154,42 @@ export default async function UnitDetailPage({
           {unit.civicRoll && (
             <p className="text-xs text-gray-400 pt-1">Civic Roll Number: {unit.civicRoll}</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-gray-500" /> Dues & Assessments
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1 text-sm">
+          <div className="flex items-baseline justify-between">
+            <p className="text-gray-500">Allocation share</p>
+            <p className="font-semibold">{allocationPercent.toFixed(2)}%</p>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <p className="text-gray-500">
+              {approvedBudget ? `${approvedBudget.year} approved Operating Budget` : "Approved Operating Budget"}
+            </p>
+            <p className="font-semibold">
+              {approvedBudgetTotal != null ? `$${approvedBudgetTotal.toLocaleString()}` : "Not yet approved"}
+            </p>
+          </div>
+          <div className="flex items-baseline justify-between border-t pt-1 mt-1">
+            <p className="text-gray-500">Estimated dues</p>
+            <p className="font-semibold">
+              {estimatedDues != null
+                ? `$${estimatedDues.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr`
+                : "—"}
+            </p>
+          </div>
+          <Link
+            href="/dashboard/owner/financial/dues"
+            className="text-xs text-blue-600 hover:underline inline-block pt-2"
+          >
+            View full dues & assessments
+          </Link>
         </CardContent>
       </Card>
 
