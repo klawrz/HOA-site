@@ -96,11 +96,107 @@ enum Currency {
   MXN
 }
 
+enum OrgDeletionStatus {
+  PENDING
+  APPROVED
+  DENIED
+  COMPLETED
+}
+
+// Business-continuity guardrail: a platform admin can request an org's
+// deletion, but it only actually executes once BOTH the Account Owner and
+// at least one Board Member have approved - protects an org from being
+// deleted unilaterally. Deliberately has NO Prisma relations to
+// Organization or User - this is an audit record that must remain readable
+// after the very org (and possibly people) it concerns are gone, so every
+// "who"/"which org" field is a plain id with a name/email snapshot taken
+// at the time, not a foreign key that would cascade-delete or dangle.
+model OrgDeletionRequest {
+  id      String @id @default(cuid())
+  orgId   String
+  orgName String
+  orgSlug String
+
+  status OrgDeletionStatus @default(PENDING)
+
+  requestedById    String
+  requestedByEmail String
+  requestedAt      DateTime @default(now())
+  reason           String?
+
+  accountOwnerApprovedById    String?
+  accountOwnerApprovedByName  String?
+  accountOwnerApprovedByEmail String?
+  accountOwnerApprovedAt      DateTime?
+
+  boardMemberApprovedById    String?
+  boardMemberApprovedByName  String?
+  boardMemberApprovedByEmail String?
+  boardMemberApprovedAt      DateTime?
+
+  deniedById    String?
+  deniedByName  String?
+  deniedByEmail String?
+  deniedAt      DateTime?
+  denialReason  String?
+
+  // Full JSON export of the org (see getFullOrgDataExport), generated and
+  // saved the moment both approvals are in, right before the org is
+  // actually deleted - the whole point of the rule is that nothing is lost.
+  backupFileUrl String?
+  completedAt   DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+enum PMReferralStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  DECLINED
+}
+
+// Growth lever: a Property Manager already active in one org often runs
+// several HOAs/communities elsewhere. This captures a lead on those other
+// properties for the platform admin to follow up on and onboard - not a
+// technical link to any existing org (the referred property usually isn't
+// in HOPE yet). No relation to Organization/User, same reasoning as
+// OrgDeletionRequest: a lead should stay visible even if the referring
+// membership or org later changes.
+model PMReferral {
+  id    String @id @default(cuid())
+  orgId String
+  orgName String
+
+  referredById    String
+  referredByName  String
+  referredByEmail String
+
+  propertyName   String
+  estimatedUnits Int?
+  contactName    String?
+  contactEmail   String?
+  contactPhone   String?
+  notes          String?
+
+  status PMReferralStatus @default(NEW)
+
+  // Set once a platform admin actually creates the org from this lead.
+  convertedOrgId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Organization {
-  id                 String  @id @default(cuid())
+  id                 String    @id @default(cuid())
   name               String
-  slug               String  @unique
-  onboardingComplete Boolean @default(false)
+  slug               String    @unique
+  onboardingComplete Boolean   @default(false)
+  // Set by a platform admin to lock every member (including the Account
+  // Owner) out of the dashboard without touching any data - reversible,
+  // unlike deleting the org outright. Null means active.
+  suspendedAt        DateTime?
 
   // Property address, shown on the public property home page
   addressLine1 String?
@@ -127,9 +223,17 @@ model Organization {
   // free text rather than a rigid account-number field - the Board controls
   // exactly what's shared.
   bankName                String?
+  bankAddress             String? // branch address, for wires/in-person visits
+  bankPhone               String?
   bankAccountName         String? // e.g. "Sunrise Heights HOA Operating Account"
   bankSigningAuthority    String? // who is authorized to sign/approve on the account
   bankPaymentInstructions String? // how to pay dues / send funds - e-transfer, wire, etc.
+
+  // The bank's own relationship manager/rep for this account - distinct
+  // from bankSigningAuthority, which is who on the HOA side can sign.
+  bankContactName  String?
+  bankContactPhone String?
+  bankContactEmail String?
 
   // The currency all budget/actual figures are entered in. The other
   // currency (USD<->MXN, a fixed pair) is always a derived, computed
@@ -157,8 +261,19 @@ model Organization {
   accountNumber String?
   pricingPlan   String? // free text, e.g. "$49/mo Standard" - no rigid Plan model yet
   billingExpiry DateTime?
+  // How this org pays HOPE - a reference/description (e.g. "Invoice - Net
+  // 30", "Card on file via Stripe", "ACH") never actual card/bank numbers -
+  // same free-text-reference convention as bankPaymentInstructions below,
+  // which is the HOA's own instructions for receiving dues, not this.
+  paymentMethod String?
 
   accountOwnerName         String?
+  // Their role/title at the HOA (e.g. "Board President", "self-managed
+  // Owner", "hired Property Manager acting as owner") - relevant to
+  // business-continuity risk (a sole owner-president is a bigger single
+  // point of failure than an owner who is not also on the Board), so it's
+  // worth knowing but not required upfront - fine to add later once known.
+  accountOwnerTitle        String?
   accountOwnerEmail        String?
   accountOwnerPhone        String?
   accountOwnerAddressLine1 String?
@@ -204,6 +319,13 @@ model Membership {
   role          Role
   isBoardMember Boolean  @default(false)
   createdAt     DateTime @default(now())
+
+  // Comma-separated ids of completed onboarding-checklist steps (see
+  // src/lib/onboarding-steps.ts) - null/empty means none done yet. Free
+  // text rather than a separate table, same convention as
+  // User.specialties - the step list is small and defined in code, not
+  // user-editable data that needs its own rows.
+  onboardingSteps String?
 
   user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)

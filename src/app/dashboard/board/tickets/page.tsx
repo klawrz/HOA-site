@@ -15,6 +15,7 @@ export default async function BoardTicketsPage() {
 
   const [tickets, contractorMemberships, unitLabel] = await Promise.all([
     db.troubleTicket.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
       include: {
         unit: true,
         submittedBy: true,
@@ -22,7 +23,11 @@ export default async function BoardTicketsPage() {
       },
       orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
     }),
-    db.membership.findMany({ where: { role: "CONTRACTOR" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
+    db.membership.findMany({
+      where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } },
+    }),
     getUnitLabel(session.user.orgId),
   ])
   const contractors = contractorMemberships.map((m) => m.user)

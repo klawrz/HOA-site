@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { ContractorCategory } from "@/generated/prisma"
 import { revalidatePath } from "next/cache"
+import { markOnboardingStepComplete } from "@/app/actions/onboarding"
 
 export async function updateContractorProfile(data: {
   company?: string
@@ -21,6 +22,10 @@ export async function updateContractorProfile(data: {
       category: data.category || null,
     },
   })
+
+  if (data.company || data.category) {
+    await markOnboardingStepComplete("contractor_profile")
+  }
 
   revalidatePath("/dashboard/contractor")
   revalidatePath("/dashboard/property-manager/contractors")

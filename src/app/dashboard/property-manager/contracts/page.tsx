@@ -21,8 +21,11 @@ export default async function PMContractsPage() {
       })
     : []
 
+  // Contractors from every org this PM staff member holds a Contracts grant
+  // for, not a single orgId - this page itself spans multiple HOAs (see
+  // orgSections below), unlike the single-org PM dashboard pages.
   const contractorMemberships = await db.membership.findMany({
-    where: { role: "CONTRACTOR" },
+    where: { orgId: { in: contractGrants.map((g) => g.orgId) }, role: "CONTRACTOR" },
     include: { user: true },
     orderBy: { user: { name: "asc" } },
   })

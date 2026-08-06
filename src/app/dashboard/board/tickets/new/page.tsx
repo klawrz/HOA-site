@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketRequestForm } from "@/app/dashboard/_components/ticket-request-form"
-import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { getUnitLabel, unitDisplayName, compareUnitNumbers } from "@/lib/unit-label"
 
 export default async function NewBoardTicketPage() {
   const session = await auth()
@@ -12,10 +12,10 @@ export default async function NewBoardTicketPage() {
   const [allUnits, unitLabel] = await Promise.all([
     db.unit.findMany({
       where: { orgId: session.user.orgId ?? undefined },
-      orderBy: { number: "asc" },
     }),
     getUnitLabel(session.user.orgId),
   ])
+  allUnits.sort(compareUnitNumbers)
 
   const units = allUnits.map((u) => ({
     id: u.id,

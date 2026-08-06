@@ -15,7 +15,7 @@ export default async function ContractsPage() {
   })
 
   const contractorMemberships = await db.membership.findMany({
-    where: { role: "CONTRACTOR" },
+    where: { orgId: session.user.orgId, role: "CONTRACTOR" },
     include: { user: true },
     orderBy: { user: { name: "asc" } },
   })

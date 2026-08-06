@@ -1,0 +1,28 @@
+-- CreateTable
+CREATE TABLE "OrgDeletionRequest" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "orgId" TEXT NOT NULL,
+    "orgName" TEXT NOT NULL,
+    "orgSlug" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "requestedById" TEXT NOT NULL,
+    "requestedByEmail" TEXT NOT NULL,
+    "requestedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "reason" TEXT,
+    "accountOwnerApprovedById" TEXT,
+    "accountOwnerApprovedByName" TEXT,
+    "accountOwnerApprovedByEmail" TEXT,
+    "accountOwnerApprovedAt" DATETIME,
+    "boardMemberApprovedById" TEXT,
+    "boardMemberApprovedByName" TEXT,
+    "boardMemberApprovedByEmail" TEXT,
+    "boardMemberApprovedAt" DATETIME,
+    "deniedById" TEXT,
+    "deniedByName" TEXT,
+    "deniedByEmail" TEXT,
+    "deniedAt" DATETIME,
+    "denialReason" TEXT,
+    "backupFileUrl" TEXT,
+    "completedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -11,6 +11,7 @@ export default async function DocumentsPage() {
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
   const documents = await db.document.findMany({
+    where: { orgId: session.user.orgId ?? undefined },
     orderBy: { createdAt: "desc" },
   })
 

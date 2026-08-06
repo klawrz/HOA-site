@@ -9,11 +9,18 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { addUnit, deleteUnit, completeOnboarding } from "@/app/actions/org"
 import { createInvite } from "@/app/actions/invites"
+import { BulkAddUnitsDialog } from "@/app/dashboard/account/units/bulk-add-units-dialog"
 
 type Unit = { id: string; number: string; building: string | null; bedrooms: number | null }
 type Invite = { id: string; email: string; role: string; token: string; acceptedAt: Date | null }
 
 const STEPS = ["Configure Units", "Invite Members", "All Set"]
+
+const SUGGESTED_ROLES = [
+  { value: "OWNER", label: "Unit Owner", hint: "Required to finish setup" },
+  { value: "PROPERTY_MANAGER", label: "Property Manager", hint: "Runs day-to-day operations" },
+  { value: "BOARD_MEMBER", label: "Board Member", hint: "Governance & approvals" },
+]
 
 export function OnboardingWizard({
   org,
@@ -37,6 +44,10 @@ export function OnboardingWizard({
   const [unitRole, setUnitRole] = useState("")
   const [inviteError, setInviteError] = useState("")
   const [addUnitError, setAddUnitError] = useState("")
+  const [completeError, setCompleteError] = useState("")
+
+  const hasOwnerInvite = invites.some((inv) => inv.role === "OWNER")
+  const invitedRoles = new Set(invites.map((inv) => inv.role))
 
   function goStep(n: number) {
     router.push(`/onboarding?step=${n}`)
@@ -76,9 +87,14 @@ export function OnboardingWizard({
   }
 
   async function handleComplete() {
+    setCompleteError("")
     startTransition(async () => {
-      await completeOnboarding()
-      router.push("/dashboard")
+      try {
+        await completeOnboarding()
+        router.push("/dashboard")
+      } catch (err) {
+        setCompleteError(err instanceof Error ? err.message : "Failed to complete setup")
+      }
     })
   }
 
@@ -122,6 +138,11 @@ export function OnboardingWizard({
               <h2 className="font-semibold text-lg">Configure your units</h2>
               <p className="text-sm text-gray-500">Add each unit in your HOA. You can always add more later.</p>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-700">Add one at a time, or in bulk</p>
+            <BulkAddUnitsDialog unitLabel={unitLabel} />
           </div>
 
           <form onSubmit={handleAddUnit} className="bg-white border rounded-xl p-5 space-y-4">
@@ -195,6 +216,38 @@ export function OnboardingWizard({
             </div>
           </div>
 
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">Who to invite</p>
+            <div className="flex flex-wrap gap-2">
+              {SUGGESTED_ROLES.map((r) => {
+                const done = invitedRoles.has(r.value)
+                const active = role === r.value
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => { setRole(r.value); setUnitRole(r.value) }}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-left border transition-colors ${
+                      done
+                        ? "bg-green-50 border-green-200 text-green-700"
+                        : active
+                        ? "bg-gray-900 border-gray-900 text-white"
+                        : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                    }`}
+                  >
+                    {done && <Check className="h-3.5 w-3.5 shrink-0" />}
+                    <span>
+                      <span className="font-medium">{r.label}</span>
+                      <span className={`block text-xs ${done ? "text-green-600" : active ? "text-gray-300" : "text-gray-400"}`}>
+                        {done ? "Invited" : r.hint}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <form onSubmit={handleCreateInvite} className="bg-white border rounded-xl p-5 space-y-4">
             <div className="space-y-1">
               <Label>Email address</Label>
@@ -261,8 +314,11 @@ export function OnboardingWizard({
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => goStep(1)} className="flex-1">← Back</Button>
-            <Button onClick={() => goStep(3)} className="flex-1">Finish Setup →</Button>
+            <Button onClick={() => goStep(3)} disabled={!hasOwnerInvite} className="flex-1">Finish Setup →</Button>
           </div>
+          {!hasOwnerInvite && (
+            <p className="text-center text-sm text-gray-400">Invite at least one Unit Owner to continue</p>
+          )}
         </div>
       )}
 
@@ -281,6 +337,7 @@ export function OnboardingWizard({
               {invites.length} invite{invites.length !== 1 ? "s" : ""} sent.
             </p>
           </div>
+          {completeError && <p className="text-sm text-red-600">{completeError}</p>}
           <Button
             onClick={handleComplete}
             disabled={isPending}

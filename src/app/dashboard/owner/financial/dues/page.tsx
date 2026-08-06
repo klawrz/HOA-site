@@ -6,6 +6,8 @@ import { ArrowLeft, Receipt } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatDateISO } from "@/lib/utils"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
+import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 const typeLabel: Record<string, string> = {
   REGULAR_DUES: "Regular Dues",
@@ -32,7 +34,7 @@ export default async function OwnerDuesPage() {
   })
   const unitIds = ownerships.map((o) => o.unitId)
 
-  const [charges, unitLabel] = await Promise.all([
+  const [charges, unitLabel, ownMembership] = await Promise.all([
     unitIds.length
       ? db.assessmentCharge.findMany({
           where: { unitId: { in: unitIds }, assessment: { status: "ISSUED" } },
@@ -41,12 +43,18 @@ export default async function OwnerDuesPage() {
         })
       : Promise.resolve([]),
     getUnitLabel(session.user.orgId),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
+  const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("dues")
 
   const totalOutstanding = charges.reduce((s, c) => s + Math.max(c.amountDue - c.amountPaid, 0), 0)
 
   return (
     <div className="space-y-6">
+      <OnboardingStepTracker stepId="dues" alreadyComplete={onboardingStepDone} />
       <div>
         <Link
           href="/dashboard/owner/financial"

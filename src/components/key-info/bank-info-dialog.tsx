@@ -17,9 +17,14 @@ import { setBankInfo } from "@/app/actions/key-info"
 
 interface BankInfo {
   bankName: string | null
+  bankAddress: string | null
+  bankPhone: string | null
   bankAccountName: string | null
   bankSigningAuthority: string | null
   bankPaymentInstructions: string | null
+  bankContactName: string | null
+  bankContactPhone: string | null
+  bankContactEmail: string | null
 }
 
 export function BankInfoDialog({ bank }: { bank: BankInfo }) {
@@ -34,9 +39,14 @@ export function BankInfoDialog({ bank }: { bank: BankInfo }) {
     const form = new FormData(e.currentTarget)
     const result = await setBankInfo({
       bankName: (form.get("bankName") as string) ?? "",
+      bankAddress: (form.get("bankAddress") as string) ?? "",
+      bankPhone: (form.get("bankPhone") as string) ?? "",
       bankAccountName: (form.get("bankAccountName") as string) ?? "",
       bankSigningAuthority: (form.get("bankSigningAuthority") as string) ?? "",
       bankPaymentInstructions: (form.get("bankPaymentInstructions") as string) ?? "",
+      bankContactName: (form.get("bankContactName") as string) ?? "",
+      bankContactPhone: (form.get("bankContactPhone") as string) ?? "",
+      bankContactEmail: (form.get("bankContactEmail") as string) ?? "",
     })
     setSaving(false)
     if (result.success) {
@@ -60,6 +70,19 @@ export function BankInfoDialog({ bank }: { bank: BankInfo }) {
             <Input key={bank.bankName} name="bankName" placeholder="e.g. First National Bank" defaultValue={bank.bankName ?? undefined} />
           </div>
           <div className="space-y-1">
+            <Label>Branch address</Label>
+            <Input
+              key={bank.bankAddress}
+              name="bankAddress"
+              placeholder="Street, city, state/province, postal code"
+              defaultValue={bank.bankAddress ?? undefined}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Branch phone</Label>
+            <Input key={bank.bankPhone} name="bankPhone" placeholder="Branch phone number" defaultValue={bank.bankPhone ?? undefined} />
+          </div>
+          <div className="space-y-1">
             <Label>Account</Label>
             <Input
               key={bank.bankAccountName}
@@ -77,6 +100,14 @@ export function BankInfoDialog({ bank }: { bank: BankInfo }) {
               className="h-16 resize-none"
               defaultValue={bank.bankSigningAuthority ?? undefined}
             />
+          </div>
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="col-span-3">
+              <Label>Bank key contact</Label>
+            </div>
+            <Input key={bank.bankContactName} name="bankContactName" placeholder="Contact name" defaultValue={bank.bankContactName ?? undefined} />
+            <Input key={bank.bankContactPhone} name="bankContactPhone" placeholder="Phone" defaultValue={bank.bankContactPhone ?? undefined} />
+            <Input key={bank.bankContactEmail} name="bankContactEmail" type="email" placeholder="Email" defaultValue={bank.bankContactEmail ?? undefined} />
           </div>
           <div className="space-y-1">
             <Label>How to pay dues / send funds</Label>

@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
 import { OnboardingWizard } from "./wizard"
+import { compareUnitNumbers } from "@/lib/unit-label"
 
 export default async function OnboardingPage({
   searchParams,
@@ -14,12 +15,13 @@ export default async function OnboardingPage({
   const org = await db.organization.findUnique({
     where: { id: session.user.orgId },
     include: {
-      units: { orderBy: { number: "asc" } },
+      units: true,
       invites: { orderBy: { createdAt: "desc" } },
     },
   })
   if (!org) redirect("/login")
   if (org.onboardingComplete) redirect("/dashboard")
+  org.units.sort(compareUnitNumbers)
 
   const { step } = await searchParams
   const currentStep = Number(step) || 1

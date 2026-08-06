@@ -42,7 +42,7 @@ export default async function OwnerPropertyManagerPage() {
       orderBy: { startDate: "desc" },
     }),
     db.troubleTicket.findMany({
-      where: { scope: "COMMON_AREA" },
+      where: { scope: "COMMON_AREA", orgId: session.user.orgId ?? undefined },
       include: { submittedBy: true, assignments: { include: { contractor: true } } },
       orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
     }),

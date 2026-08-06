@@ -11,7 +11,7 @@ export default async function OwnersDirectoryPage() {
 
   const [ownerMemberships, unitLabel] = await Promise.all([
     db.membership.findMany({
-      where: { role: "OWNER" },
+      where: { orgId: session.user.orgId ?? undefined, role: "OWNER" },
       include: {
         user: {
           include: {

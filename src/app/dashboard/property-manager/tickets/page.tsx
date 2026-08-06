@@ -8,13 +8,16 @@ import { TicketManageForm } from "@/app/dashboard/_components/ticket-manage-form
 import { cn, formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
+import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 export default async function AllTicketsPage() {
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const [tickets, contractorMemberships, unitLabel] = await Promise.all([
+  const [tickets, contractorMemberships, unitLabel, ownMembership] = await Promise.all([
     db.troubleTicket.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
       include: {
         unit: true,
         submittedBy: true,
@@ -22,13 +25,23 @@ export default async function AllTicketsPage() {
       },
       orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
     }),
-    db.membership.findMany({ where: { role: "CONTRACTOR" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
+    db.membership.findMany({
+      where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } },
+    }),
     getUnitLabel(session.user.orgId),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
   const contractors = contractorMemberships.map((m) => m.user)
+  const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("pm_tickets")
 
   return (
     <div className="space-y-6">
+      <OnboardingStepTracker stepId="pm_tickets" alreadyComplete={onboardingStepDone} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">All Trouble Tickets</h1>

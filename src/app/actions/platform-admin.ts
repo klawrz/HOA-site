@@ -7,25 +7,67 @@ import { createInviteForOrg } from "@/app/actions/invites"
 import { acceptInvite } from "@/lib/accept-invite"
 import { slugify } from "@/lib/slugify"
 import { Role } from "@/generated/prisma"
+import bcrypt from "bcryptjs"
 
 // Same default password used by every seeded demo account, so a
 // quick-accepted test account logs in the same way as the rest of the
 // app's test data.
 const DEV_DEFAULT_PASSWORD = "password123"
 
-export async function createOrganization(formData: FormData) {
+// Front-loaded alternative to the invite-link model used everywhere else -
+// platform admin sets the Account Owner's password directly, so the login
+// works immediately with no pending invite step. If the email already has
+// a HOPE account, this just adds the ACCOUNT_OWNER membership to it (their
+// existing password is never touched) - same reasoning as acceptInvite's
+// existing-user branch.
+export async function createOrganizationWithOwner(data: {
+  orgName: string
+  ownerName: string
+  ownerEmail: string
+  password: string
+  accountNumber?: string
+  pricingPlan?: string
+  billingExpiry?: string
+  paymentMethod?: string
+}) {
   const session = await requirePlatformAdmin()
   if (!session) throw new Error("Unauthorized")
 
-  const name = (formData.get("name") as string)?.trim()
-  const ownerEmail = (formData.get("ownerEmail") as string)?.trim()
-  if (!name || !ownerEmail) throw new Error("Organization name and owner email are required")
+  const orgName = data.orgName.trim()
+  const ownerName = data.ownerName.trim()
+  const ownerEmail = data.ownerEmail.trim().toLowerCase()
+  if (!orgName || !ownerName || !ownerEmail) {
+    throw new Error("Organization name, owner name, and email are required")
+  }
 
-  const org = await db.organization.create({ data: { name, slug: slugify(name) } })
-  const invite = await createInviteForOrg({ email: ownerEmail, role: "ACCOUNT_OWNER", orgId: org.id })
+  const org = await db.organization.create({
+    data: {
+      name: orgName,
+      slug: slugify(orgName),
+      accountNumber: data.accountNumber?.trim() || null,
+      pricingPlan: data.pricingPlan?.trim() || null,
+      billingExpiry: data.billingExpiry ? new Date(data.billingExpiry) : null,
+      paymentMethod: data.paymentMethod?.trim() || null,
+    },
+  })
+
+  const existing = await db.user.findUnique({ where: { email: ownerEmail } })
+  let usedExistingAccount = false
+  if (existing) {
+    usedExistingAccount = true
+    const alreadyMember = await db.membership.findFirst({ where: { userId: existing.id, orgId: org.id } })
+    if (!alreadyMember) {
+      await db.membership.create({ data: { userId: existing.id, orgId: org.id, role: "ACCOUNT_OWNER" } })
+    }
+  } else {
+    if (!data.password || data.password.length < 8) throw new Error("Password must be at least 8 characters")
+    const hashed = await bcrypt.hash(data.password, 12)
+    const user = await db.user.create({ data: { name: ownerName, email: ownerEmail, password: hashed } })
+    await db.membership.create({ data: { userId: user.id, orgId: org.id, role: "ACCOUNT_OWNER" } })
+  }
 
   revalidatePath("/platform-admin")
-  return { orgId: org.id, inviteToken: invite.token }
+  return { orgId: org.id, orgName: org.name, usedExistingAccount }
 }
 
 export async function updateOrgName(orgId: string, name: string) {
@@ -86,38 +128,91 @@ export async function updateOrgAddressAdmin(orgId: string, formData: FormData) {
   revalidatePath(`/platform-admin/${orgId}`)
 }
 
+// Fast-start convenience for the New Organization wizard - platform admin
+// knows the property size up front, so pre-generate sequentially-numbered
+// units rather than making the Account Owner add every one by hand on
+// first login. Only fires on a unit-less org (never called again once the
+// wizard's Basic Data step has been submitted once), so re-editing address
+// details afterward can't duplicate units.
+export async function autoGenerateUnitsAdmin(orgId: string, count: number) {
+  const session = await requirePlatformAdmin()
+  if (!session) throw new Error("Unauthorized")
+  if (!Number.isInteger(count) || count < 1 || count > 500) {
+    throw new Error("Number of units must be between 1 and 500")
+  }
+
+  const existing = await db.unit.count({ where: { orgId } })
+  if (existing > 0) return { created: 0 }
+
+  await db.unit.createMany({
+    data: Array.from({ length: count }, (_, i) => ({
+      orgId,
+      number: String(i + 1),
+      status: "AVAILABLE" as const,
+    })),
+  })
+  revalidatePath(`/platform-admin/${orgId}`)
+  return { created: count }
+}
+
 // Billing/account-owner record a platform admin keeps for their own
 // tracking - independent of whether the invited Account Owner has accepted
 // their invite yet (there may be no User row at all for this org's owner).
+// Only writes fields actually present in the submitted FormData - this is
+// called separately by the Account/Billing step, the Account Owner Data
+// step, and the platform-admin edit cards, each of which posts a different
+// subset of these fields. Unconditionally nulling absent fields would wipe
+// out data saved by one of the other callers.
 export async function updateOrgBillingProfile(orgId: string, formData: FormData) {
   const session = await requirePlatformAdmin()
   if (!session) throw new Error("Unauthorized")
 
   const str = (name: string) => (formData.get(name) as string)?.trim() || null
-  const expiryRaw = formData.get("billingExpiry") as string
-  const billingExpiry = expiryRaw ? new Date(expiryRaw) : null
+  const data: Record<string, string | Date | null> = {}
 
-  await db.organization.update({
-    where: { id: orgId },
-    data: {
-      accountNumber: str("accountNumber"),
-      pricingPlan: str("pricingPlan"),
-      billingExpiry,
-      accountOwnerName: str("accountOwnerName"),
-      accountOwnerEmail: str("accountOwnerEmail"),
-      accountOwnerPhone: str("accountOwnerPhone"),
-      accountOwnerAddressLine1: str("accountOwnerAddressLine1"),
-      accountOwnerAddressLine2: str("accountOwnerAddressLine2"),
-      accountOwnerCity: str("accountOwnerCity"),
-      accountOwnerState: str("accountOwnerState"),
-      accountOwnerPostalCode: str("accountOwnerPostalCode"),
-      accountOwnerCountry: str("accountOwnerCountry"),
-      altContactName: str("altContactName"),
-      altContactEmail: str("altContactEmail"),
-      altContactPhone: str("altContactPhone"),
-    },
-  })
+  if (formData.has("accountNumber")) data.accountNumber = str("accountNumber")
+  if (formData.has("pricingPlan")) data.pricingPlan = str("pricingPlan")
+  if (formData.has("billingExpiry")) {
+    const expiryRaw = formData.get("billingExpiry") as string
+    data.billingExpiry = expiryRaw ? new Date(expiryRaw) : null
+  }
+  if (formData.has("accountOwnerName")) data.accountOwnerName = str("accountOwnerName")
+  if (formData.has("accountOwnerTitle")) data.accountOwnerTitle = str("accountOwnerTitle")
+  if (formData.has("accountOwnerEmail")) data.accountOwnerEmail = str("accountOwnerEmail")
+  if (formData.has("accountOwnerPhone")) data.accountOwnerPhone = str("accountOwnerPhone")
+  if (formData.has("accountOwnerAddressLine1")) data.accountOwnerAddressLine1 = str("accountOwnerAddressLine1")
+  if (formData.has("accountOwnerAddressLine2")) data.accountOwnerAddressLine2 = str("accountOwnerAddressLine2")
+  if (formData.has("accountOwnerCity")) data.accountOwnerCity = str("accountOwnerCity")
+  if (formData.has("accountOwnerState")) data.accountOwnerState = str("accountOwnerState")
+  if (formData.has("accountOwnerPostalCode")) data.accountOwnerPostalCode = str("accountOwnerPostalCode")
+  if (formData.has("accountOwnerCountry")) data.accountOwnerCountry = str("accountOwnerCountry")
+  if (formData.has("altContactName")) data.altContactName = str("altContactName")
+  if (formData.has("altContactEmail")) data.altContactEmail = str("altContactEmail")
+  if (formData.has("altContactPhone")) data.altContactPhone = str("altContactPhone")
+
+  await db.organization.update({ where: { id: orgId }, data })
   revalidatePath(`/platform-admin/${orgId}`)
+}
+
+// Reversible lockout - every member (including the Account Owner) is
+// blocked from the dashboard while suspended, but no data is touched. See
+// the check in src/app/dashboard/layout.tsx.
+export async function suspendOrganization(orgId: string) {
+  const session = await requirePlatformAdmin()
+  if (!session) throw new Error("Unauthorized")
+
+  await db.organization.update({ where: { id: orgId }, data: { suspendedAt: new Date() } })
+  revalidatePath(`/platform-admin/${orgId}`)
+  revalidatePath("/platform-admin")
+}
+
+export async function unsuspendOrganization(orgId: string) {
+  const session = await requirePlatformAdmin()
+  if (!session) throw new Error("Unauthorized")
+
+  await db.organization.update({ where: { id: orgId }, data: { suspendedAt: null } })
+  revalidatePath(`/platform-admin/${orgId}`)
+  revalidatePath("/platform-admin")
 }
 
 // Stopgap for testing while HOPE has no live email delivery - simulates a

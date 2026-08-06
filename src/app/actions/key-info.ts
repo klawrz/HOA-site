@@ -18,9 +18,14 @@ function revalidateKeyInfoPaths() {
 
 export async function setBankInfo(data: {
   bankName: string
+  bankAddress: string
+  bankPhone: string
   bankAccountName: string
   bankSigningAuthority: string
   bankPaymentInstructions: string
+  bankContactName: string
+  bankContactPhone: string
+  bankContactEmail: string
 }) {
   const session = await auth()
   if (!session?.user.orgId || !canManageKeyInfo(session.user.role, session.user.isBoardMember)) {
@@ -31,9 +36,14 @@ export async function setBankInfo(data: {
     where: { id: session.user.orgId },
     data: {
       bankName: data.bankName.trim() || null,
+      bankAddress: data.bankAddress.trim() || null,
+      bankPhone: data.bankPhone.trim() || null,
       bankAccountName: data.bankAccountName.trim() || null,
       bankSigningAuthority: data.bankSigningAuthority.trim() || null,
       bankPaymentInstructions: data.bankPaymentInstructions.trim() || null,
+      bankContactName: data.bankContactName.trim() || null,
+      bankContactPhone: data.bankContactPhone.trim() || null,
+      bankContactEmail: data.bankContactEmail.trim() || null,
     },
   })
 

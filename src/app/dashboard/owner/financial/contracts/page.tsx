@@ -18,7 +18,11 @@ export default async function OwnerContractsPage() {
         },
       },
     }),
-    db.membership.findMany({ where: { role: "CONTRACTOR" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
+    db.membership.findMany({
+      where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } },
+    }),
     getUnitLabel(session.user.orgId),
   ])
   const contractors = contractorMemberships.map((m) => m.user)

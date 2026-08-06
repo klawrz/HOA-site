@@ -5,6 +5,14 @@ export function unitDisplayName(unitLabel: string, number: string, building?: st
   return building ? `${unitLabel} ${number} — Building ${building}` : `${unitLabel} ${number}`
 }
 
+// Unit numbers are free text (Prisma orderBy sorts them lexicographically,
+// so "10" lands before "2"). This compares embedded digit runs numerically -
+// "Villa 2" before "Villa 10" - while still working for purely alphabetic
+// or mixed formats.
+export function compareUnitNumbers<T extends { number: string }>(a: T, b: T) {
+  return a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: "base" })
+}
+
 // The property's own address never gets re-entered per unit - a unit's
 // "address" is just its own name plus wherever the property already is.
 export function unitAddressLines(

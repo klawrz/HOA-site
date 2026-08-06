@@ -10,4 +10,4 @@ export async function getUnitLabel(orgId: string | null | undefined) {
   return org?.unitLabel ?? "Unit"
 }
 
-export { unitDisplayName, unitAddressLines } from "./unit-label-format"
+export { unitDisplayName, unitAddressLines, compareUnitNumbers } from "./unit-label-format"

@@ -18,7 +18,12 @@ import { BankInfoCard } from "@/components/key-info/bank-info-card"
 import { KeyContactList } from "@/components/key-info/key-contact-list"
 import { KeyContactDialog } from "@/components/key-info/key-contact-dialog"
 import { PolicyTextCard } from "@/components/key-info/policy-text-card"
+import { PropertyAddressCard } from "@/components/key-info/property-address-card"
+import { BoardRosterCard } from "@/components/key-info/board-roster-card"
+import { PMKeyContactCard } from "@/components/key-info/pm-key-contact-card"
 import { setOccupancyPolicy, setRentalPoolGuidelines } from "@/app/actions/key-info"
+import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
+import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
@@ -27,7 +32,7 @@ export default async function OwnerGovernancePage() {
   const now = new Date()
   const isBoardMember = session.user.isBoardMember
 
-  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts, orgMemberships] = await Promise.all([
+  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts, orgMemberships, activePMContract, ownMembership] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: {
@@ -64,8 +69,18 @@ export default async function OwnerGovernancePage() {
       orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
     }),
     db.membership.findMany({ where: { orgId: session.user.orgId ?? undefined }, select: { userId: true, role: true } }),
+    db.pMContract.findFirst({
+      where: { orgId: session.user.orgId ?? undefined, status: "ACTIVE" },
+      include: { company: true },
+      orderBy: { startDate: "desc" },
+    }),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
   const roleByUserId = new Map(orgMemberships.map((m) => [m.userId, m.role]))
+  const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("governance")
 
   const reserveBalance = reserveTransactions.reduce(
     (s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount),
@@ -83,6 +98,7 @@ export default async function OwnerGovernancePage() {
 
   return (
     <div className="space-y-6">
+      <OnboardingStepTracker stepId="governance" alreadyComplete={onboardingStepDone} />
       <div>
         <h1 className="text-2xl font-bold">Governance</h1>
         <p className="text-gray-500 mt-1">
@@ -120,15 +136,35 @@ export default async function OwnerGovernancePage() {
         </CardContent>
       </Card>
 
+      <PropertyAddressCard
+        address={{
+          addressLine1: org?.addressLine1 ?? null,
+          addressLine2: org?.addressLine2 ?? null,
+          city: org?.city ?? null,
+          state: org?.state ?? null,
+          postalCode: org?.postalCode ?? null,
+          country: org?.country ?? null,
+        }}
+      />
+
       <BankInfoCard
         bank={{
           bankName: org?.bankName ?? null,
+          bankAddress: org?.bankAddress ?? null,
+          bankPhone: org?.bankPhone ?? null,
           bankAccountName: org?.bankAccountName ?? null,
           bankSigningAuthority: org?.bankSigningAuthority ?? null,
           bankPaymentInstructions: org?.bankPaymentInstructions ?? null,
+          bankContactName: org?.bankContactName ?? null,
+          bankContactPhone: org?.bankContactPhone ?? null,
+          bankContactEmail: org?.bankContactEmail ?? null,
         }}
         canManage={isBoardMember}
       />
+
+      <BoardRosterCard positions={boardPositions} />
+
+      <PMKeyContactCard company={activePMContract?.company ?? null} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

@@ -7,8 +7,8 @@ import { randomUUID } from "crypto"
 import { Role } from "@/generated/prisma"
 
 // Shared by the Account Owner invite panel/onboarding wizard (via
-// createInvite below) and platform-admin's createOrganization (which invites
-// into a brand-new org it doesn't itself belong to) - authorization is
+// createInvite below) and platform-admin's sendOrgInvite (invites into an
+// org the platform admin doesn't itself belong to) - authorization is
 // checked per-call against the target orgId rather than assumed from the
 // caller's own session org.
 export async function createInviteForOrg(input: { email: string; role: Role; orgId: string; unitId?: string | null }) {

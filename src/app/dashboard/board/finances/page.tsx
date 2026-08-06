@@ -6,7 +6,9 @@ import { Receipt, ChevronRight, PiggyBank, TableProperties } from "lucide-react"
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
-import { getUnitLabel } from "@/lib/unit-label"
+import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
+import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
+import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 function toBudgetRow(b: { id: string; year: number; version: string; status: string; lineItems: { budgetedAmount: number }[] }) {
   return {
@@ -23,21 +25,28 @@ export default async function BoardFinancesPage() {
   const session = await auth()
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
-  const [budgets, units, unitLabel] = await Promise.all([
+  const [budgets, units, unitLabel, ownMembership] = await Promise.all([
     db.budget.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { lineItems: true },
       orderBy: { year: "desc" },
     }),
-    db.unit.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { number: "asc" } }),
+    db.unit.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
     getUnitLabel(session.user.orgId),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
+  units.sort(compareUnitNumbers)
+  const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("board_finances")
 
   const operating = budgets.filter((b) => b.type === "OPERATING")
   const capital = budgets.filter((b) => b.type === "CAPITAL")
 
   return (
     <div className="space-y-6">
+      <OnboardingStepTracker stepId="board_finances" alreadyComplete={onboardingStepDone} />
       <div>
         <h1 className="text-2xl font-bold">Finances</h1>
         <p className="text-gray-500 mt-1">Annual budgets - drafted, revised, and approved</p>

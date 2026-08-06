@@ -7,6 +7,9 @@ import { formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
 import { getAttentionItems } from "@/lib/attention"
 import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel"
+import { PM_ONBOARDING_STEPS, PM_STEP_IDS, parseCompletedSteps, isOnboardingComplete } from "@/lib/onboarding-steps"
+import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
+import { PMReferralCard } from "@/components/dashboard/pm-referral-card"
 
 export default async function PropertyManagerDashboard() {
   const session = await auth()
@@ -20,18 +23,33 @@ export default async function PropertyManagerDashboard() {
     ownerCount,
     contractorCount,
     attentionItems,
+    ownMembership,
+    myReferrals,
   ] = await Promise.all([
-    db.unit.count(),
-    db.unit.count({ where: { status: "AVAILABLE" } }),
-    db.unit.count({ where: { status: "RENTED" } }),
-    db.troubleTicket.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] } } }),
-    db.membership.count({ where: { role: "OWNER" } }),
-    db.membership.count({ where: { role: "CONTRACTOR" } }),
+    db.unit.count({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.unit.count({ where: { orgId: session.user.orgId ?? undefined, status: "AVAILABLE" } }),
+    db.unit.count({ where: { orgId: session.user.orgId ?? undefined, status: "RENTED" } }),
+    db.troubleTicket.count({
+      where: { orgId: session.user.orgId ?? undefined, status: { in: ["OPEN", "IN_PROGRESS"] } },
+    }),
+    db.membership.count({ where: { orgId: session.user.orgId ?? undefined, role: "OWNER" } }),
+    db.membership.count({ where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" } }),
     session.user.orgId ? getAttentionItems(session.user.orgId, "/dashboard/property-manager") : Promise.resolve([]),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
+    db.pMReferral.findMany({
+      where: { referredById: session.user.id },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, propertyName: true, estimatedUnits: true, status: true, createdAt: true },
+    }),
   ])
+  const completedSteps = parseCompletedSteps(ownMembership?.onboardingSteps ?? null)
+  const onboardingDone = isOnboardingComplete(ownMembership?.onboardingSteps ?? null, PM_STEP_IDS)
 
   const recentTickets = await db.troubleTicket.findMany({
-    where: { status: { in: ["OPEN", "IN_PROGRESS"] } },
+    where: { orgId: session.user.orgId ?? undefined, status: { in: ["OPEN", "IN_PROGRESS"] } },
     include: { unit: true, submittedBy: true },
     orderBy: { createdAt: "desc" },
     take: 6,
@@ -43,6 +61,15 @@ export default async function PropertyManagerDashboard() {
         <h1 className="text-2xl font-bold text-gray-900">Property Manager Dashboard</h1>
         <p className="text-gray-500 mt-1">Community overview at a glance</p>
       </div>
+
+      <OnboardingChecklistCard
+        steps={PM_ONBOARDING_STEPS}
+        completedIds={completedSteps}
+        allComplete={onboardingDone}
+        welcomeSeen={completedSteps.has("welcome_seen")}
+        completionTitle="You're set up to run this community."
+        completionMessage="You know the finances, where tickets come in, and who's in your contractor directory. Welcome aboard."
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
@@ -109,6 +136,8 @@ export default async function PropertyManagerDashboard() {
       </div>
 
       <NeedsAttentionPanel items={attentionItems} />
+
+      <PMReferralCard referrals={myReferrals} />
 
       <Card>
         <CardHeader>

@@ -6,7 +6,7 @@ import { ArrowLeft, Receipt, ChevronRight, PiggyBank, TableProperties } from "lu
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
-import { getUnitLabel } from "@/lib/unit-label"
+import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
 
 function toBudgetRow(b: { id: string; year: number; version: string; status: string; lineItems: { budgetedAmount: number }[] }) {
   return {
@@ -29,9 +29,10 @@ export default async function OwnerBoardFinancesPage() {
       include: { lineItems: true },
       orderBy: { year: "desc" },
     }),
-    db.unit.findMany({ where: { orgId: session.user.orgId ?? undefined }, orderBy: { number: "asc" } }),
+    db.unit.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
     getUnitLabel(session.user.orgId),
   ])
+  units.sort(compareUnitNumbers)
 
   const operating = budgets.filter((b) => b.type === "OPERATING")
   const capital = budgets.filter((b) => b.type === "CAPITAL")

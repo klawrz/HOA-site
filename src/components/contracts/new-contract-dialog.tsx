@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
+import { Sparkles, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import {
 import { ContractType, ContractorCategory, BillingPeriod } from "@/generated/prisma"
 import { contractTypeLabel, billingPeriodLabel } from "@/lib/contract-styles"
 import { contractorCategoryLabel } from "@/lib/contractor-styles"
-import { createPropertyContract, createUnitContract } from "@/app/actions/contracts"
+import { createPropertyContract, createUnitContract, extractContractFromFile } from "@/app/actions/contracts"
 import { createContractorRecord } from "@/app/actions/contractor-profile"
 
 interface Contractor {
@@ -64,6 +65,57 @@ export function NewContractDialog(props: Props) {
   const [newContractorPhone, setNewContractorPhone] = useState("")
   const [newContractorCategory, setNewContractorCategory] = useState<ContractorCategory | "">("")
   const [addingContractor, setAddingContractor] = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFileType, setSelectedFileType] = useState<string | null>(null)
+  const [extracting, setExtracting] = useState(false)
+  const [prefill, setPrefill] = useState<{
+    title: string
+    startDate: string
+    endDate: string | null
+    amount: number | null
+    description: string
+    fileUrl: string
+  } | null>(null)
+  const [prefillKey, setPrefillKey] = useState(0)
+
+  const canExtract = selectedFileType === "application/pdf" || selectedFileType === "image/png" || selectedFileType === "image/jpeg"
+
+  async function handleExtract() {
+    const file = fileInputRef.current?.files?.[0]
+    if (!file) return
+    setExtracting(true)
+    const fd = new FormData()
+    fd.set("file", file)
+    const result = await extractContractFromFile(fd)
+    setExtracting(false)
+    if (!result.success) {
+      toast.error(result.error)
+      return
+    }
+    const { fields } = result
+    // fileUrl is kept in state (not just set imperatively on the input via
+    // a ref) so it survives the dialog's content remounting - e.g. if it
+    // closes and reopens before submit, an uncontrolled input's value set
+    // only via ref would be lost, but defaultValue-from-state below isn't.
+    setPrefill({ title: fields.title, startDate: fields.startDate, endDate: fields.endDate, amount: fields.amount, description: fields.description, fileUrl: result.fileUrl })
+    setPrefillKey((k) => k + 1)
+    setType(fields.type)
+    if (fields.billingPeriod) setBillingPeriod(fields.billingPeriod)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+    setSelectedFileType(null)
+    if (result.matchedContractorId) {
+      setContractorId(result.matchedContractorId)
+      setShowNewContractor(false)
+    } else {
+      setShowNewContractor(true)
+      setContractorId("")
+      setNewContractorName(fields.contractorName ?? "")
+      setNewContractorEmail(fields.contractorEmail ?? "")
+      setNewContractorCompany(fields.contractorCompany ?? "")
+    }
+    toast.success("Details extracted - review before saving")
+  }
 
   const sortedContractors = [...contractorList].sort((a, b) => {
     const catA = a.category ?? "￿"
@@ -120,6 +172,8 @@ export function NewContractDialog(props: Props) {
       setContractorId("")
       setType("PROJECT")
       setBillingPeriod("MONTHLY")
+      setPrefill(null)
+      setSelectedFileType(null)
       ;(document.getElementById(`contract-form-${scope}`) as HTMLFormElement)?.reset()
     } else {
       toast.error(result.error ?? "Failed to create contract")
@@ -134,9 +188,34 @@ export function NewContractDialog(props: Props) {
           <DialogTitle>New Contract</DialogTitle>
         </DialogHeader>
         <form id={`contract-form-${scope}`} onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+            <Label>Already signed? Upload it</Label>
+            <Input
+              ref={fileInputRef}
+              name="file"
+              type="file"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              onChange={(e) => setSelectedFileType(e.target.files?.[0]?.type ?? null)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExtract}
+              disabled={!canExtract || extracting}
+              className="gap-1.5"
+            >
+              {extracting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {extracting ? "Reading document..." : "Extract Details from File"}
+            </Button>
+            <p className="text-xs text-gray-400">
+              Reads the PDF/PNG/JPG and fills in what it can below - review everything before saving.
+            </p>
+            {prefill && <p className="text-xs text-blue-600">Extracted from the uploaded document - review before saving.</p>}
+          </div>
           <div className="space-y-1">
             <Label>Contract Title</Label>
-            <Input name="title" placeholder="e.g. Landscaping Services 2026" required />
+            <Input key={`title-${prefillKey}`} name="title" placeholder="e.g. Landscaping Services 2026" defaultValue={prefill?.title} required />
           </div>
           <div className="space-y-1">
             <Label>Type</Label>
@@ -264,11 +343,11 @@ export function NewContractDialog(props: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Start Date</Label>
-              <Input name="startDate" type="date" required />
+              <Input key={`startDate-${prefillKey}`} name="startDate" type="date" defaultValue={prefill?.startDate} required />
             </div>
             <div className="space-y-1">
               <Label>End Date</Label>
-              <Input name="endDate" type="date" />
+              <Input key={`endDate-${prefillKey}`} name="endDate" type="date" defaultValue={prefill?.endDate ?? undefined} />
             </div>
           </div>
           {type === "CRITICAL" && (
@@ -280,7 +359,7 @@ export function NewContractDialog(props: Props) {
           <div className={type === "RECURRING" ? "grid grid-cols-2 gap-3" : "space-y-1"}>
             <div className="space-y-1">
               <Label>Amount ($)</Label>
-              <Input name="amount" type="number" min="0" step="0.01" placeholder="0.00" />
+              <Input key={`amount-${prefillKey}`} name="amount" type="number" min="0" step="0.01" placeholder="0.00" defaultValue={prefill?.amount ?? undefined} />
             </div>
             {type === "RECURRING" && (
               <div className="space-y-1">
@@ -306,15 +385,17 @@ export function NewContractDialog(props: Props) {
           </div>
           <div className="space-y-1">
             <Label>Description</Label>
-            <Textarea name="description" placeholder="Scope of work..." className="h-20 resize-none" />
-          </div>
-          <div className="space-y-1">
-            <Label>Upload Contract File (optional)</Label>
-            <Input name="file" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" />
+            <Textarea key={`description-${prefillKey}`} name="description" placeholder="Scope of work..." className="h-20 resize-none" defaultValue={prefill?.description} />
           </div>
           <div className="space-y-1">
             <Label>Or Link to File (optional)</Label>
-            <Input name="fileUrl" type="url" placeholder="https://..." />
+            <Input
+              key={`fileUrl-${prefillKey}`}
+              name="fileUrl"
+              type="text"
+              placeholder="https://..."
+              defaultValue={prefill?.fileUrl}
+            />
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>

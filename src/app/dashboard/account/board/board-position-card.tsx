@@ -58,6 +58,8 @@ export function BoardPositionCard({ position, members }: { position: PositionRow
               id: position.id,
               title: position.title,
               userId: position.userId,
+              userName: position.userName,
+              userEmail: position.userEmail,
               termStart: position.termStart,
               termEnd: position.termEnd,
               notes: position.notes,

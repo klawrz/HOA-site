@@ -7,6 +7,8 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn, formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
+import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 export default async function OwnerTicketsPage() {
   const session = await auth()
@@ -18,19 +20,28 @@ export default async function OwnerTicketsPage() {
   })
   const ownedUnitIds = ownerships.map((o) => o.unitId)
 
-  const [tickets, unitLabel] = await Promise.all([
+  const [tickets, unitLabel, ownMembership] = await Promise.all([
     db.troubleTicket.findMany({
       where: {
-        OR: [{ unitId: { in: ownedUnitIds } }, { scope: "COMMON_AREA" }],
+        OR: [
+          { unitId: { in: ownedUnitIds } },
+          { scope: "COMMON_AREA", orgId: session.user.orgId ?? undefined },
+        ],
       },
       include: { unit: true, submittedBy: true },
       orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
     }),
     getUnitLabel(session.user.orgId),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
+  const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("tickets")
 
   return (
     <div className="space-y-6">
+      <OnboardingStepTracker stepId="tickets" alreadyComplete={onboardingStepDone} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Trouble Tickets</h1>

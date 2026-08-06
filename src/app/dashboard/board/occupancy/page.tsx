@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { TodayOccupancy } from "@/components/occupancy/today-occupancy"
-import { getUnitLabel } from "@/lib/unit-label"
+import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
 
 export default async function BoardOccupancyPage() {
   const session = await auth()
@@ -16,10 +16,10 @@ export default async function BoardOccupancyPage() {
         occupancyEntries: { orderBy: { startDate: "asc" } },
         leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
       },
-      orderBy: { number: "asc" },
     }),
     getUnitLabel(session.user.orgId),
   ])
+  units.sort(compareUnitNumbers)
 
   return (
     <div className="space-y-6">

@@ -8,7 +8,7 @@ export default async function BoardContractorsPage() {
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
   const memberships = await db.membership.findMany({
-    where: { role: "CONTRACTOR" },
+    where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" },
     include: {
       user: {
         include: {

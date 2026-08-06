@@ -6,8 +6,11 @@ import { requirePlatformAdmin } from "@/lib/require-platform-admin"
 import { OrgNameForm } from "./org-name-form"
 import { OrgInvitePanel } from "./org-invite-panel"
 import { OrgAddressCard } from "./org-address-card"
-import { BillingProfileCard } from "./billing-profile-card"
+import { AccountBillingCard } from "./account-billing-card"
+import { AccountOwnerDataCard } from "./account-owner-data-card"
 import { PropertyManagerCard } from "./property-manager-card"
+import { DangerZone } from "./danger-zone"
+import { compareUnitNumbers } from "@/lib/unit-label"
 
 export default async function PlatformAdminOrgDetailPage({
   params,
@@ -19,13 +22,13 @@ export default async function PlatformAdminOrgDetailPage({
 
   const { orgId } = await params
 
-  const [org, activePMContract] = await Promise.all([
+  const [org, activePMContract, latestDeletionRequest] = await Promise.all([
     db.organization.findUnique({
       where: { id: orgId },
       include: {
         memberships: { include: { user: true }, orderBy: { createdAt: "asc" } },
         invites: { orderBy: { createdAt: "desc" } },
-        units: { select: { id: true, number: true }, orderBy: { number: "asc" } },
+        units: { select: { id: true, number: true } },
       },
     }),
     db.pMContract.findFirst({
@@ -33,8 +36,10 @@ export default async function PlatformAdminOrgDetailPage({
       include: { company: true },
       orderBy: { startDate: "desc" },
     }),
+    db.orgDeletionRequest.findFirst({ where: { orgId }, orderBy: { requestedAt: "desc" } }),
   ])
   if (!org) notFound()
+  org.units.sort(compareUnitNumbers)
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -42,47 +47,64 @@ export default async function PlatformAdminOrgDetailPage({
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Organizations
       </Link>
 
+      {/* Mirrors the New Organization wizard's step order/labels (Account ->
+          Basic Data -> Account Owner Data) so a platform admin sees the same
+          structure reviewing an org here as they did creating it. */}
       <div className="space-y-2">
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account</h2>
         <OrgNameForm orgId={org.id} initialName={org.name} />
         <p className="text-xs text-gray-500">
-          {org.slug} · {org.onboardingComplete ? "Onboarded" : "Pending onboarding"} · created{" "}
+          {org.onboardingComplete ? "Onboarded" : "Pending onboarding"} · created{" "}
           {org.createdAt.toLocaleDateString()}
+          {org.suspendedAt && <span className="text-red-600 font-medium"> · Suspended</span>}
         </p>
+        <AccountBillingCard
+          orgId={org.id}
+          createdAt={org.createdAt}
+          billing={{
+            accountNumber: org.accountNumber,
+            pricingPlan: org.pricingPlan,
+            billingExpiry: org.billingExpiry,
+          }}
+        />
       </div>
 
-      <OrgAddressCard
-        orgId={org.id}
-        address={{
-          addressLine1: org.addressLine1,
-          addressLine2: org.addressLine2,
-          city: org.city,
-          state: org.state,
-          postalCode: org.postalCode,
-          country: org.country,
-        }}
-      />
+      <div className="space-y-2">
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Basic Data</h2>
+        <OrgAddressCard
+          orgId={org.id}
+          address={{
+            addressLine1: org.addressLine1,
+            addressLine2: org.addressLine2,
+            city: org.city,
+            state: org.state,
+            postalCode: org.postalCode,
+            country: org.country,
+          }}
+        />
+      </div>
 
-      <BillingProfileCard
-        orgId={org.id}
-        createdAt={org.createdAt}
-        profile={{
-          accountNumber: org.accountNumber,
-          pricingPlan: org.pricingPlan,
-          billingExpiry: org.billingExpiry,
-          accountOwnerName: org.accountOwnerName,
-          accountOwnerEmail: org.accountOwnerEmail,
-          accountOwnerPhone: org.accountOwnerPhone,
-          accountOwnerAddressLine1: org.accountOwnerAddressLine1,
-          accountOwnerAddressLine2: org.accountOwnerAddressLine2,
-          accountOwnerCity: org.accountOwnerCity,
-          accountOwnerState: org.accountOwnerState,
-          accountOwnerPostalCode: org.accountOwnerPostalCode,
-          accountOwnerCountry: org.accountOwnerCountry,
-          altContactName: org.altContactName,
-          altContactEmail: org.altContactEmail,
-          altContactPhone: org.altContactPhone,
-        }}
-      />
+      <div className="space-y-2">
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account Owner Data</h2>
+        <AccountOwnerDataCard
+          orgId={org.id}
+          data={{
+            accountOwnerName: org.accountOwnerName,
+            accountOwnerTitle: org.accountOwnerTitle,
+            accountOwnerEmail: org.accountOwnerEmail,
+            accountOwnerPhone: org.accountOwnerPhone,
+            accountOwnerAddressLine1: org.accountOwnerAddressLine1,
+            accountOwnerAddressLine2: org.accountOwnerAddressLine2,
+            accountOwnerCity: org.accountOwnerCity,
+            accountOwnerState: org.accountOwnerState,
+            accountOwnerPostalCode: org.accountOwnerPostalCode,
+            accountOwnerCountry: org.accountOwnerCountry,
+            altContactName: org.altContactName,
+            altContactEmail: org.altContactEmail,
+            altContactPhone: org.altContactPhone,
+          }}
+        />
+      </div>
 
       <PropertyManagerCard company={activePMContract?.company ?? null} />
 
@@ -119,6 +141,13 @@ export default async function PlatformAdminOrgDetailPage({
           acceptedAt: i.acceptedAt,
         }))}
         baseUrl={process.env.NEXTAUTH_URL ?? "http://localhost:3000"}
+      />
+
+      <DangerZone
+        orgId={org.id}
+        orgName={org.name}
+        suspended={!!org.suspendedAt}
+        latestDeletionRequest={latestDeletionRequest}
       />
     </div>
   )

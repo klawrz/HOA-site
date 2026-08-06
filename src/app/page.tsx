@@ -118,6 +118,18 @@ export default async function HomePage() {
             they need before every meeting — not after.
           </p>
         </section>
+
+        <section className="border-t py-12 px-6 text-center">
+          <h3 className="text-lg font-semibold mb-2 text-gray-700">
+            Digital-first, and not alone in it
+          </h3>
+          <p className="text-gray-500 max-w-xl mx-auto">
+            Governments are moving services online by default — Mexico has adopted a formal
+            national strategy through 2030 built around digital identity, connected systems, and
+            digital-first delivery as the standard. A community that runs on HOPE isn&apos;t
+            ahead of its time. It&apos;s exactly on time.
+          </p>
+        </section>
       </main>
     </div>
   )

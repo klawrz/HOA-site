@@ -5,18 +5,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { NewMeetingDialog } from "./new-meeting-dialog"
 import { MeetingMinutesDialog } from "./minutes-dialog"
+import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
+import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 export default async function MeetingsPage() {
   const session = await auth()
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
-  const meetings = await db.meeting.findMany({
-    include: { _count: { select: { documents: true } } },
-    orderBy: { date: "desc" },
-  })
+  const [meetings, ownMembership] = await Promise.all([
+    db.meeting.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      include: { _count: { select: { documents: true } } },
+      orderBy: { date: "desc" },
+    }),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
+  ])
+  const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("board_meetings")
 
   return (
     <div className="space-y-6">
+      <OnboardingStepTracker stepId="board_meetings" alreadyComplete={onboardingStepDone} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Meetings</h1>

@@ -16,6 +16,8 @@ import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-labe
 import { effectiveAllocations } from "@/lib/unit-allocation"
 import { Receipt } from "lucide-react"
 import Link from "next/link"
+import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
+import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 export default async function UnitDetailPage({
   params,
@@ -47,9 +49,9 @@ export default async function UnitDetailPage({
   const { unit } = ownership
   const activeLease = unit.leases[0]
 
-  const [contractorMemberships, org, unitLabel, orgUnits, approvedBudget] = await Promise.all([
+  const [contractorMemberships, org, unitLabel, orgUnits, approvedBudget, ownMembership] = await Promise.all([
     db.membership.findMany({
-      where: { role: "CONTRACTOR" },
+      where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" },
       include: { user: true },
       orderBy: { user: { name: "asc" } },
     }),
@@ -64,7 +66,12 @@ export default async function UnitDetailPage({
       include: { lineItems: true },
       orderBy: { year: "desc" },
     }),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
+  const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("unit")
   const contractors = contractorMemberships.map((m) => m.user)
   const unitName = unitDisplayName(unitLabel, unit.number, unit.building)
 
@@ -85,6 +92,7 @@ export default async function UnitDetailPage({
 
   return (
     <div className="max-w-2xl space-y-4">
+      <OnboardingStepTracker stepId="unit" alreadyComplete={onboardingStepDone} />
       <div>
         <h1 className="text-2xl font-bold">{unitName}</h1>
         <p className="text-gray-500 mt-1">

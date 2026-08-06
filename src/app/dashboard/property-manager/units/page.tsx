@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { RentalPolicy, UnitStatus } from "@/generated/prisma"
-import { getUnitLabel } from "@/lib/unit-label"
+import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
 
 const policyConfig: Record<
   RentalPolicy,
@@ -43,14 +43,15 @@ export default async function UnitAvailabilityPage() {
 
   const [units, unitLabel] = await Promise.all([
     db.unit.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
       include: {
         ownerships: { where: { isCurrent: true }, include: { owner: true } },
         leases: { where: { isActive: true }, include: { renter: true } },
       },
-      orderBy: { number: "asc" },
     }),
     getUnitLabel(session.user.orgId),
   ])
+  units.sort(compareUnitNumbers)
 
   const legend = [
     { dot: "bg-green-500", label: "Open to anyone" },

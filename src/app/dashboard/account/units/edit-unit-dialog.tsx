@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil } from "lucide-react"
-import { updateUnit } from "@/app/actions/org"
+import { Pencil, User as UserIcon, X } from "lucide-react"
+import { updateUnit, assignUnitOwner, clearUnitOwner } from "@/app/actions/org"
 
 type Unit = {
   id: string
@@ -25,11 +25,17 @@ type Unit = {
   sqft: number | null
   description: string | null
   civicRoll: string | null
+  owner: { name: string | null; email: string } | null
 }
 
 export function EditUnitDialog({ unit, unitLabel }: { unit: Unit; unitLabel: string }) {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState("")
+  const [owner, setOwner] = useState(unit.owner)
+  const [ownerName, setOwnerName] = useState(unit.owner?.name ?? "")
+  const [ownerEmail, setOwnerEmail] = useState(unit.owner?.email ?? "")
+  const [ownerSaving, setOwnerSaving] = useState(false)
+  const [ownerError, setOwnerError] = useState("")
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -39,6 +45,35 @@ export function EditUnitDialog({ unit, unitLabel }: { unit: Unit; unitLabel: str
       setOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save")
+    }
+  }
+
+  async function handleAssignOwner(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setOwnerError("")
+    setOwnerSaving(true)
+    try {
+      await assignUnitOwner(unit.id, { name: ownerName, email: ownerEmail })
+      setOwner({ name: ownerName.trim() || null, email: ownerEmail.trim().toLowerCase() })
+    } catch (err) {
+      setOwnerError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setOwnerSaving(false)
+    }
+  }
+
+  async function handleClearOwner() {
+    setOwnerError("")
+    setOwnerSaving(true)
+    try {
+      await clearUnitOwner(unit.id)
+      setOwner(null)
+      setOwnerName("")
+      setOwnerEmail("")
+    } catch (err) {
+      setOwnerError(err instanceof Error ? err.message : "Failed to remove")
+    } finally {
+      setOwnerSaving(false)
     }
   }
 
@@ -93,6 +128,53 @@ export function EditUnitDialog({ unit, unitLabel }: { unit: Unit; unitLabel: str
             </Button>
             <Button type="submit">Save</Button>
           </div>
+        </form>
+
+        {/* Separate form from the fields above - a nested <form> isn't
+            valid HTML, and this saves independently via its own action
+            rather than as part of the unit-details Save button. */}
+        <form onSubmit={handleAssignOwner} className="space-y-3 border-t pt-4">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            <UserIcon className="h-3.5 w-3.5" /> Owner
+          </div>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Owner name" />
+            </div>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={ownerEmail}
+                onChange={(e) => setOwnerEmail(e.target.value)}
+                placeholder="owner@example.com"
+                required
+              />
+            </div>
+          </div>
+          {ownerError && <p className="text-sm text-red-600">{ownerError}</p>}
+          <div className="flex items-center justify-between">
+            {owner ? (
+              <button
+                type="button"
+                onClick={handleClearOwner}
+                disabled={ownerSaving}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors disabled:opacity-50"
+              >
+                <X className="h-3 w-3" /> Remove owner
+              </button>
+            ) : (
+              <span />
+            )}
+            <Button type="submit" size="sm" variant="outline" disabled={ownerSaving}>
+              {owner ? "Update Owner" : "Assign Owner"}
+            </Button>
+          </div>
+          <p className="text-xs text-gray-400">
+            Records the owner of record directly. If they don&apos;t have a HOPE account yet, send them
+            an invite separately from Send Invites to give them portal access.
+          </p>
         </form>
       </DialogContent>
     </Dialog>

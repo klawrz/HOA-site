@@ -29,8 +29,10 @@ type Member = {
   id: string
   name: string | null
   email: string
-  role: string
+  role: string | null
   units: string[]
+  boardTitles: string[]
+  hasPortalAccess: boolean
 }
 
 export function MembersList({ members, unitLabel }: { members: Member[]; unitLabel: string }) {
@@ -61,26 +63,40 @@ export function MembersList({ members, unitLabel }: { members: Member[]; unitLab
             <p>{members.length === 0 ? "No members yet" : "No members match your search"}</p>
           </div>
         )}
-        {filtered.map((m) => (
-          <Link
-            key={m.id}
-            href={`/dashboard/account/members/${m.id}`}
-            className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{m.name ?? m.email}</p>
-              <p className="text-xs text-gray-400 truncate">
-                {m.email}
-                {m.units.length > 0 && ` · ${unitLabel} ${m.units.join(", ")}`}
-              </p>
-            </div>
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ml-2 ${roleColors[m.role] ?? "bg-gray-100 text-gray-600"}`}
+        {filtered.map((m) => {
+          // No Membership yet (recorded directly as a unit owner and/or
+          // Board seat holder) - fall back to a role label derived from
+          // that relationship instead of a Role enum value.
+          const fallbackLabel = m.boardTitles.length > 0 ? "Board Member" : "Unit Owner"
+          return (
+            <Link
+              key={m.id}
+              href={`/dashboard/account/members/${m.id}`}
+              className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
             >
-              {roleLabels[m.role] ?? m.role}
-            </span>
-          </Link>
-        ))}
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{m.name ?? m.email}</p>
+                <p className="text-xs text-gray-400 truncate">
+                  {m.email}
+                  {m.units.length > 0 && ` · ${unitLabel} ${m.units.join(", ")}`}
+                  {m.boardTitles.length > 0 && ` · ${m.boardTitles.join(", ")}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                {!m.hasPortalAccess && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                    Not on portal
+                  </span>
+                )}
+                <span
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.role ? roleColors[m.role] ?? "bg-gray-100 text-gray-600" : "bg-blue-50 text-blue-600"}`}
+                >
+                  {m.role ? roleLabels[m.role] ?? m.role : fallbackLabel}
+                </span>
+              </div>
+            </Link>
+          )
+        })}
       </div>
     </div>
   )

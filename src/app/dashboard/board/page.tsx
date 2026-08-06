@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 import { documentCategoryColor } from "@/lib/document-styles"
 import { getAttentionItems } from "@/lib/attention"
 import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel"
+import { BOARD_ONBOARDING_STEPS, BOARD_STEP_IDS, parseCompletedSteps, isOnboardingComplete } from "@/lib/onboarding-steps"
+import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
 
 export default async function BoardDashboard() {
   const session = await auth()
@@ -22,22 +24,30 @@ export default async function BoardDashboard() {
     recentMeetings,
     recentDocs,
     attentionItems,
+    ownMembership,
   ] = await Promise.all([
-    db.meeting.count(),
-    db.document.count(),
-    db.contract.count(),
-    db.unit.count(),
+    db.meeting.count({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.document.count({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.contract.count({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.unit.count({ where: { orgId: session.user.orgId ?? undefined } }),
     db.meeting.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
       orderBy: { date: "desc" },
       take: 4,
     }),
     db.document.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
     session.user.orgId ? getAttentionItems(session.user.orgId, "/dashboard/board") : Promise.resolve([]),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
-
+  const completedSteps = parseCompletedSteps(ownMembership?.onboardingSteps ?? null)
+  const onboardingDone = isOnboardingComplete(ownMembership?.onboardingSteps ?? null, BOARD_STEP_IDS)
 
   return (
     <div className="space-y-6">
@@ -45,6 +55,15 @@ export default async function BoardDashboard() {
         <h1 className="text-2xl font-bold">Board of Directors Dashboard</h1>
         <p className="text-gray-500 mt-1">Community governance and institutional memory</p>
       </div>
+
+      <OnboardingChecklistCard
+        steps={BOARD_ONBOARDING_STEPS}
+        completedIds={completedSteps}
+        allComplete={onboardingDone}
+        welcomeSeen={completedSteps.has("welcome_seen")}
+        completionTitle="You are ready to participate in governing your property."
+        completionMessage="You know the finances, the reserve fund, where meetings happen, and who to reach. Welcome to the Board."
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>

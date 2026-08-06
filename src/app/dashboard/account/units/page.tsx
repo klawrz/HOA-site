@@ -3,7 +3,7 @@ import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
 import { Building2, Trash2 } from "lucide-react"
 import { deleteUnit } from "@/app/actions/org"
-import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { getUnitLabel, unitDisplayName, compareUnitNumbers } from "@/lib/unit-label"
 import { NewUnitDialog } from "./new-unit-dialog"
 import { BulkAddUnitsDialog } from "./bulk-add-units-dialog"
 import { EditUnitDialog } from "./edit-unit-dialog"
@@ -27,10 +27,10 @@ export default async function AccountUnitsPage() {
         ownerships: { where: { isCurrent: true }, include: { owner: true } },
         managers: { include: { user: true } },
       },
-      orderBy: { number: "asc" },
     }),
     getUnitLabel(session.user.orgId),
   ])
+  units.sort(compareUnitNumbers)
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -81,7 +81,15 @@ export default async function AccountUnitsPage() {
                   </p>
                 )}
               </div>
-              <EditUnitDialog unit={u} unitLabel={unitLabel} />
+              <EditUnitDialog
+                unit={{
+                  ...u,
+                  owner: u.ownerships[0]?.owner
+                    ? { name: u.ownerships[0].owner.name, email: u.ownerships[0].owner.email }
+                    : null,
+                }}
+                unitLabel={unitLabel}
+              />
               <form action={deleteUnit.bind(null, u.id)}>
                 <button type="submit" className="text-gray-400 hover:text-red-500 transition-colors">
                   <Trash2 className="h-4 w-4" />

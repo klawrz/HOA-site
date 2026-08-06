@@ -7,12 +7,20 @@ import { UpdateTicketStatusForm } from "./update-status-form"
 import { BusinessProfileForm } from "./business-profile-form"
 import { formatDateTime } from "@/lib/utils"
 import { priorityColor, scopeLabel } from "@/lib/ticket-styles"
+import { CONTRACTOR_ONBOARDING_STEPS, CONTRACTOR_STEP_IDS, parseCompletedSteps, isOnboardingComplete } from "@/lib/onboarding-steps"
+import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
 
 export default async function ContractorDashboard() {
   const session = await auth()
   if (!session || session.user.role !== "CONTRACTOR") redirect("/dashboard")
 
   const me = await db.user.findUnique({ where: { id: session.user.id } })
+  const ownMembership = await db.membership.findUnique({
+    where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+    select: { onboardingSteps: true },
+  })
+  const completedSteps = parseCompletedSteps(ownMembership?.onboardingSteps ?? null)
+  const onboardingDone = isOnboardingComplete(ownMembership?.onboardingSteps ?? null, CONTRACTOR_STEP_IDS)
 
   const assignments = await db.ticketAssignment.findMany({
     where: { contractorId: session.user.id },
@@ -42,6 +50,15 @@ export default async function ContractorDashboard() {
         <h1 className="text-2xl font-bold">Contractor Dashboard</h1>
         <p className="text-gray-500 mt-1">Welcome, {session.user.name}</p>
       </div>
+
+      <OnboardingChecklistCard
+        steps={CONTRACTOR_ONBOARDING_STEPS}
+        completedIds={completedSteps}
+        allComplete={onboardingDone}
+        welcomeSeen={completedSteps.has("welcome_seen")}
+        completionTitle="You're all set."
+        completionMessage="Your profile is filled in and you know where your contracts live. Work orders will show up right here."
+      />
 
       <Card>
         <CardHeader>

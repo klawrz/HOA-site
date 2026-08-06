@@ -4,14 +4,17 @@ import { db } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 
 export default async function PlatformAdminPage() {
-  const orgs = await db.organization.findMany({
-    include: {
-      _count: {
-        select: { memberships: true, units: true, invites: { where: { acceptedAt: null } } },
+  const [orgs, newReferralCount] = await Promise.all([
+    db.organization.findMany({
+      include: {
+        _count: {
+          select: { memberships: true, units: true, invites: { where: { acceptedAt: null } } },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+      orderBy: { createdAt: "desc" },
+    }),
+    db.pMReferral.count({ where: { status: "NEW" } }),
+  ])
 
   return (
     <div className="space-y-6">
@@ -20,9 +23,19 @@ export default async function PlatformAdminPage() {
           <h1 className="text-2xl font-bold">Organizations</h1>
           <p className="text-gray-500 mt-1">Every HOA org provisioned on HOPE. Click one to manage it.</p>
         </div>
-        <Link href="/platform-admin/new-org">
-          <Button>New organization</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/platform-admin/referrals">
+            <Button variant="outline">
+              Referrals{newReferralCount > 0 ? ` (${newReferralCount})` : ""}
+            </Button>
+          </Link>
+          <Link href="/platform-admin/deletion-requests">
+            <Button variant="outline">Deletion Requests</Button>
+          </Link>
+          <Link href="/platform-admin/new-org">
+            <Button>New organization</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border divide-y">
@@ -35,7 +48,6 @@ export default async function PlatformAdminPage() {
           >
             <div>
               <p className="font-medium">{org.name}</p>
-              <p className="text-xs text-gray-500">{org.slug}</p>
             </div>
             <div className="text-sm text-gray-500 flex items-center gap-4">
               <span>{org._count.memberships} members</span>
@@ -46,6 +58,7 @@ export default async function PlatformAdminPage() {
               <span className={org.onboardingComplete ? "text-green-700" : "text-orange-600"}>
                 {org.onboardingComplete ? "Onboarded" : "Pending onboarding"}
               </span>
+              {org.suspendedAt && <span className="text-red-600 font-medium">Suspended</span>}
               <ChevronRight className="h-4 w-4 text-gray-300" />
             </div>
           </Link>

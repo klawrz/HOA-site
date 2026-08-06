@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays,
+  TicketIcon, LayoutDashboard, ChevronRight, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -42,6 +42,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dues & Assessments", href: "/dashboard/property-manager/finances/assessments", icon: Receipt, indent: true },
     { label: "Reserve Fund", href: "/dashboard/property-manager/finances/reserve", icon: PiggyBank, indent: true },
     { label: "Multi-Year Comparison", href: "/dashboard/property-manager/finances/comparison", icon: TableProperties, indent: true },
+    { label: "Reports", href: "/dashboard/property-manager/reports", icon: FileBarChart },
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     { label: "Unit Availability", href: "/dashboard/property-manager/units", icon: Building2 },
     { label: "Owner Directory", href: "/dashboard/property-manager/owners", icon: Users },
@@ -65,6 +66,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt, indent: true },
     { label: "Reserve Fund", href: "/dashboard/board/finances/reserve", icon: PiggyBank, indent: true },
     { label: "Multi-Year Comparison", href: "/dashboard/board/finances/comparison", icon: TableProperties, indent: true },
+    { label: "Reports", href: "/dashboard/board/reports", icon: FileBarChart },
     { label: "Property Manager", href: "/dashboard/board/pm", icon: Wrench },
     { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon },
     { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
@@ -91,7 +93,15 @@ const roleLabels: Record<Role, string> = {
   UNIT_MANAGER: "Unit Manager Portal",
 }
 
-export function DashboardSidebar({ role, isBoardMember }: { role: Role; isBoardMember: boolean }) {
+export function DashboardSidebar({
+  role,
+  isBoardMember,
+  orgName,
+}: {
+  role: Role
+  isBoardMember: boolean
+  orgName: string
+}) {
   const pathname = usePathname()
   // Copy - navByRole is a module-level singleton, and splicing below must
   // not mutate it or the injected item would leak into every render.
@@ -120,12 +130,17 @@ export function DashboardSidebar({ role, isBoardMember }: { role: Role; isBoardM
     .sort((a, b) => b.href.length - a.href.length)[0]
 
   return (
-    <aside className="w-64 bg-white border-r flex flex-col shrink-0">
-      <div className="p-4 border-b">
+    <aside className="w-64 bg-white border-r flex flex-col shrink-0 print:hidden">
+      <div className="p-4 border-b space-y-2">
         <Link href="/dashboard">
           <Image src="/HOPE-logo.png" alt="HOPE" height={36} width={120} className="object-contain" />
         </Link>
-        <p className="text-xs text-gray-400 mt-1">{roleLabels[role]}</p>
+        <p className="font-semibold text-gray-900 text-sm truncate" title={orgName}>
+          {orgName}
+        </p>
+        <span className="inline-block text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+          {roleLabels[role].toUpperCase()}
+        </span>
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => {

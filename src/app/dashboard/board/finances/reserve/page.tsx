@@ -10,12 +10,14 @@ import { ReserveDetailsDialog } from "@/components/reserve-fund/reserve-details-
 import { ReserveYearTable } from "@/components/reserve-fund/reserve-year-table"
 import { TransactionList } from "@/components/reserve-fund/transaction-list"
 import { reserveYearRange, computeReserveYearRows } from "@/lib/reserve-fund"
+import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
+import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 export default async function BoardReservePage() {
   const session = await auth()
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
-  const [org, transactions, yearNotes] = await Promise.all([
+  const [org, transactions, yearNotes, ownMembership] = await Promise.all([
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     db.reserveTransaction.findMany({
       where: { orgId: session.user.orgId ?? undefined },
@@ -23,7 +25,12 @@ export default async function BoardReservePage() {
       orderBy: { date: "desc" },
     }),
     db.reserveYearNote.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
+  const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("board_reserve")
 
   const balance = transactions.reduce((s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount), 0)
   const yearRows = computeReserveYearRows(transactions, reserveYearRange())
@@ -31,6 +38,7 @@ export default async function BoardReservePage() {
 
   return (
     <div className="space-y-6">
+      <OnboardingStepTracker stepId="board_reserve" alreadyComplete={onboardingStepDone} />
       <div>
         <Link
           href="/dashboard/board/finances"

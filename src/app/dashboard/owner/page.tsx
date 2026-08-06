@@ -22,6 +22,8 @@ import { TodayOccupancy } from "@/components/occupancy/today-occupancy"
 import { priorityColor as sharedPriorityColor, statusColor as sharedStatusColor } from "@/lib/ticket-styles"
 import { formatDateTime, cn } from "@/lib/utils"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { getOwnerOnboardingSteps, parseCompletedSteps, isOnboardingComplete, OWNER_STEP_IDS } from "@/lib/onboarding-steps"
+import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
 
 function greeting() {
   const hour = new Date().getHours()
@@ -60,7 +62,7 @@ export default async function OwnerDashboard() {
 
   const now = new Date()
 
-  const [ownerships, latestMeeting, latestAnnouncement, yearExpenses, unitLabel] = await Promise.all([
+  const [ownerships, latestMeeting, latestAnnouncement, yearExpenses, unitLabel, membership] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -86,7 +88,15 @@ export default async function OwnerDashboard() {
       select: { amount: true },
     }),
     getUnitLabel(session.user.orgId),
+    db.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
+      select: { onboardingSteps: true },
+    }),
   ])
+
+  const completedSteps = parseCompletedSteps(membership?.onboardingSteps ?? null)
+  const onboardingDone = isOnboardingComplete(membership?.onboardingSteps ?? null, OWNER_STEP_IDS)
+  const onboardingSteps = getOwnerOnboardingSteps(ownerships[0]?.unit.id ?? null)
 
   const openTickets = ownerships
     .flatMap((o) => o.unit.tickets)
@@ -178,6 +188,13 @@ export default async function OwnerDashboard() {
           {greeting()}, {session.user.name}.
         </p>
       </div>
+
+      <OnboardingChecklistCard
+        steps={onboardingSteps}
+        completedIds={completedSteps}
+        allComplete={onboardingDone}
+        welcomeSeen={completedSteps.has("welcome_seen")}
+      />
 
       <Card>
         <CardContent className="pt-4 space-y-4">

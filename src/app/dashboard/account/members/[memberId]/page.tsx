@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Building2, MessageCircle } from "lucide-react"
+import { ArrowLeft, Building2, Landmark, MessageCircle, Mail } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MemberEditCard } from "./member-edit-card"
@@ -38,23 +38,32 @@ export default async function MemberDetailPage({
   const session = await auth()
   if (!session?.user.orgId) redirect("/login")
 
-  const [membership, unitLabel] = await Promise.all([
-    db.membership.findFirst({
-      where: { userId: memberId, orgId: session.user.orgId },
+  const [user, unitLabel] = await Promise.all([
+    db.user.findUnique({
+      where: { id: memberId },
       include: {
-        user: {
-          include: {
-            ownedUnits: { where: { isCurrent: true }, include: { unit: true } },
-            leases: { include: { unit: true } },
-          },
+        memberships: { where: { orgId: session.user.orgId } },
+        ownedUnits: {
+          where: { isCurrent: true, unit: { orgId: session.user.orgId } },
+          include: { unit: true },
         },
+        leases: { where: { unit: { orgId: session.user.orgId } }, include: { unit: true } },
+        boardPositions: { where: { orgId: session.user.orgId } },
       },
     }),
     getUnitLabel(session.user.orgId),
   ])
 
-  if (!membership) notFound()
-  const member = { ...membership.user, role: membership.role, isBoardMember: membership.isBoardMember }
+  // A person only belongs on this page if they have some real tie to this
+  // org - a Membership, a current unit ownership, or a Board seat. User is
+  // a global model shared across orgs, so this is the scoping check that
+  // keeps someone else's org data from leaking through here.
+  const membership = user?.memberships[0] ?? null
+  const hasAssociation = !!(membership || (user && (user.ownedUnits.length > 0 || user.boardPositions.length > 0)))
+  if (!user || !hasAssociation) notFound()
+
+  const role = membership?.role ?? null
+  const fallbackLabel = user.boardPositions.length > 0 ? "Board Member" : "Unit Owner"
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -66,28 +75,61 @@ export default async function MemberDetailPage({
       </Link>
 
       <div className="flex items-center justify-between">
-        <span
-          className={`text-xs font-medium px-2.5 py-1 rounded-full ${roleColors[member.role] ?? "bg-gray-100 text-gray-600"}`}
-        >
-          {roleLabels[member.role] ?? member.role}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs font-medium px-2.5 py-1 rounded-full ${role ? roleColors[role] ?? "bg-gray-100 text-gray-600" : "bg-blue-50 text-blue-600"}`}
+          >
+            {role ? roleLabels[role] ?? role : fallbackLabel}
+          </span>
+          {!membership && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+              Not on portal
+            </span>
+          )}
+        </div>
         <Button variant="outline" size="sm" disabled className="gap-2 text-gray-400">
           <MessageCircle className="h-4 w-4" /> Contact (coming soon)
         </Button>
       </div>
 
-      <MemberEditCard
-        memberId={member.id}
-        name={member.name}
-        email={member.email}
-        phone={member.phone}
-      />
-
-      {member.role !== "ACCOUNT_OWNER" && member.role !== "BOARD_MEMBER" && (
-        <BoardMemberToggle memberId={member.id} initialValue={member.isBoardMember} />
+      {!membership && (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900 flex items-start gap-2">
+          <Mail className="h-4 w-4 shrink-0 mt-0.5" />
+          <p>
+            {user.name ?? user.email} is on file here but hasn&apos;t been invited to HOPE yet. Send an
+            invite to <span className="font-medium">{user.email}</span> from the{" "}
+            <Link href="/dashboard/account" className="underline">
+              Send Invites
+            </Link>{" "}
+            panel to give them portal access.
+          </p>
+        </div>
       )}
 
-      {member.ownedUnits.length > 0 && (
+      <MemberEditCard memberId={user.id} name={user.name} email={user.email} phone={user.phone} />
+
+      {membership && role !== "ACCOUNT_OWNER" && role !== "BOARD_MEMBER" && (
+        <BoardMemberToggle memberId={user.id} initialValue={membership.isBoardMember} />
+      )}
+
+      {user.boardPositions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Landmark className="h-4 w-4 text-gray-400" /> Board Positions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {user.boardPositions.map((p) => (
+              <p key={p.id} className="text-sm text-gray-600">
+                {p.title}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {user.ownedUnits.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -95,7 +137,7 @@ export default async function MemberDetailPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {member.ownedUnits.map((o) => (
+            {user.ownedUnits.map((o) => (
               <p key={o.id} className="text-sm text-gray-600">
                 {unitDisplayName(unitLabel, o.unit.number, o.unit.building)}
               </p>
@@ -104,7 +146,7 @@ export default async function MemberDetailPage({
         </Card>
       )}
 
-      {member.leases.length > 0 && (
+      {user.leases.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -112,7 +154,7 @@ export default async function MemberDetailPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {member.leases.map((l) => (
+            {user.leases.map((l) => (
               <p key={l.id} className="text-sm text-gray-600">
                 {unitDisplayName(unitLabel, l.unit.number)}
                 {l.isActive ? " (active)" : ""}

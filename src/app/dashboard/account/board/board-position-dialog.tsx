@@ -33,6 +33,8 @@ interface Position {
   id: string
   title: string
   userId: string | null
+  userName?: string | null
+  userEmail?: string | null
   termStart: Date
   termEnd: Date | null
   notes: string | null
@@ -54,20 +56,31 @@ export function BoardPositionDialog({
   position?: Position
 }) {
   const isEdit = !!position
+  // A holder whose userId isn't in the picker's member list was set via
+  // direct name/email entry (a placeholder, not yet an actual portal
+  // member) - prefill the text fields instead of the dropdown for them.
+  const isPlaceholderHolder = !!position?.userId && !members.some((m) => m.id === position.userId)
   const [open, setOpen] = useState(false)
-  const [userId, setUserId] = useState(position?.userId ?? "")
+  const [userId, setUserId] = useState(isPlaceholderHolder ? "" : position?.userId ?? "")
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
 
   const memberItems: Record<string, string> = { "": "Vacant" }
   for (const m of members) memberItems[m.id] = m.name ?? m.email
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setError("")
     setSaving(true)
     const form = new FormData(e.currentTarget)
+    const holderEmail = (form.get("holderEmail") as string) ?? ""
     const data = {
       title: form.get("title") as string,
-      userId: userId || undefined,
+      // A directly-typed name/email (for a seat not yet held by an existing
+      // portal member) takes priority over whatever's picked in the dropdown.
+      userId: holderEmail.trim() ? undefined : userId || undefined,
+      holderName: (form.get("holderName") as string) || undefined,
+      holderEmail: holderEmail || undefined,
       termStart: form.get("termStart") as string,
       termEnd: (form.get("termEnd") as string) || undefined,
       notes: (form.get("notes") as string) || undefined,
@@ -83,6 +96,7 @@ export function BoardPositionDialog({
         ;(document.getElementById("board-position-form-new") as HTMLFormElement)?.reset()
       }
     } else {
+      setError(result.error ?? "Failed to save")
       toast.error(result.error ?? "Failed to save")
     }
   }
@@ -119,7 +133,7 @@ export function BoardPositionDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label>Holder</Label>
+            <Label>Holder (existing member)</Label>
             <Select value={userId} onValueChange={(v) => setUserId(v ?? "")} items={memberItems}>
               <SelectTrigger>
                 <SelectValue placeholder="Vacant" />
@@ -136,6 +150,26 @@ export function BoardPositionDialog({
             <p className="text-xs text-gray-400">
               Assigning someone here also grants them Board governance access, if they don&apos;t already
               have it.
+            </p>
+          </div>
+          <div className="space-y-1 border-t pt-3">
+            <Label>Or record a holder directly</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                name="holderName"
+                placeholder="Name"
+                defaultValue={isPlaceholderHolder ? position?.userName ?? undefined : undefined}
+              />
+              <Input
+                name="holderEmail"
+                type="email"
+                placeholder="Email"
+                defaultValue={isPlaceholderHolder ? position?.userEmail ?? undefined : undefined}
+              />
+            </div>
+            <p className="text-xs text-gray-400">
+              For a seat held by someone not yet in HOPE - they get real portal access later via an
+              invite. If filled in, this takes priority over the dropdown above.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -166,6 +200,7 @@ export function BoardPositionDialog({
               defaultValue={position?.notes ?? undefined}
             />
           </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2 justify-end">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               Cancel
