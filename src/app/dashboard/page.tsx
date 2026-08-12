@@ -1,7 +1,8 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import { Role } from "@/generated/prisma"
 
-const roleRedirect: Record<string, string> = {
+const ROLE_HOME: Record<Role, string> = {
   ACCOUNT_OWNER: "/dashboard/account",
   OWNER: "/dashboard/owner",
   RENTER: "/dashboard/renter",
@@ -13,6 +14,5 @@ const roleRedirect: Record<string, string> = {
 
 export default async function DashboardIndexPage() {
   const session = await auth()
-  if (!session) redirect("/login")
-  redirect(roleRedirect[session.user.role ?? ""] ?? "/dashboard/owner")
+  redirect(session?.user.role ? ROLE_HOME[session.user.role] : "/login")
 }

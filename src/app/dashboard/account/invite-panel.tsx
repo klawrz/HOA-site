@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createInvite } from "@/app/actions/invites"
+import { BulkInviteOwnersDialog } from "./bulk-invite-owners-dialog"
 
 type Unit = { id: string; number: string }
 type Invite = { id: string; email: string; role: string; token: string; acceptedAt: Date | null }
@@ -56,7 +57,10 @@ export function InvitePanel({
 
   return (
     <div className="space-y-4">
-      <h2 className="font-semibold text-gray-700">Send Invites</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-gray-700">Send Invites</h2>
+        <BulkInviteOwnersDialog units={units} />
+      </div>
       <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-5 space-y-3">
         <div className="space-y-1">
           <Label>Email</Label>

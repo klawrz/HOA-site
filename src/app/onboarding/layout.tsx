@@ -14,9 +14,14 @@ export default async function OnboardingLayout({ children }: { children: React.R
   // An Account Owner still mid-setup can still be the target of a deletion
   // request (e.g. requested right after the org was created) - they need to
   // see it here too, not just once onboarding is done.
-  const pendingDeletionRequest = session.user.orgId
-    ? await db.orgDeletionRequest.findFirst({ where: { orgId: session.user.orgId, status: "PENDING" } })
-    : null
+  const [pendingDeletionRequest, org] = await Promise.all([
+    session.user.orgId
+      ? db.orgDeletionRequest.findFirst({ where: { orgId: session.user.orgId, status: "PENDING" } })
+      : null,
+    session.user.orgId
+      ? db.organization.findUnique({ where: { id: session.user.orgId }, select: { accountOwnerTitle: true } })
+      : null,
+  ])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,7 +29,11 @@ export default async function OnboardingLayout({ children }: { children: React.R
         <Link href="/dashboard">
           <Image src="/HOPE-logo.png" alt="HOPE" height={40} width={140} className="object-contain" />
         </Link>
-        <OnboardingHeaderAccount name={session.user.name ?? null} email={session.user.email ?? ""} />
+        <OnboardingHeaderAccount
+          name={session.user.name ?? null}
+          email={session.user.email ?? ""}
+          title={org?.accountOwnerTitle ?? null}
+        />
       </header>
       <main className="max-w-2xl mx-auto py-12 px-4">
         {pendingDeletionRequest && (

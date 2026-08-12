@@ -5,13 +5,26 @@ import { LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-export function OnboardingHeaderAccount({ name, email }: { name: string | null; email: string }) {
+export function OnboardingHeaderAccount({
+  name,
+  email,
+  title,
+}: {
+  name: string | null
+  email: string
+  title: string | null
+}) {
   const initials = name
     ? name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : email[0]?.toUpperCase() ?? "?"
 
   return (
     <div className="flex items-center gap-3">
+      {title && (
+        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-800">
+          {title}
+        </span>
+      )}
       <div className="flex items-center gap-2">
         <Avatar className="h-7 w-7">
           <AvatarFallback className="text-xs">{initials}</AvatarFallback>

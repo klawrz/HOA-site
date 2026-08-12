@@ -129,7 +129,7 @@ export default function SignupPage() {
                   <div className="space-y-1">
                     <Label>What is your role?</Label>
                     <Select value={ownerRole} onValueChange={(v) => setOwnerRole(v ?? "")} required>
-                      <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select your role" /></SelectTrigger>
                       <SelectContent>
                         {ROLE_OPTIONS.map((r) => (
                           <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>

@@ -63,6 +63,77 @@ export async function createInvite(formData: FormData) {
   return invite.token
 }
 
+// CSV/paste bulk-invite for Owners, matched to existing units by number -
+// tolerant of bad rows (skips and reports them individually) rather than
+// failing the whole batch, since a 100-row import realistically always has
+// a few typos or units not yet on file.
+export async function bulkInviteOwners(rows: { unitNumber: string; email: string }[]) {
+  const session = await auth()
+  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") throw new Error("Unauthorized")
+  const orgId = session.user.orgId
+
+  const units = await db.unit.findMany({ where: { orgId }, select: { id: true, number: true } })
+  const unitByNumber = new Map(units.map((u) => [u.number.trim().toLowerCase(), u.id]))
+
+  const pendingInvites = await db.invite.findMany({
+    where: { orgId, acceptedAt: null },
+    select: { email: true },
+  })
+  const alreadyInvited = new Set(pendingInvites.map((i) => i.email))
+
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const seenInBatch = new Set<string>()
+  const toCreate: { token: string; email: string; unitId: string }[] = []
+  const skippedNoUnit: string[] = []
+  const skippedInvalidEmail: string[] = []
+  const skippedDuplicate: string[] = []
+
+  for (const row of rows) {
+    const unitNumber = row.unitNumber.trim()
+    const email = row.email.trim().toLowerCase()
+    const unitId = unitByNumber.get(unitNumber.toLowerCase())
+
+    if (!unitId) {
+      skippedNoUnit.push(unitNumber)
+      continue
+    }
+    if (!email || !emailRe.test(email)) {
+      skippedInvalidEmail.push(unitNumber)
+      continue
+    }
+    if (alreadyInvited.has(email) || seenInBatch.has(email)) {
+      skippedDuplicate.push(email)
+      continue
+    }
+    seenInBatch.add(email)
+    toCreate.push({ token: randomUUID(), email, unitId })
+  }
+
+  if (toCreate.length > 0) {
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7)
+    await db.invite.createMany({
+      data: toCreate.map((r) => ({
+        token: r.token,
+        email: r.email,
+        role: "OWNER" as Role,
+        orgId,
+        unitId: r.unitId,
+        sentById: session.user.id,
+        expiresAt,
+      })),
+    })
+  }
+
+  revalidatePath("/dashboard/account")
+  return {
+    created: toCreate.length,
+    skippedNoUnit,
+    skippedInvalidEmail,
+    skippedDuplicate,
+  }
+}
+
 export async function revokeInvite(inviteId: string) {
   const session = await auth()
   if (!session?.user.orgId) throw new Error("Unauthorized")
