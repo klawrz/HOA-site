@@ -50,7 +50,9 @@ export async function createContractorRecord(data: {
     return { success: false }
   }
 
-  const existing = await db.user.findUnique({ where: { email: data.email } })
+  const email = data.email.trim().toLowerCase()
+
+  const existing = await db.user.findUnique({ where: { email } })
   if (existing) {
     const existingMembership = await db.membership.findFirst({ where: { userId: existing.id, orgId: session.user.orgId } })
     if (!existingMembership || existingMembership.role !== "CONTRACTOR") {
@@ -62,7 +64,7 @@ export async function createContractorRecord(data: {
   const contractor = await db.user.create({
     data: {
       name: data.name,
-      email: data.email,
+      email,
       company: data.company || null,
       phone: data.phone || null,
       category: data.category || null,

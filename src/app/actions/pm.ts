@@ -89,7 +89,7 @@ export async function addStaffMember(userEmail: string) {
     return { success: false }
   }
 
-  const user = await db.user.findUnique({ where: { email: userEmail } })
+  const user = await db.user.findUnique({ where: { email: userEmail.trim().toLowerCase() } })
   const isPropertyManager = user && (await db.membership.findFirst({ where: { userId: user.id, role: "PROPERTY_MANAGER" } }))
   if (!user || !isPropertyManager) {
     return { success: false, error: "No Property Manager account found with that email" }

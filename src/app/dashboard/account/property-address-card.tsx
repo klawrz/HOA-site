@@ -15,6 +15,8 @@ type Address = {
   state: string | null
   postalCode: string | null
   country: string | null
+  legalEntityName: string | null
+  boardApprovalStatus: string
 }
 
 function addressLines(a: Address) {
@@ -25,6 +27,7 @@ function addressLines(a: Address) {
 export function PropertyAddressCard({ address }: { address: Address }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [boardApproval, setBoardApproval] = useState(address.boardApprovalStatus)
   const lines = addressLines(address)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -43,21 +46,37 @@ export function PropertyAddressCard({ address }: { address: Address }) {
 
   if (!editing) {
     return (
-      <div className="bg-white border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
-          {lines.length > 0 ? (
-            <p className="text-sm text-gray-600 truncate">{lines.join(" · ")}</p>
-          ) : (
-            <p className="text-sm text-gray-400">No property address on file</p>
-          )}
+      <div className="bg-white border rounded-xl px-4 py-3 space-y-1">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
+            {lines.length > 0 ? (
+              <p className="text-sm text-gray-600 truncate">{lines.join(" · ")}</p>
+            ) : (
+              <p className="text-sm text-gray-400">No property address on file</p>
+            )}
+          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="text-xs text-blue-600 hover:underline flex items-center gap-1 shrink-0"
+          >
+            <Pencil className="h-3 w-3" /> Edit
+          </button>
         </div>
-        <button
-          onClick={() => setEditing(true)}
-          className="text-xs text-blue-600 hover:underline flex items-center gap-1 shrink-0"
-        >
-          <Pencil className="h-3 w-3" /> Edit
-        </button>
+        {address.legalEntityName && (
+          <p className="text-xs text-gray-500 pl-6">{address.legalEntityName}</p>
+        )}
+        <p className="text-xs pl-6">
+          <span
+            className={
+              address.boardApprovalStatus === "BOARD_APPROVED"
+                ? "text-green-700 font-medium"
+                : "text-orange-600 font-medium"
+            }
+          >
+            {address.boardApprovalStatus === "BOARD_APPROVED" ? "Board has approved using HOPE" : "Board approval not yet decided"}
+          </span>
+        </p>
       </div>
     )
   }
@@ -96,6 +115,46 @@ export function PropertyAddressCard({ address }: { address: Address }) {
           <Label>Country</Label>
           <Input name="country" defaultValue={address.country ?? ""} />
         </div>
+
+        <div className="pt-2 border-t space-y-3">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Legal Identity</h3>
+          <div className="space-y-1">
+            <Label>Legal entity name (optional)</Label>
+            <Input name="legalEntityName" defaultValue={address.legalEntityName ?? ""} placeholder="e.g. Maple Grove Condominium Association, Inc." />
+            <p className="text-xs text-gray-400">
+              Purely for reference - doesn&apos;t imply the HOA or Board has adopted HOPE.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label>Has the Board approved using HOPE?</Label>
+            <input type="hidden" name="boardApprovalStatus" value={boardApproval} />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setBoardApproval("NOT_YET_DECIDED")}
+                className={`flex-1 text-sm px-3 py-2 rounded-lg border transition-colors ${
+                  boardApproval === "NOT_YET_DECIDED"
+                    ? "bg-gray-900 border-gray-900 text-white"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                Not yet decided
+              </button>
+              <button
+                type="button"
+                onClick={() => setBoardApproval("BOARD_APPROVED")}
+                className={`flex-1 text-sm px-3 py-2 rounded-lg border transition-colors ${
+                  boardApproval === "BOARD_APPROVED"
+                    ? "bg-green-600 border-green-600 text-white"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                Board has approved
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="flex gap-2">
           <Button type="submit" variant="outline" size="sm" disabled={saving}>
             {saving ? "Saving..." : "Save Address"}

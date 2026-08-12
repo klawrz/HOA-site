@@ -153,7 +153,7 @@ export default async function UnitDetailPage({
                   propertyLines.map((line, i) => <p key={i}>{line}</p>)
                 ) : (
                   <p className="text-gray-400">
-                    Property address not on file - the Account Owner can add one from the dashboard.
+                    Property address not on file - the Account Holder can add one from the dashboard.
                   </p>
                 )}
               </div>

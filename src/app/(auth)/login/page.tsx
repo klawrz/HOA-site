@@ -166,7 +166,7 @@ export default function LoginPage() {
                     <div className="space-y-1">
                       <p className="text-sm text-red-600">{error}</p>
                       <p className="text-xs text-gray-500">
-                        New to HOPE? Access is by invite only - ask your HOA&apos;s Account Owner or
+                        New to HOPE? Access is by invite only - ask your HOA&apos;s Account Holder or
                         Property Manager to send you an invite link.
                       </p>
                     </div>

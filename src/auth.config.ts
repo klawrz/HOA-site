@@ -10,7 +10,7 @@ export const authConfig = {
       const isOnboarding = nextUrl.pathname.startsWith("/onboarding")
       const isPlatformAdmin = nextUrl.pathname.startsWith("/platform-admin")
       if (isDashboard || isOnboarding || isPlatformAdmin) return isLoggedIn
-      if (isLoggedIn && nextUrl.pathname === "/login") {
+      if (isLoggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")) {
         return Response.redirect(new URL("/dashboard", nextUrl))
       }
       return true

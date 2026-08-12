@@ -93,7 +93,7 @@ export async function approveOrgDeletion(requestId: string) {
   const isAccountOwner = session.user.role === "ACCOUNT_OWNER"
   const isBoardMember = session.user.role === "BOARD_MEMBER" || session.user.isBoardMember === true
   if (!isAccountOwner && !isBoardMember) {
-    throw new Error("Only the Account Owner or a Board Member can approve this")
+    throw new Error("Only the Account Holder or a Board Member can approve this")
   }
 
   if (isAccountOwner && !request.accountOwnerApprovedAt) {
@@ -141,7 +141,7 @@ export async function denyOrgDeletion(requestId: string, reason?: string) {
   const isAccountOwner = session.user.role === "ACCOUNT_OWNER"
   const isBoardMember = session.user.role === "BOARD_MEMBER" || session.user.isBoardMember === true
   if (!isAccountOwner && !isBoardMember) {
-    throw new Error("Only the Account Owner or a Board Member can respond to this")
+    throw new Error("Only the Account Holder or a Board Member can respond to this")
   }
 
   await db.orgDeletionRequest.update({

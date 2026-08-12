@@ -33,7 +33,7 @@ const roleBadgeColor: Record<Role, string> = {
 }
 
 const roleLabel: Record<Role, string> = {
-  ACCOUNT_OWNER: "Account Owner",
+  ACCOUNT_OWNER: "Account Holder",
   OWNER: "Owner",
   RENTER: "Renter",
   PROPERTY_MANAGER: "Property Manager",

@@ -72,7 +72,7 @@ export function DangerZone({
     setPending(true)
     try {
       await requestOrgDeletion(orgId, confirmName)
-      toast.success("Deletion requested - awaiting Account Owner and Board Member approval")
+      toast.success("Deletion requested - awaiting Account Holder and Board Member approval")
       setDeleteOpen(false)
       router.refresh()
     } catch (err) {
@@ -106,7 +106,7 @@ export function DangerZone({
           <p className="text-xs text-gray-500 mt-0.5">
             {suspended
               ? "Restores dashboard access for every member. No data was affected."
-              : "Locks every member (including the Account Owner) out of the dashboard. Reversible - no data is touched."}
+              : "Locks every member (including the Account Holder) out of the dashboard. Reversible - no data is touched."}
           </p>
         </div>
         <Dialog open={suspendOpen} onOpenChange={setSuspendOpen}>
@@ -123,7 +123,7 @@ export function DangerZone({
             <p className="text-sm text-gray-500">
               {suspended
                 ? "Every member will be able to sign in and use the dashboard again."
-                : "Every member, including the Account Owner, will be locked out immediately. You can undo this at any time."}
+                : "Every member, including the Account Holder, will be locked out immediately. You can undo this at any time."}
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setSuspendOpen(false)} disabled={pending}>
@@ -147,7 +147,7 @@ export function DangerZone({
             <p className="text-sm font-medium">Delete this organization</p>
             <p className="text-xs text-gray-500 mt-0.5">
               Permanently deletes {orgName} and everything on file. As a business-continuity safeguard, this
-              requires approval from both the Account Owner and a Board Member before it happens - a full
+              requires approval from both the Account Holder and a Board Member before it happens - a full
               backup is generated automatically the moment it&apos;s approved.
             </p>
           </div>
@@ -167,8 +167,8 @@ export function DangerZone({
                   <DialogTitle className="text-red-700">Request deletion of {orgName}?</DialogTitle>
                 </DialogHeader>
                 <p className="text-sm text-gray-500">
-                  This does not delete anything yet - it sends a request to {orgName}&apos;s Account Owner and
-                  Board Members. Only once both an Account Owner and a Board Member approve does the org
+                  This does not delete anything yet - it sends a request to {orgName}&apos;s Account Holder and
+                  Board Members. Only once both an Account Holder and a Board Member approve does the org
                   actually get deleted (with a full backup saved first). Type the organization name to confirm.
                 </p>
                 <div className="space-y-1">
@@ -204,7 +204,7 @@ export function DangerZone({
                 ) : (
                   <Clock className="h-3.5 w-3.5 text-gray-300" />
                 )}
-                Account Owner:{" "}
+                Account Holder:{" "}
                 {latestDeletionRequest.accountOwnerApprovedAt
                   ? `approved by ${latestDeletionRequest.accountOwnerApprovedByName ?? "them"}`
                   : "waiting"}

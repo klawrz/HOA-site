@@ -5,10 +5,11 @@ import { sendPasswordResetEmail } from "@/lib/mail"
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json()
-    if (!email) {
+    const { email: rawEmail } = await req.json()
+    if (!rawEmail) {
       return NextResponse.json({ error: "Email required" }, { status: 400 })
     }
+    const email = (rawEmail as string).trim().toLowerCase()
 
     const user = await db.user.findUnique({ where: { email } })
 

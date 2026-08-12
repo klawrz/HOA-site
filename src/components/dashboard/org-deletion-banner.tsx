@@ -67,8 +67,8 @@ export function OrgDeletionBanner({
           {alreadyApprovedByMe
             ? "You've approved this. It still needs sign-off from the other required approver before anything happens."
             : canRespond
-              ? "This requires approval from both the Account Owner and a Board Member before it happens. Nothing is deleted until then."
-              : "Awaiting approval from the Account Owner and a Board Member. Nothing is deleted until then."}
+              ? "This requires approval from both the Account Holder and a Board Member before it happens. Nothing is deleted until then."
+              : "Awaiting approval from the Account Holder and a Board Member. Nothing is deleted until then."}
         </p>
         {canRespond && !alreadyApprovedByMe && (
           <div className="flex gap-2 mt-2">

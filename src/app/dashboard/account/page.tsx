@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { InvitePanel } from "./invite-panel"
 import { PropertyAddressCard } from "./property-address-card"
+import { AccountHolderDataCard } from "./account-holder-data-card"
 import { getOrgPeople } from "@/lib/org-people"
 
 export default async function AccountDashboardPage() {
@@ -34,7 +35,7 @@ export default async function AccountDashboardPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{org.name}</h1>
-        <p className="text-gray-500 text-sm mt-1">Account Owner Dashboard</p>
+        <p className="text-gray-500 text-sm mt-1">Account Holder Dashboard</p>
       </div>
 
       {/* Who holds ultimate authority on this org - called out distinctly
@@ -63,6 +64,26 @@ export default async function AccountDashboardPage() {
           state: org.state,
           postalCode: org.postalCode,
           country: org.country,
+          legalEntityName: org.legalEntityName,
+          boardApprovalStatus: org.boardApprovalStatus,
+        }}
+      />
+
+      <AccountHolderDataCard
+        data={{
+          accountOwnerName: org.accountOwnerName,
+          accountOwnerTitle: org.accountOwnerTitle,
+          accountOwnerEmail: org.accountOwnerEmail,
+          accountOwnerPhone: org.accountOwnerPhone,
+          accountOwnerAddressLine1: org.accountOwnerAddressLine1,
+          accountOwnerAddressLine2: org.accountOwnerAddressLine2,
+          accountOwnerCity: org.accountOwnerCity,
+          accountOwnerState: org.accountOwnerState,
+          accountOwnerPostalCode: org.accountOwnerPostalCode,
+          accountOwnerCountry: org.accountOwnerCountry,
+          altContactName: org.altContactName,
+          altContactEmail: org.altContactEmail,
+          altContactPhone: org.altContactPhone,
         }}
       />
 

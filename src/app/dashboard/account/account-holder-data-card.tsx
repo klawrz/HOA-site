@@ -6,7 +6,7 @@ import { IdCard, Pencil } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { updateOrgBillingProfile } from "@/app/actions/platform-admin"
+import { updateOrgAccountHolderData } from "@/app/actions/org"
 
 type OwnerData = {
   accountOwnerName: string | null
@@ -24,13 +24,7 @@ type OwnerData = {
   altContactPhone: string | null
 }
 
-export function AccountOwnerDataCard({
-  orgId,
-  data,
-}: {
-  orgId: string
-  data: OwnerData
-}) {
+export function AccountHolderDataCard({ data }: { data: OwnerData }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -38,7 +32,7 @@ export function AccountOwnerDataCard({
     e.preventDefault()
     setSaving(true)
     try {
-      await updateOrgBillingProfile(orgId, new FormData(e.currentTarget))
+      await updateOrgAccountHolderData(new FormData(e.currentTarget))
       setEditing(false)
       toast.success("Account Holder data saved")
     } catch {

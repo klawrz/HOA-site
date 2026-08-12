@@ -61,7 +61,7 @@ export default async function DeletionRequestsPage() {
                   ) : (
                     <Clock className="h-3 w-3 text-gray-300" />
                   )}
-                  Account Owner: {r.accountOwnerApprovedAt ? `approved by ${r.accountOwnerApprovedByName ?? r.accountOwnerApprovedByEmail}` : "waiting"}
+                  Account Holder: {r.accountOwnerApprovedAt ? `approved by ${r.accountOwnerApprovedByName ?? r.accountOwnerApprovedByEmail}` : "waiting"}
                 </p>
                 <p className="flex items-center gap-1.5">
                   {r.boardMemberApprovedAt ? (

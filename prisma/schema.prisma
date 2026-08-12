@@ -149,6 +149,11 @@ model OrgDeletionRequest {
   createdAt DateTime @default(now())
 }
 
+enum BoardApprovalStatus {
+  NOT_YET_DECIDED
+  BOARD_APPROVED
+}
+
 enum PMReferralStatus {
   NEW
   CONTACTED
@@ -205,6 +210,20 @@ model Organization {
   state        String?
   postalCode   String?
   country      String?
+
+  // The property's formal legal/corporate name, if known - purely a
+  // reference field. Whoever enters it (an owner, a PM, anyone) may not
+  // have any authority to speak for the HOA, so this is never treated as
+  // proof the entity has adopted HOPE - see boardApprovalStatus below.
+  legalEntityName String?
+
+  // Whether the HOA's Board has actually decided to use HOPE, as distinct
+  // from someone (often a Property Manager, sometimes a lone owner)
+  // setting up an account informally to try it out or manage their own
+  // piece of it. Defaults to NOT_YET_DECIDED - never assume approval that
+  // wasn't explicitly given, so no org is misrepresented as HOPE's
+  // official platform for that HOA until a human says so.
+  boardApprovalStatus BoardApprovalStatus @default(NOT_YET_DECIDED)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -53,12 +53,17 @@ export default async function HomePage() {
           width={200}
           className="object-contain"
         />
-        <Link
-          href="/login"
-          className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-4 py-2 rounded-full hover:bg-gray-100"
-        >
-          Sign In
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/login"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-4 py-2 rounded-full hover:bg-gray-100"
+          >
+            Sign In
+          </Link>
+          <Link href="/signup" className={cn(buttonVariants({ size: "sm" }))}>
+            Get Started
+          </Link>
+        </div>
       </header>
 
       <main className="flex-1">
@@ -79,12 +84,20 @@ export default async function HomePage() {
               intelligent system that helps your organization spend less time administering and
               more time making good decisions.
             </p>
-            <Link
-              href="/login"
-              className={cn(buttonVariants({ variant: "secondary", size: "lg" }))}
-            >
-              Sign In to Your Portal
-            </Link>
+            <div className="flex items-center justify-center gap-3">
+              <Link
+                href="/signup"
+                className={cn(buttonVariants({ size: "lg" }))}
+              >
+                Get Started
+              </Link>
+              <Link
+                href="/login"
+                className={cn(buttonVariants({ variant: "secondary", size: "lg" }))}
+              >
+                Sign In to Your Portal
+              </Link>
+            </div>
           </div>
         </section>
 

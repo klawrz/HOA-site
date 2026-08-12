@@ -6,7 +6,7 @@ import { Search, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
 const roleLabels: Record<string, string> = {
-  ACCOUNT_OWNER: "Account Owner",
+  ACCOUNT_OWNER: "Account Holder",
   OWNER: "Unit Owner",
   RENTER: "Renter",
   PROPERTY_MANAGER: "Property Manager",

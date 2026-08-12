@@ -28,7 +28,7 @@ export function AccountOwnerCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <UserCog className="h-4 w-4" /> Account Owner & Emergency Contact
+          <UserCog className="h-4 w-4" /> Account Holder & Emergency Contact
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -74,7 +74,7 @@ export function AccountOwnerCard({
         )}
         {!hasAltInfo && (
           <p className="text-xs text-gray-400">
-            No alternate contact on file yet - worth having in case the Account Owner is unreachable.
+            No alternate contact on file yet - worth having in case the Account Holder is unreachable.
           </p>
         )}
       </CardContent>

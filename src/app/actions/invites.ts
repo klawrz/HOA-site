@@ -17,8 +17,10 @@ export async function createInviteForOrg(input: { email: string; role: Role; org
   const isPlatformAdmin = session?.user.isPlatformAdmin === true
   if (!session || (!isAccountOwnerOfThisOrg && !isPlatformAdmin)) throw new Error("Unauthorized")
 
+  const email = input.email.trim().toLowerCase()
+
   const existing = await db.invite.findFirst({
-    where: { email: input.email, orgId: input.orgId, acceptedAt: null },
+    where: { email, orgId: input.orgId, acceptedAt: null },
   })
   if (existing) throw new Error("A pending invite already exists for this email")
 
@@ -28,7 +30,7 @@ export async function createInviteForOrg(input: { email: string; role: Role; org
   const invite = await db.invite.create({
     data: {
       token: randomUUID(),
-      email: input.email,
+      email,
       role: input.role,
       orgId: input.orgId,
       unitId: input.unitId ?? null,

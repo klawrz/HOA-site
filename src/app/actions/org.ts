@@ -195,6 +195,9 @@ export async function updateOrgAddress(formData: FormData) {
   const session = await auth()
   if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") throw new Error("Unauthorized")
 
+  const boardApprovalRaw = formData.get("boardApprovalStatus") as string
+  const boardApprovalStatus = boardApprovalRaw === "BOARD_APPROVED" ? "BOARD_APPROVED" : "NOT_YET_DECIDED"
+
   await db.organization.update({
     where: { id: session.user.orgId },
     data: {
@@ -204,10 +207,43 @@ export async function updateOrgAddress(formData: FormData) {
       state: (formData.get("state") as string) || null,
       postalCode: (formData.get("postalCode") as string) || null,
       country: (formData.get("country") as string) || null,
+      legalEntityName: (formData.get("legalEntityName") as string)?.trim() || null,
+      boardApprovalStatus,
     },
   })
   revalidatePath("/dashboard/account")
   revalidatePath("/")
+}
+
+// Self-service twin of platform-admin's updateOrgBillingProfile, minus the
+// accountNumber/pricingPlan/billingExpiry/paymentMethod fields - those stay
+// HOPE's own internal billing record, not something a customer edits
+// themselves. Only writes fields present in the FormData for the same
+// reason as the platform-admin version: this card and any future caller
+// posting a different subset of these fields must not stomp each other.
+export async function updateOrgAccountHolderData(formData: FormData) {
+  const session = await auth()
+  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") throw new Error("Unauthorized")
+
+  const str = (name: string) => (formData.get(name) as string)?.trim() || null
+  const data: Record<string, string | null> = {}
+
+  if (formData.has("accountOwnerName")) data.accountOwnerName = str("accountOwnerName")
+  if (formData.has("accountOwnerTitle")) data.accountOwnerTitle = str("accountOwnerTitle")
+  if (formData.has("accountOwnerEmail")) data.accountOwnerEmail = str("accountOwnerEmail")
+  if (formData.has("accountOwnerPhone")) data.accountOwnerPhone = str("accountOwnerPhone")
+  if (formData.has("accountOwnerAddressLine1")) data.accountOwnerAddressLine1 = str("accountOwnerAddressLine1")
+  if (formData.has("accountOwnerAddressLine2")) data.accountOwnerAddressLine2 = str("accountOwnerAddressLine2")
+  if (formData.has("accountOwnerCity")) data.accountOwnerCity = str("accountOwnerCity")
+  if (formData.has("accountOwnerState")) data.accountOwnerState = str("accountOwnerState")
+  if (formData.has("accountOwnerPostalCode")) data.accountOwnerPostalCode = str("accountOwnerPostalCode")
+  if (formData.has("accountOwnerCountry")) data.accountOwnerCountry = str("accountOwnerCountry")
+  if (formData.has("altContactName")) data.altContactName = str("altContactName")
+  if (formData.has("altContactEmail")) data.altContactEmail = str("altContactEmail")
+  if (formData.has("altContactPhone")) data.altContactPhone = str("altContactPhone")
+
+  await db.organization.update({ where: { id: session.user.orgId }, data })
+  revalidatePath("/dashboard/account")
 }
 
 // Scoped to safe, non-structural fields - role and email carry logic

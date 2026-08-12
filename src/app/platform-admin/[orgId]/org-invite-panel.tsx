@@ -13,7 +13,7 @@ type Unit = { id: string; number: string }
 type Invite = { id: string; email: string; role: string; token: string; acceptedAt: Date | null }
 
 const roleOptions: Record<string, string> = {
-  ACCOUNT_OWNER: "Account Owner",
+  ACCOUNT_OWNER: "Account Holder",
   OWNER: "Unit Owner",
   RENTER: "Renter",
   PROPERTY_MANAGER: "Property Manager",

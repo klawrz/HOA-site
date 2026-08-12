@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { createOrganizationWithOwner, updateOrgAddressAdmin, updateOrgBillingProfile, autoGenerateUnitsAdmin } from "@/app/actions/platform-admin"
 import { convertPMReferral } from "@/app/actions/pm-referrals"
 
-const STEPS = ["Create the Account", "Basic Data", "Account Owner Data", "All Set"]
+const STEPS = ["Create the Account", "Basic Data", "Account Holder Data", "All Set"]
 
 export function NewOrgWizard({
   baseUrl,
@@ -31,6 +31,7 @@ export function NewOrgWizard({
   const [ownerEmail, setOwnerEmail] = useState("")
   const [usedExistingAccount, setUsedExistingAccount] = useState(false)
   const [unitsGenerated, setUnitsGenerated] = useState(0)
+  const [boardApproval, setBoardApproval] = useState<"NOT_YET_DECIDED" | "BOARD_APPROVED">("NOT_YET_DECIDED")
 
   async function handleCreateAccount(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -137,7 +138,7 @@ export function NewOrgWizard({
             </div>
             <div>
               <h2 className="font-semibold">Create the account</h2>
-              <p className="text-sm text-gray-500">The org and its Account Owner login, ready to use immediately.</p>
+              <p className="text-sm text-gray-500">The org and its Account Holder login, ready to use immediately.</p>
             </div>
           </div>
           <div className="space-y-1">
@@ -145,17 +146,17 @@ export function NewOrgWizard({
             <Input name="orgName" placeholder="e.g. Maple Grove HOA" defaultValue={initialOrgName} required />
           </div>
           <div className="space-y-1">
-            <Label>Account Owner name</Label>
+            <Label>Account Holder name</Label>
             <Input name="ownerName" placeholder="Jamie Rivera" required />
           </div>
           <div className="space-y-1">
-            <Label>Account Owner email</Label>
+            <Label>Account Holder email</Label>
             <Input name="ownerEmail" type="email" placeholder="owner@example.com" required />
           </div>
           <div className="space-y-1">
             <Label>Password</Label>
             <Input name="password" type="password" placeholder="At least 8 characters" required minLength={8} />
-            <p className="text-xs text-gray-400">If this email already has a HOPE account, it just gets added as Account Owner here - this password is ignored.</p>
+            <p className="text-xs text-gray-400">If this email already has a HOPE account, it just gets added as Account Holder here - this password is ignored.</p>
           </div>
 
           <div className="pt-2 border-t space-y-3">
@@ -227,8 +228,54 @@ export function NewOrgWizard({
             <Label>Number of units</Label>
             <Input name="unitCount" type="number" min={1} max={500} placeholder="Optional - e.g. 24" />
             <p className="text-xs text-gray-400">
-              {`If you know the property size, we'll pre-add that many units (just numbered 1, 2, 3...) so ${ownerName || "the Account Owner"} isn't starting from zero. They can rename, edit, or add more anytime - leave this blank to let them add units themselves instead.`}
+              {`If you know the property size, we'll pre-add that many units (just numbered 1, 2, 3...) so ${ownerName || "the Account Holder"} isn't starting from zero. They can rename, edit, or add more anytime - leave this blank to let them add units themselves instead.`}
             </p>
+          </div>
+
+          <div className="pt-2 border-t space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Legal Identity</h3>
+            <div className="space-y-1">
+              <Label>Legal entity name (optional)</Label>
+              <Input name="legalEntityName" placeholder="e.g. Maple Grove Condominium Association, Inc." />
+              <p className="text-xs text-gray-400">
+                The property&apos;s formal legal/corporate name, if known - purely for reference. Entering it
+                doesn&apos;t mean the HOA or its Board has adopted HOPE; whoever is setting this account up
+                (an owner, a Property Manager, anyone getting familiar with the platform) may not speak for
+                the entity yet.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label>Has the Board approved using HOPE?</Label>
+              <input type="hidden" name="boardApprovalStatus" value={boardApproval} />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBoardApproval("NOT_YET_DECIDED")}
+                  className={`flex-1 text-sm px-3 py-2 rounded-lg border transition-colors ${
+                    boardApproval === "NOT_YET_DECIDED"
+                      ? "bg-gray-900 border-gray-900 text-white"
+                      : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                  }`}
+                >
+                  Not yet decided
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBoardApproval("BOARD_APPROVED")}
+                  className={`flex-1 text-sm px-3 py-2 rounded-lg border transition-colors ${
+                    boardApproval === "BOARD_APPROVED"
+                      ? "bg-green-600 border-green-600 text-white"
+                      : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                  }`}
+                >
+                  Board has approved
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">
+                Be honest here - a Property Manager or an individual owner can use HOPE for their own
+                purposes without the HOA officially adopting it. Update this anytime once the Board decides.
+              </p>
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -245,7 +292,7 @@ export function NewOrgWizard({
               <IdCard className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <h2 className="font-semibold">Account Owner data</h2>
+              <h2 className="font-semibold">Account Holder data</h2>
               <p className="text-sm text-gray-500">
                 {ownerName}&apos;s own contact details, plus someone else who can be reached in an emergency -
                 needed on file before the account is complete.
@@ -304,7 +351,7 @@ export function NewOrgWizard({
           <div className="pt-2 border-t space-y-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Alternate Contact</h3>
             <p className="text-xs text-gray-400 -mt-2">
-              Someone else who can be reached if the Account Owner can&apos;t be - matters for business
+              Someone else who can be reached if the Account Holder can&apos;t be - matters for business
               continuity.
             </p>
             <div className="grid grid-cols-3 gap-3">
@@ -341,7 +388,7 @@ export function NewOrgWizard({
             <h2 className="text-xl font-bold text-gray-900 mb-1">{orgName} is ready</h2>
             <p className="text-gray-500 text-sm">
               {usedExistingAccount
-                ? <>{ownerEmail} already had a HOPE account - it now has Account Owner access here too, with their existing password.</>
+                ? <>{ownerEmail} already had a HOPE account - it now has Account Holder access here too, with their existing password.</>
                 : <>{ownerEmail} can sign in now with the password you set.</>}
             </p>
           </div>

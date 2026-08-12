@@ -15,7 +15,7 @@ export default async function NewOrgPage({
       </Link>
       <div>
         <h1 className="text-2xl font-bold">New organization</h1>
-        <p className="text-gray-500 mt-1">Set up a new HOA, its Account Owner login, and their basic details.</p>
+        <p className="text-gray-500 mt-1">Set up a new HOA, its Account Holder login, and their basic details.</p>
       </div>
       <NewOrgWizard
         baseUrl={process.env.NEXTAUTH_URL ?? "http://localhost:3000"}

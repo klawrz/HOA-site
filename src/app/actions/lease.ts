@@ -56,7 +56,7 @@ export async function inviteRenter(
     return { success: false }
   }
 
-  const email = data.email.trim()
+  const email = data.email.trim().toLowerCase()
   if (!email) return { success: false, error: "Email required" }
   if (!data.monthlyRent || data.monthlyRent <= 0) {
     return { success: false, error: "Monthly rent must be greater than zero" }

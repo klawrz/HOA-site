@@ -8,10 +8,11 @@ import { db } from "@/lib/db"
 // session/cookie of its own.
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json()
-    if (!email || !password) {
+    const { email: rawEmail, password } = await req.json()
+    if (!rawEmail || !password) {
       return NextResponse.json({ ok: false })
     }
+    const email = (rawEmail as string).trim().toLowerCase()
 
     const user = await db.user.findUnique({ where: { email } })
     if (!user || !user.password) {

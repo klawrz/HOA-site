@@ -84,7 +84,7 @@ const navByRole: Record<Role, NavItem[]> = {
 }
 
 const roleLabels: Record<Role, string> = {
-  ACCOUNT_OWNER: "Account Owner",
+  ACCOUNT_OWNER: "Account Holder",
   OWNER: "Owner Portal",
   RENTER: "Renter Portal",
   PROPERTY_MANAGER: "Manager Portal",

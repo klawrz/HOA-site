@@ -114,6 +114,9 @@ export async function updateOrgAddressAdmin(orgId: string, formData: FormData) {
   const session = await requirePlatformAdmin()
   if (!session) throw new Error("Unauthorized")
 
+  const boardApprovalRaw = formData.get("boardApprovalStatus") as string
+  const boardApprovalStatus = boardApprovalRaw === "BOARD_APPROVED" ? "BOARD_APPROVED" : "NOT_YET_DECIDED"
+
   await db.organization.update({
     where: { id: orgId },
     data: {
@@ -123,9 +126,12 @@ export async function updateOrgAddressAdmin(orgId: string, formData: FormData) {
       state: (formData.get("state") as string) || null,
       postalCode: (formData.get("postalCode") as string) || null,
       country: (formData.get("country") as string) || null,
+      legalEntityName: (formData.get("legalEntityName") as string)?.trim() || null,
+      boardApprovalStatus,
     },
   })
   revalidatePath(`/platform-admin/${orgId}`)
+  revalidatePath("/platform-admin")
 }
 
 // Fast-start convenience for the New Organization wizard - platform admin

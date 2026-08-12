@@ -58,6 +58,9 @@ export default async function PlatformAdminPage() {
               <span className={org.onboardingComplete ? "text-green-700" : "text-orange-600"}>
                 {org.onboardingComplete ? "Onboarded" : "Pending onboarding"}
               </span>
+              <span className={org.boardApprovalStatus === "BOARD_APPROVED" ? "text-green-700" : "text-gray-400"}>
+                {org.boardApprovalStatus === "BOARD_APPROVED" ? "Board-approved" : "Not Board-approved"}
+              </span>
               {org.suspendedAt && <span className="text-red-600 font-medium">Suspended</span>}
               <ChevronRight className="h-4 w-4 text-gray-300" />
             </div>

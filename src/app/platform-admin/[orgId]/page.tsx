@@ -48,7 +48,7 @@ export default async function PlatformAdminOrgDetailPage({
       </Link>
 
       {/* Mirrors the New Organization wizard's step order/labels (Account ->
-          Basic Data -> Account Owner Data) so a platform admin sees the same
+          Basic Data -> Account Holder Data) so a platform admin sees the same
           structure reviewing an org here as they did creating it. */}
       <div className="space-y-2">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account</h2>
@@ -80,12 +80,14 @@ export default async function PlatformAdminOrgDetailPage({
             state: org.state,
             postalCode: org.postalCode,
             country: org.country,
+            legalEntityName: org.legalEntityName,
+            boardApprovalStatus: org.boardApprovalStatus,
           }}
         />
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account Owner Data</h2>
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account Holder Data</h2>
         <AccountOwnerDataCard
           orgId={org.id}
           data={{
@@ -121,7 +123,7 @@ export default async function PlatformAdminOrgDetailPage({
                 <p className="text-xs text-gray-500">{m.user.email}</p>
               </div>
               <span className="text-xs text-gray-500">
-                {m.role.replace(/_/g, " ")}
+                {m.role === "ACCOUNT_OWNER" ? "Account Holder" : m.role.replace(/_/g, " ")}
                 {m.isBoardMember ? " · Board" : ""}
               </span>
             </div>

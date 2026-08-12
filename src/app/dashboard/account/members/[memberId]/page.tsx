@@ -10,7 +10,7 @@ import { BoardMemberToggle } from "./board-member-toggle"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 const roleLabels: Record<string, string> = {
-  ACCOUNT_OWNER: "Account Owner",
+  ACCOUNT_OWNER: "Account Holder",
   OWNER: "Unit Owner",
   RENTER: "Renter",
   PROPERTY_MANAGER: "Property Manager",
