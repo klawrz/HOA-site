@@ -5,6 +5,7 @@ import Link from "next/link"
 import { db } from "@/lib/db"
 import { OnboardingHeaderAccount } from "./header-account"
 import { OrgDeletionBanner } from "@/components/dashboard/org-deletion-banner"
+import { ProvisionalWorkspaceBanner } from "@/components/dashboard/provisional-workspace-banner"
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -19,7 +20,10 @@ export default async function OnboardingLayout({ children }: { children: React.R
       ? db.orgDeletionRequest.findFirst({ where: { orgId: session.user.orgId, status: "PENDING" } })
       : null,
     session.user.orgId
-      ? db.organization.findUnique({ where: { id: session.user.orgId }, select: { accountOwnerTitle: true } })
+      ? db.organization.findUnique({
+          where: { id: session.user.orgId },
+          select: { name: true, accountOwnerTitle: true, verificationStatus: true },
+        })
       : null,
   ])
 
@@ -36,6 +40,9 @@ export default async function OnboardingLayout({ children }: { children: React.R
         />
       </header>
       <main className="max-w-2xl mx-auto py-12 px-4">
+        {org && org.verificationStatus === "PROVISIONAL" && (
+          <ProvisionalWorkspaceBanner orgName={org.name} verificationHref="/dashboard/account/verification" />
+        )}
         {pendingDeletionRequest && (
           <OrgDeletionBanner
             requestId={pendingDeletionRequest.id}

@@ -5,6 +5,7 @@ import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { SuspendedNotice } from "@/components/dashboard/suspended-notice"
 import { OrgDeletionBanner } from "@/components/dashboard/org-deletion-banner"
+import { ProvisionalWorkspaceBanner } from "@/components/dashboard/provisional-workspace-banner"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -29,12 +30,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/onboarding")
   }
 
-  const [memberships, pendingDeletionRequest] = await Promise.all([
+  const [memberships, pendingDeletionRequest, ownsUnit] = await Promise.all([
     db.membership.findMany({
       where: { userId: session.user.id },
       include: { org: { select: { id: true, name: true } } },
     }),
     db.orgDeletionRequest.findFirst({ where: { orgId: session.user.orgId, status: "PENDING" } }),
+    session.user.role === "ACCOUNT_OWNER"
+      ? db.unitOwnership
+          .count({ where: { ownerId: session.user.id, isCurrent: true, unit: { orgId: session.user.orgId } } })
+          .then((c) => c > 0)
+      : Promise.resolve(false),
   ])
 
   const isAccountOwnerSlotOpen =
@@ -50,7 +56,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <DashboardSidebar role={session.user.role} isBoardMember={session.user.isBoardMember} orgName={org?.name ?? ""} />
+      <DashboardSidebar
+        role={session.user.role}
+        isBoardMember={session.user.isBoardMember}
+        orgName={org?.name ?? ""}
+        ownsUnit={ownsUnit}
+      />
       <div className="flex flex-col flex-1 overflow-hidden">
         <DashboardHeader
           user={session.user}
@@ -61,6 +72,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             .map((m) => ({ orgId: m.org.id, orgName: m.org.name, role: m.role }))}
         />
         <main className="flex-1 overflow-y-auto p-6 print:p-0 print:overflow-visible">
+          {org && org.verificationStatus === "PROVISIONAL" && (
+            <ProvisionalWorkspaceBanner orgName={org.name} verificationHref="/dashboard/account/verification" />
+          )}
           {pendingDeletionRequest && (
             <OrgDeletionBanner
               requestId={pendingDeletionRequest.id}

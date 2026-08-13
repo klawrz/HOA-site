@@ -26,6 +26,11 @@ export default async function OnboardingPage({
   const { step } = await searchParams
   const currentStep = Number(step) || 1
 
+  const ownedUnitRow = await db.unitOwnership.findFirst({
+    where: { ownerId: session.user.id, isCurrent: true, unit: { orgId: session.user.orgId } },
+    include: { unit: { select: { id: true, number: true } } },
+  })
+
   return (
     <OnboardingWizard
       org={{ id: org.id, name: org.name }}
@@ -34,6 +39,7 @@ export default async function OnboardingPage({
       step={currentStep}
       baseUrl={process.env.NEXTAUTH_URL ?? "http://localhost:3000"}
       unitLabel={org.unitLabel}
+      ownedUnit={ownedUnitRow ? { id: ownedUnitRow.unit.id, number: ownedUnitRow.unit.number } : null}
     />
   )
 }

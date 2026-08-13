@@ -30,6 +30,45 @@ export async function addUnit(formData: FormData) {
   revalidatePath("/dashboard/account/units")
 }
 
+// The custodian setting up the org is often also its first real unit
+// owner - this lets them become both in one step, during onboarding,
+// rather than adding the unit now and separately assigning themselves as
+// its owner later via the Units page. Mirrors addUnit's field parsing, but
+// also links a UnitOwnership directly to the caller (no email lookup
+// needed - assignUnitOwner's approach - since the owner is the session
+// itself). This is what makes them "the first custodian plus the first
+// registered owner" - see requireOwnerAccess for the access this unlocks.
+export async function claimOwnUnit(formData: FormData) {
+  const session = await auth()
+  if (!session?.user.orgId) throw new Error("Unauthorized")
+
+  const number = formData.get("number") as string
+  if (!number?.trim()) throw new Error("Unit number required")
+
+  const existing = await db.unit.findFirst({ where: { orgId: session.user.orgId, number: number.trim() } })
+  if (existing) throw new Error(`A unit numbered "${number.trim()}" already exists`)
+
+  const unit = await db.$transaction(async (tx) => {
+    const unit = await tx.unit.create({
+      data: {
+        orgId: session.user.orgId!,
+        number: number.trim(),
+        building: (formData.get("building") as string) || null,
+        bedrooms: formData.get("bedrooms") ? Number(formData.get("bedrooms")) : null,
+        bathrooms: formData.get("bathrooms") ? Number(formData.get("bathrooms")) : null,
+        status: "OWNER_OCCUPIED",
+      },
+    })
+    await tx.unitOwnership.create({ data: { unitId: unit.id, ownerId: session.user.id } })
+    return unit
+  })
+
+  revalidatePath("/onboarding")
+  revalidatePath("/dashboard/account/units")
+  revalidatePath("/dashboard/owner")
+  return { id: unit.id, number: unit.number }
+}
+
 // One or many units generated client-side (by-floor generator or a pasted
 // list) in a single submit - the whole reason for this to exist is 50-unit
 // HOAs, so it must tolerate re-running over an overlapping range rather
@@ -111,8 +150,9 @@ export async function updateUnitLabel(name: string) {
   const session = await auth()
   if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") throw new Error("Unauthorized")
 
+  // Blank is a valid choice - units then just show as bare numbers ("101"),
+  // no "Unit"/"Villa"/"Apt." prefix at all.
   const trimmed = name.trim()
-  if (!trimmed) throw new Error("Label is required")
 
   await db.organization.update({ where: { id: session.user.orgId }, data: { unitLabel: trimmed } })
   revalidatePath("/dashboard/account/units")
@@ -314,12 +354,18 @@ export async function completeOnboarding() {
   if (!session?.user.orgId) throw new Error("Unauthorized")
   const orgId = session.user.orgId
 
-  const [unitCount, ownerInviteCount] = await Promise.all([
+  const [unitCount, ownerInviteCount, selfOwnedCount] = await Promise.all([
     db.unit.count({ where: { orgId } }),
     db.invite.count({ where: { orgId, role: "OWNER" } }),
+    db.unitOwnership.count({ where: { unit: { orgId }, isCurrent: true } }),
   ])
   if (unitCount === 0) throw new Error("Add at least one unit before finishing setup")
-  if (ownerInviteCount === 0) throw new Error("Invite at least one unit owner before finishing setup")
+  // A custodian who claimed their own unit (claimOwnUnit) is a confirmed
+  // owner on record already - more definitively than a pending unaccepted
+  // invite - so either satisfies this requirement.
+  if (ownerInviteCount === 0 && selfOwnedCount === 0) {
+    throw new Error("Add or invite at least one unit owner before finishing setup")
+  }
 
   await db.organization.update({
     where: { id: orgId },

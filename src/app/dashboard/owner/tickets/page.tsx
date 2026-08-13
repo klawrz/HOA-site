@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
@@ -11,8 +11,8 @@ import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-t
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
 export default async function OwnerTicketsPage() {
-  const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  const session = await requireOwnerAccess()
+  if (!session) redirect("/dashboard")
 
   const ownerships = await db.unitOwnership.findMany({
     where: { ownerId: session.user.id },

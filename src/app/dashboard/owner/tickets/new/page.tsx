@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,8 +6,8 @@ import { TicketRequestForm } from "@/app/dashboard/_components/ticket-request-fo
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function NewOwnerTicketPage() {
-  const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  const session = await requireOwnerAccess()
+  if (!session) redirect("/dashboard")
 
   const [ownerships, unitLabel] = await Promise.all([
     db.unitOwnership.findMany({

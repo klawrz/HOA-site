@@ -7,14 +7,25 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { addUnit, deleteUnit, completeOnboarding } from "@/app/actions/org"
+import { addUnit, deleteUnit, completeOnboarding, updateUnitLabel, claimOwnUnit } from "@/app/actions/org"
 import { createInvite } from "@/app/actions/invites"
 import { BulkAddUnitsDialog } from "@/app/dashboard/account/units/bulk-add-units-dialog"
+import { unitDisplayName } from "@/lib/unit-label-format"
 
 type Unit = { id: string; number: string; building: string | null; bedrooms: number | null }
 type Invite = { id: string; email: string; role: string; token: string; acceptedAt: Date | null }
 
 const STEPS = ["Configure Units", "Invite Members", "All Set"]
+
+const PRESET_UNIT_LABELS = ["Unit", "Apt.", "Villa", "Condo", "Townhouse", "House", "Suite", "Lot"]
+const NONE_VALUE = "__none__"
+const CUSTOM_VALUE = "__custom__"
+
+function labelToSelectValue(label: string) {
+  if (!label) return NONE_VALUE
+  if (PRESET_UNIT_LABELS.includes(label)) return label
+  return CUSTOM_VALUE
+}
 
 const SUGGESTED_ROLES = [
   { value: "OWNER", label: "Unit Owner", hint: "Required to finish setup" },
@@ -29,6 +40,7 @@ export function OnboardingWizard({
   step,
   baseUrl,
   unitLabel,
+  ownedUnit,
 }: {
   org: { id: string; name: string }
   units: Unit[]
@@ -36,6 +48,7 @@ export function OnboardingWizard({
   step: number
   baseUrl: string
   unitLabel: string
+  ownedUnit: { id: string; number: string } | null
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -46,8 +59,61 @@ export function OnboardingWizard({
   const [addUnitError, setAddUnitError] = useState("")
   const [completeError, setCompleteError] = useState("")
 
-  const hasOwnerInvite = invites.some((inv) => inv.role === "OWNER")
+  const [label, setLabel] = useState(unitLabel)
+  const [customLabelMode, setCustomLabelMode] = useState(!!unitLabel && !PRESET_UNIT_LABELS.includes(unitLabel))
+  const [customLabelValue, setCustomLabelValue] = useState(customLabelMode ? unitLabel : "")
+  const [labelSaving, setLabelSaving] = useState(false)
+  const [labelError, setLabelError] = useState("")
+
+  const [claimedUnit, setClaimedUnit] = useState(ownedUnit)
+  const [claimError, setClaimError] = useState("")
+  const [claiming, setClaiming] = useState(false)
+
+  // A self-claimed unit is a confirmed owner on record already - it
+  // satisfies the same "at least one owner" requirement completeOnboarding
+  // checks server-side, same as an OWNER invite does.
+  const hasOwnerOnRecord = invites.some((inv) => inv.role === "OWNER") || !!claimedUnit
   const invitedRoles = new Set(invites.map((inv) => inv.role))
+
+  async function handleClaimUnit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setClaimError("")
+    setClaiming(true)
+    try {
+      const unit = await claimOwnUnit(new FormData(e.currentTarget))
+      setClaimedUnit(unit)
+    } catch (err) {
+      setClaimError(err instanceof Error ? err.message : "Failed to claim unit")
+    } finally {
+      setClaiming(false)
+    }
+  }
+
+  async function saveLabel(next: string) {
+    setLabelError("")
+    setLabelSaving(true)
+    try {
+      await updateUnitLabel(next)
+      setLabel(next)
+    } catch (err) {
+      setLabelError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setLabelSaving(false)
+    }
+  }
+
+  function handleLabelSelect(v: string | null) {
+    if (!v) return
+    if (v === NONE_VALUE) {
+      setCustomLabelMode(false)
+      saveLabel("")
+    } else if (v === CUSTOM_VALUE) {
+      setCustomLabelMode(true)
+    } else {
+      setCustomLabelMode(false)
+      saveLabel(v)
+    }
+  }
 
   function goStep(n: number) {
     router.push(`/onboarding?step=${n}`)
@@ -140,15 +206,98 @@ export function OnboardingWizard({
             </div>
           </div>
 
+          {/* Claim-your-own-unit is optional, not a gate - a custodian setting
+              up on behalf of the whole HOA without personally owning a unit
+              (e.g. a hired PM) skips straight to the bulk/one-at-a-time flow
+              below. See claimOwnUnit / requireOwnerAccess. */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-4">
+            {claimedUnit ? (
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Check className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    You&apos;re set up as the owner of {unitDisplayName(label, claimedUnit.number)}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    You&apos;ll see your own Owner dashboard alongside your Account admin tools.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="font-medium text-gray-900">Is one of these units yours?</p>
+                  <p className="text-sm text-gray-500">
+                    Claim your own unit first so you can get your Owner dashboard going right away.
+                  </p>
+                </div>
+                <form onSubmit={handleClaimUnit} className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <Label>{label ? `${label} Number` : "Number"} *</Label>
+                    <Input name="number" placeholder="e.g. 1A, 101, B2" required />
+                  </div>
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <Label>Building</Label>
+                    <Input name="building" placeholder="e.g. Building A" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Bedrooms</Label>
+                    <Input name="bedrooms" type="number" min="0" placeholder="2" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Bathrooms</Label>
+                    <Input name="bathrooms" type="number" step="0.5" min="0" placeholder="1.5" />
+                  </div>
+                  {claimError && <p className="col-span-2 text-sm text-red-600">{claimError}</p>}
+                  <Button type="submit" disabled={claiming} className="col-span-2">
+                    {claiming ? "Claiming..." : "This is my unit"}
+                  </Button>
+                </form>
+              </>
+            )}
+          </div>
+
+          <div className="bg-white border rounded-xl p-4 space-y-2">
+            <Label>What do you call a unit here?</Label>
+            <div className="flex gap-2">
+              <Select value={labelToSelectValue(label)} onValueChange={handleLabelSelect}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>No prefix (just numbers)</SelectItem>
+                  {PRESET_UNIT_LABELS.map((l) => (
+                    <SelectItem key={l} value={l}>{l}</SelectItem>
+                  ))}
+                  <SelectItem value={CUSTOM_VALUE}>Custom...</SelectItem>
+                </SelectContent>
+              </Select>
+              {customLabelMode && (
+                <Input
+                  value={customLabelValue}
+                  onChange={(e) => setCustomLabelValue(e.target.value)}
+                  onBlur={() => customLabelValue.trim() && saveLabel(customLabelValue.trim())}
+                  placeholder="e.g. Casa, Lote"
+                  className="w-40"
+                />
+              )}
+              {labelSaving && <span className="text-xs text-gray-400 self-center">Saving...</span>}
+            </div>
+            <p className="text-xs text-gray-400">
+              Used as the prefix - e.g. &quot;Villa 3&quot;. You can change this anytime from Account &gt; Units.
+            </p>
+            {labelError && <p className="text-xs text-red-600">{labelError}</p>}
+          </div>
+
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-700">Add one at a time, or in bulk</p>
-            <BulkAddUnitsDialog unitLabel={unitLabel} />
+            <BulkAddUnitsDialog unitLabel={label} />
           </div>
 
           <form onSubmit={handleAddUnit} className="bg-white border rounded-xl p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1 col-span-2 sm:col-span-1">
-                <Label>{unitLabel} Number *</Label>
+                <Label>{label ? `${label} Number` : "Number"} *</Label>
                 <Input name="number" placeholder="e.g. 1A, 101, B2" required />
               </div>
               <div className="space-y-1 col-span-2 sm:col-span-1">
@@ -175,7 +324,7 @@ export function OnboardingWizard({
               {units.map((u) => (
                 <div key={u.id} className="flex items-center justify-between px-4 py-3">
                   <div>
-                    <span className="font-medium">{unitLabel} {u.number}</span>
+                    <span className="font-medium">{unitDisplayName(label, u.number)}</span>
                     {u.building && <span className="text-sm text-gray-500 ml-2">{u.building}</span>}
                     {u.bedrooms && <span className="text-sm text-gray-400 ml-2">· {u.bedrooms}bd</span>}
                   </div>
@@ -269,12 +418,12 @@ export function OnboardingWizard({
               </div>
               {(unitRole === "OWNER" || unitRole === "RENTER") && (
                 <div className="space-y-1">
-                  <Label>Assign to {unitLabel}</Label>
+                  <Label>Assign to {label || "unit"}</Label>
                   <Select name="unitId">
-                    <SelectTrigger><SelectValue placeholder={`Select ${unitLabel.toLowerCase()}`} /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={`Select ${(label || "unit").toLowerCase()}`} /></SelectTrigger>
                     <SelectContent>
                       {units.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>{unitLabel} {u.number}</SelectItem>
+                        <SelectItem key={u.id} value={u.id}>{unitDisplayName(label, u.number)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -314,9 +463,9 @@ export function OnboardingWizard({
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => goStep(1)} className="flex-1">← Back</Button>
-            <Button onClick={() => goStep(3)} disabled={!hasOwnerInvite} className="flex-1">Finish Setup →</Button>
+            <Button onClick={() => goStep(3)} disabled={!hasOwnerOnRecord} className="flex-1">Finish Setup →</Button>
           </div>
-          {!hasOwnerInvite && (
+          {!hasOwnerOnRecord && (
             <p className="text-center text-sm text-gray-400">Invite at least one Unit Owner to continue</p>
           )}
         </div>
@@ -333,7 +482,7 @@ export function OnboardingWizard({
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">You&apos;re all set!</h2>
             <p className="text-gray-500">
-              {org.name} is configured with {units.length} {unitLabel.toLowerCase()}{units.length !== 1 ? "s" : ""} and{" "}
+              {org.name} is configured with {units.length} {(label || "unit").toLowerCase()}{units.length !== 1 ? "s" : ""} and{" "}
               {invites.length} invite{invites.length !== 1 ? "s" : ""} sent.
             </p>
           </div>

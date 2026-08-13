@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
@@ -25,8 +25,8 @@ function chargeStatus(due: number, paid: number) {
 }
 
 export default async function OwnerDuesPage() {
-  const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  const session = await requireOwnerAccess()
+  if (!session) redirect("/dashboard")
 
   const ownerships = await db.unitOwnership.findMany({
     where: { ownerId: session.user.id, isCurrent: true },

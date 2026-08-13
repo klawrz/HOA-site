@@ -154,6 +154,58 @@ enum BoardApprovalStatus {
   BOARD_APPROVED
 }
 
+// Whether HOPE itself has verified that (a) this organization actually
+// exists and (b) the people running the workspace are authorized to
+// represent it - distinct from boardApprovalStatus above, which is just
+// the org's own self-attestation. Every org starts PROVISIONAL (low
+// friction, self-serve) and only becomes VERIFIED after a platform admin
+// reviews an OrgVerificationRequest - see approveOrgVerification, which is
+// also where the "no single permanent owner" rule is enforced (a verified
+// org must already have at least two ACCOUNT_OWNER custodians).
+enum OrgVerificationStatus {
+  PROVISIONAL
+  VERIFIED
+}
+
+enum OrgVerificationRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+// An Account Owner's application to move their org from PROVISIONAL to
+// VERIFIED. Evidence fields are deliberately free text and reviewed by a
+// human platform admin rather than auto-validated - what counts as
+// sufficient proof of institutional authority varies too much by
+// organization type and jurisdiction to encode as rigid fields. Unlike
+// OrgDeletionRequest, this has a real relation to Organization since
+// approving/denying a request never destroys the org it concerns.
+model OrgVerificationRequest {
+  id     String                        @id @default(cuid())
+  orgId  String
+  status OrgVerificationRequestStatus @default(PENDING)
+
+  requestedById    String
+  requestedByName  String
+  requestedByEmail String
+  requestedAt      DateTime @default(now())
+
+  legalEntityName    String?
+  registrationNumber String?
+  evidenceNotes      String?
+  evidenceFileUrl    String?
+
+  reviewedById    String?
+  reviewedByName  String?
+  reviewedByEmail String?
+  reviewedAt      DateTime?
+  reviewNotes     String?
+
+  createdAt DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
 enum PMReferralStatus {
   NEW
   CONTACTED
@@ -224,6 +276,15 @@ model Organization {
   // wasn't explicitly given, so no org is misrepresented as HOPE's
   // official platform for that HOA until a human says so.
   boardApprovalStatus BoardApprovalStatus @default(NOT_YET_DECIDED)
+
+  // See OrgVerificationStatus doc comment - PROVISIONAL until a platform
+  // admin approves an OrgVerificationRequest. verifiedBy* is free text,
+  // same convention as accountOwnerName/bankContactName below, not a User
+  // relation (the reviewing admin's own membership is out of scope here).
+  verificationStatus   OrgVerificationStatus @default(PROVISIONAL)
+  verifiedAt           DateTime?
+  verifiedByName       String?
+  verifiedByEmail      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -323,6 +384,7 @@ model Organization {
   reserveTransactions ReserveTransaction[]
   reserveYearNotes    ReserveYearNote[]
   keyContacts         KeyContact[]
+  verificationRequests OrgVerificationRequest[]
 }
 
 // A User's membership in one Organization, with a role and board-member

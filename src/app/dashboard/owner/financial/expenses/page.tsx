@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
@@ -7,8 +7,8 @@ import { ExpenseLogPanel } from "@/components/owner-expenses/expense-log-panel"
 import { getUnitLabel } from "@/lib/unit-label"
 
 export default async function OwnerExpensesPage() {
-  const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  const session = await requireOwnerAccess()
+  if (!session) redirect("/dashboard")
 
   const [expenses, ownerships, unitLabel] = await Promise.all([
     db.ownerExpense.findMany({

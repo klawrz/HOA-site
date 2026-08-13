@@ -32,7 +32,9 @@ export function UnitLabelForm({ unitLabel }: { unitLabel: string }) {
         onClick={() => setEditing(true)}
         className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
       >
-        <Tag className="h-3 w-3" /> Called &quot;{unitLabel}&quot; here <Pencil className="h-3 w-3" />
+        <Tag className="h-3 w-3" />
+        {unitLabel ? <>Called &quot;{unitLabel}&quot; here</> : "No prefix - shown as bare numbers"}
+        <Pencil className="h-3 w-3" />
       </button>
     )
   }
@@ -43,9 +45,9 @@ export function UnitLabelForm({ unitLabel }: { unitLabel: string }) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         className="h-7 w-32 text-sm"
-        placeholder="Unit"
+        placeholder="Unit (optional)"
       />
-      <Button type="submit" size="xs" disabled={saving || !value.trim()}>
+      <Button type="submit" size="xs" disabled={saving}>
         {saving ? "Saving..." : "Save"}
       </Button>
       <Button type="button" variant="ghost" size="xs" onClick={() => { setEditing(false); setValue(unitLabel) }}>

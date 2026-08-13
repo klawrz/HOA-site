@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { auth } from "@/auth"
+import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -57,8 +57,8 @@ function priorityBadge(p: string) {
 }
 
 export default async function OwnerDashboard() {
-  const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  const session = await requireOwnerAccess()
+  if (!session) redirect("/dashboard")
 
   const now = new Date()
 

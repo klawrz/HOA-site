@@ -97,10 +97,12 @@ export function DashboardSidebar({
   role,
   isBoardMember,
   orgName,
+  ownsUnit,
 }: {
   role: Role
   isBoardMember: boolean
   orgName: string
+  ownsUnit?: boolean
 }) {
   const pathname = usePathname()
   // Copy - navByRole is a module-level singleton, and splicing below must
@@ -120,6 +122,21 @@ export function DashboardSidebar({
         indent: true,
       })
     }
+  }
+
+  // Mirror image of the splice above: a custodian who has also personally
+  // claimed a unit (see claimOwnUnit / requireOwnerAccess) gets the same
+  // unit-scoped pages an OWNER sees, appended rather than swapping their
+  // whole nav - they're still primarily the Account admin.
+  if (role === "ACCOUNT_OWNER" && ownsUnit) {
+    navItems.push(
+      { label: "My Unit", href: "/dashboard/owner", icon: Home },
+      { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign, indent: true },
+      { label: "Dues & Assessments", href: "/dashboard/owner/financial/dues", icon: Receipt, indent: true },
+      { label: "Expenses", href: "/dashboard/owner/financial/expenses", icon: TrendingDown, indent: true },
+      { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon, indent: true },
+      { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2, indent: true }
+    )
   }
 
   // The most specific href match wins - without this, a nested route like

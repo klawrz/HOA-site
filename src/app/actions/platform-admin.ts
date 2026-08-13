@@ -40,31 +40,44 @@ export async function createOrganizationWithOwner(data: {
     throw new Error("Organization name, owner name, and email are required")
   }
 
-  const org = await db.organization.create({
-    data: {
-      name: orgName,
-      slug: slugify(orgName),
-      accountNumber: data.accountNumber?.trim() || null,
-      pricingPlan: data.pricingPlan?.trim() || null,
-      billingExpiry: data.billingExpiry ? new Date(data.billingExpiry) : null,
-      paymentMethod: data.paymentMethod?.trim() || null,
-    },
-  })
+  // A platform admin creating the org is already vouching for it, so it
+  // skips the provisional stage entirely - unlike the public signUpNewOrg
+  // path, which always starts PROVISIONAL. Wrapped in a transaction (unlike
+  // before) so a mid-way failure - e.g. the password-length check below -
+  // can never leave an orphaned Organization with no owner.
+  const { org, usedExistingAccount } = await db.$transaction(async (tx) => {
+    const org = await tx.organization.create({
+      data: {
+        name: orgName,
+        slug: slugify(orgName),
+        accountNumber: data.accountNumber?.trim() || null,
+        pricingPlan: data.pricingPlan?.trim() || null,
+        billingExpiry: data.billingExpiry ? new Date(data.billingExpiry) : null,
+        paymentMethod: data.paymentMethod?.trim() || null,
+        verificationStatus: "VERIFIED",
+        verifiedAt: new Date(),
+        verifiedByName: session.user.name ?? null,
+        verifiedByEmail: session.user.email ?? null,
+      },
+    })
 
-  const existing = await db.user.findUnique({ where: { email: ownerEmail } })
-  let usedExistingAccount = false
-  if (existing) {
-    usedExistingAccount = true
-    const alreadyMember = await db.membership.findFirst({ where: { userId: existing.id, orgId: org.id } })
-    if (!alreadyMember) {
-      await db.membership.create({ data: { userId: existing.id, orgId: org.id, role: "ACCOUNT_OWNER" } })
+    const existing = await tx.user.findUnique({ where: { email: ownerEmail } })
+    let usedExistingAccount = false
+    if (existing) {
+      usedExistingAccount = true
+      const alreadyMember = await tx.membership.findFirst({ where: { userId: existing.id, orgId: org.id } })
+      if (!alreadyMember) {
+        await tx.membership.create({ data: { userId: existing.id, orgId: org.id, role: "ACCOUNT_OWNER" } })
+      }
+    } else {
+      if (!data.password || data.password.length < 8) throw new Error("Password must be at least 8 characters")
+      const hashed = await bcrypt.hash(data.password, 12)
+      const user = await tx.user.create({ data: { name: ownerName, email: ownerEmail, password: hashed } })
+      await tx.membership.create({ data: { userId: user.id, orgId: org.id, role: "ACCOUNT_OWNER" } })
     }
-  } else {
-    if (!data.password || data.password.length < 8) throw new Error("Password must be at least 8 characters")
-    const hashed = await bcrypt.hash(data.password, 12)
-    const user = await db.user.create({ data: { name: ownerName, email: ownerEmail, password: hashed } })
-    await db.membership.create({ data: { userId: user.id, orgId: org.id, role: "ACCOUNT_OWNER" } })
-  }
+
+    return { org, usedExistingAccount }
+  })
 
   revalidatePath("/platform-admin")
   return { orgId: org.id, orgName: org.name, usedExistingAccount }

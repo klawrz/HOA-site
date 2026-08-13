@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,8 +25,8 @@ export default async function UnitDetailPage({
   params: Promise<{ unitId: string }>
 }) {
   const { unitId } = await params
-  const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  const session = await requireOwnerAccess()
+  if (!session) redirect("/dashboard")
 
   const ownership = await db.unitOwnership.findFirst({
     where: { unitId, ownerId: session.user.id, isCurrent: true },

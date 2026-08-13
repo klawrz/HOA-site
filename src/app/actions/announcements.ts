@@ -25,6 +25,11 @@ export async function createAnnouncement(data: { title: string; content: string 
   if (!session || !session.user.orgId) return { success: false }
   if (!canPostAnnouncement(session.user.role, session.user.isBoardMember)) return { success: false }
 
+  const org = await db.organization.findUnique({ where: { id: session.user.orgId }, select: { verificationStatus: true } })
+  if (org?.verificationStatus !== "VERIFIED") {
+    return { success: false, error: "Unverified workspaces cannot send official announcements. Request verification first." }
+  }
+
   const title = data.title.trim()
   const content = data.content.trim()
   if (!title || !content) return { success: false, error: "Title and content required" }

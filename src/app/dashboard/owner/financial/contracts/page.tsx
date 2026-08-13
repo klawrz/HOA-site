@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ContractList } from "@/components/contracts/contract-list"
@@ -6,8 +6,8 @@ import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 
 export default async function OwnerContractsPage() {
-  const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  const session = await requireOwnerAccess()
+  if (!session) redirect("/dashboard")
 
   const [ownerships, contractorMemberships, unitLabel] = await Promise.all([
     db.unitOwnership.findMany({

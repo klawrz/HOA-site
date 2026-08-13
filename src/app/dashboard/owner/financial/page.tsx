@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
@@ -17,8 +17,8 @@ function monthlyEquivalent(amount: number, period: string) {
 }
 
 export default async function OwnerFinancialPage() {
-  const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  const session = await requireOwnerAccess()
+  if (!session) redirect("/dashboard")
 
   const [ownerships, latestApprovedBudget, unitLabel, orgUnits] = await Promise.all([
     db.unitOwnership.findMany({

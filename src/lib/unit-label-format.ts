@@ -2,7 +2,8 @@
 // Kept separate from unit-label.ts because that file imports the db client
 // (via getUnitLabel), which breaks client components that only need these.
 export function unitDisplayName(unitLabel: string, number: string, building?: string | null) {
-  return building ? `${unitLabel} ${number} — Building ${building}` : `${unitLabel} ${number}`
+  const name = unitLabel.trim() ? `${unitLabel} ${number}` : number
+  return building ? `${name} — Building ${building}` : name
 }
 
 // Unit numbers are free text (Prisma orderBy sorts them lexicographically,

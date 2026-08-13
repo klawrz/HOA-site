@@ -21,6 +21,10 @@ type Mode = "floor" | "paste"
 type PendingUnit = { number: string; floor?: number; building?: string }
 
 export function BulkAddUnitsDialog({ unitLabel }: { unitLabel: string }) {
+  // Only for grammar in copy below ("bulk add units", "3 units will be
+  // created") - a blank unitLabel means no prefix on the units themselves,
+  // not that these sentences should go word-less.
+  const word = unitLabel || "unit"
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<Mode>("floor")
   const [error, setError] = useState("")
@@ -69,7 +73,7 @@ export function BulkAddUnitsDialog({ unitLabel }: { unitLabel: string }) {
     try {
       const result = await bulkAddUnits(preview)
       const skippedNote = result.skipped.length > 0 ? `, skipped ${result.skipped.length} already on file (${result.skipped.join(", ")})` : ""
-      toast.success(`Added ${result.created} ${unitLabel.toLowerCase()}${result.created === 1 ? "" : "s"}${skippedNote}`)
+      toast.success(`Added ${result.created} ${word.toLowerCase()}${result.created === 1 ? "" : "s"}${skippedNote}`)
       setOpen(false)
       setPasteText("")
     } catch (err) {
@@ -86,7 +90,7 @@ export function BulkAddUnitsDialog({ unitLabel }: { unitLabel: string }) {
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Bulk add {unitLabel.toLowerCase()}s</DialogTitle>
+          <DialogTitle>Bulk add {word.toLowerCase()}s</DialogTitle>
         </DialogHeader>
 
         <div className="flex gap-2 border-b pb-3">
@@ -127,7 +131,7 @@ export function BulkAddUnitsDialog({ unitLabel }: { unitLabel: string }) {
                 <Input type="number" min="1" value={numFloors} onChange={(e) => setNumFloors(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label>{unitLabel}s per floor</Label>
+                <Label>{word}s per floor</Label>
                 <Input type="number" min="1" value={unitsPerFloor} onChange={(e) => setUnitsPerFloor(e.target.value)} />
               </div>
               <div className="space-y-1">
@@ -162,7 +166,7 @@ export function BulkAddUnitsDialog({ unitLabel }: { unitLabel: string }) {
         )}
 
         <p className="text-xs text-gray-400">
-          {preview.length} {unitLabel.toLowerCase()}{preview.length === 1 ? "" : "s"} will be created
+          {preview.length} {word.toLowerCase()}{preview.length === 1 ? "" : "s"} will be created
           {preview.length > 0 ? ` (${preview[0].number}${preview.length > 1 ? ` … ${preview[preview.length - 1].number}` : ""})` : ""}.
           Everything else (bedrooms, bathrooms, sqft...) can be filled in afterward from Edit.
         </p>
@@ -173,7 +177,7 @@ export function BulkAddUnitsDialog({ unitLabel }: { unitLabel: string }) {
             Cancel
           </Button>
           <Button type="button" onClick={handleSubmit} disabled={saving || preview.length === 0}>
-            {saving ? "Adding..." : `Add ${preview.length || ""} ${unitLabel}${preview.length === 1 ? "" : "s"}`}
+            {saving ? "Adding..." : `Add ${preview.length || ""} ${word}${preview.length === 1 ? "" : "s"}`}
           </Button>
         </div>
       </DialogContent>

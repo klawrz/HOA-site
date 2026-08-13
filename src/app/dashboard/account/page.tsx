@@ -3,11 +3,12 @@ import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
-  Building2, Users, Mail, ArrowRight, Wrench, FileText, ShieldCheck, Crown,
+  Building2, Users, Mail, ArrowRight, Wrench, FileText, ShieldCheck,
 } from "lucide-react"
 import { InvitePanel } from "./invite-panel"
 import { PropertyAddressCard } from "./property-address-card"
 import { AccountHolderDataCard } from "./account-holder-data-card"
+import { CustodiansCard } from "./custodians-card"
 import { getOrgPeople } from "@/lib/org-people"
 
 export default async function AccountDashboardPage() {
@@ -27,7 +28,6 @@ export default async function AccountDashboardPage() {
   ])
   if (!org) redirect("/login")
 
-  const accountOwners = org.memberships.filter((m) => m.role === "ACCOUNT_OWNER")
   const pendingInvites = org.invites.filter((i) => !i.acceptedAt)
   const acceptedInvites = org.invites.filter((i) => i.acceptedAt)
 
@@ -38,22 +38,16 @@ export default async function AccountDashboardPage() {
         <p className="text-gray-500 text-sm mt-1">Account Holder Dashboard</p>
       </div>
 
-      {/* Who holds ultimate authority on this org - called out distinctly
-          from the general member/invite list below, which is easy to
-          overlook this in among ordinary pending invites. */}
-      <div className="flex flex-wrap gap-2">
-        {accountOwners.map((m) => (
-          <div
-            key={m.id}
-            className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full pl-2 pr-4 py-1.5"
-          >
-            <Crown className="h-4 w-4 text-amber-600 shrink-0" />
-            <span className="text-xs font-semibold text-amber-800 tracking-wide">ACCOUNT OWNER</span>
-            <span className="text-xs text-amber-400">—</span>
-            <span className="text-sm font-medium text-amber-900">{m.user.name}</span>
-          </div>
-        ))}
-      </div>
+      <CustodiansCard
+        members={org.memberships.map((m) => ({
+          id: m.id,
+          role: m.role,
+          isBoardMember: m.isBoardMember,
+          user: { id: m.user.id, name: m.user.name, email: m.user.email },
+        }))}
+        verificationStatus={org.verificationStatus}
+        currentUserId={session.user.id}
+      />
 
       {/* Property address - shown on the public property home page */}
       <PropertyAddressCard

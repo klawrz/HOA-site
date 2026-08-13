@@ -39,6 +39,11 @@ export async function createAssessment(data: {
     return { success: false }
   }
 
+  const org = await db.organization.findUnique({ where: { id: session.user.orgId }, select: { verificationStatus: true } })
+  if (org?.verificationStatus !== "VERIFIED") {
+    return { success: false, error: "Unverified workspaces cannot issue dues or assessments. Request verification first." }
+  }
+
   const title = data.title.trim()
   if (!title) return { success: false, error: "Title required" }
   if (!data.totalAmount || data.totalAmount <= 0) {

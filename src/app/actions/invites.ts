@@ -6,6 +6,14 @@ import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 import { Role } from "@/generated/prisma"
 
+// A provisional (unverified) workspace can still demo itself with "a few
+// collaborators," but must not be able to build up a full owner roster one
+// invite at a time - that's what the CSV bulk-import block below is for.
+// Applies org-wide regardless of who sends the invite (self or a platform
+// admin), since it's the workspace's verification status that's gated, not
+// the caller's identity.
+const PROVISIONAL_INVITE_CAP = 5
+
 // Shared by the Account Owner invite panel/onboarding wizard (via
 // createInvite below) and platform-admin's sendOrgInvite (invites into an
 // org the platform admin doesn't itself belong to) - authorization is
@@ -16,6 +24,16 @@ export async function createInviteForOrg(input: { email: string; role: Role; org
   const isAccountOwnerOfThisOrg = session?.user.orgId === input.orgId && session.user.role === "ACCOUNT_OWNER"
   const isPlatformAdmin = session?.user.isPlatformAdmin === true
   if (!session || (!isAccountOwnerOfThisOrg && !isPlatformAdmin)) throw new Error("Unauthorized")
+
+  const org = await db.organization.findUnique({ where: { id: input.orgId }, select: { verificationStatus: true } })
+  if (org?.verificationStatus === "PROVISIONAL") {
+    const totalInvites = await db.invite.count({ where: { orgId: input.orgId } })
+    if (totalInvites >= PROVISIONAL_INVITE_CAP) {
+      throw new Error(
+        `Unverified workspaces are limited to ${PROVISIONAL_INVITE_CAP} invites total. Request verification to invite more.`
+      )
+    }
+  }
 
   const email = input.email.trim().toLowerCase()
 
@@ -71,6 +89,11 @@ export async function bulkInviteOwners(rows: { unitNumber: string; email: string
   const session = await auth()
   if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") throw new Error("Unauthorized")
   const orgId = session.user.orgId
+
+  const org = await db.organization.findUnique({ where: { id: orgId }, select: { verificationStatus: true } })
+  if (org?.verificationStatus !== "VERIFIED") {
+    throw new Error("Bulk owner import requires a verified workspace. Request verification first.")
+  }
 
   const units = await db.unit.findMany({ where: { orgId }, select: { id: true, number: true } })
   const unitByNumber = new Map(units.map((u) => [u.number.trim().toLowerCase(), u.id]))

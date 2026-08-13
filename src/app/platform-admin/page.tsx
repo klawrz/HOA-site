@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 
 export default async function PlatformAdminPage() {
-  const [orgs, newReferralCount] = await Promise.all([
+  const [orgs, newReferralCount, pendingVerificationCount] = await Promise.all([
     db.organization.findMany({
       include: {
         _count: {
@@ -14,6 +14,7 @@ export default async function PlatformAdminPage() {
       orderBy: { createdAt: "desc" },
     }),
     db.pMReferral.count({ where: { status: "NEW" } }),
+    db.orgVerificationRequest.count({ where: { status: "PENDING" } }),
   ])
 
   return (
@@ -31,6 +32,11 @@ export default async function PlatformAdminPage() {
           </Link>
           <Link href="/platform-admin/deletion-requests">
             <Button variant="outline">Deletion Requests</Button>
+          </Link>
+          <Link href="/platform-admin/verification-requests">
+            <Button variant="outline">
+              Verification Requests{pendingVerificationCount > 0 ? ` (${pendingVerificationCount})` : ""}
+            </Button>
           </Link>
           <Link href="/platform-admin/new-org">
             <Button>New organization</Button>
