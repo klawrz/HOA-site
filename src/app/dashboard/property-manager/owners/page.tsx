@@ -9,27 +9,31 @@ export default async function OwnersDirectoryPage() {
   const session = await auth()
   if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
 
-  const [ownerMemberships, unitLabel] = await Promise.all([
-    db.membership.findMany({
-      where: { orgId: session.user.orgId ?? undefined, role: "OWNER" },
+  // Driven by UnitOwnership - the actual source of truth for "who owns a
+  // unit here" - rather than Membership.role === "OWNER". A custodian who
+  // claimed their own unit during onboarding (see claimOwnUnit) stays an
+  // ACCOUNT_OWNER membership, not an OWNER one, but they're a real owner
+  // all the same - requireOwnerAccess and the onboarding wizard's
+  // hasOwnerOnRecord already treat this equivalently; this page needs to
+  // match, or a self-claimed custodian silently vanishes from the PM's view
+  // of who owns what.
+  const [owners, unitLabel] = await Promise.all([
+    db.user.findMany({
+      where: { ownedUnits: { some: { isCurrent: true, unit: { orgId: session.user.orgId ?? undefined } } } },
       include: {
-        user: {
+        ownedUnits: {
+          where: { isCurrent: true, unit: { orgId: session.user.orgId ?? undefined } },
           include: {
-            ownedUnits: {
-              include: {
-                unit: {
-                  include: { leases: { where: { isActive: true } } },
-                },
-              },
+            unit: {
+              include: { leases: { where: { isActive: true } } },
             },
           },
         },
       },
-      orderBy: { user: { name: "asc" } },
+      orderBy: { name: "asc" },
     }),
     getUnitLabel(session.user.orgId),
   ])
-  const owners = ownerMemberships.map((m) => m.user)
 
   const policyColor: Record<RentalPolicy, string> = {
     ANYONE: "bg-green-100 text-green-800",

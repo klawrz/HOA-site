@@ -12,16 +12,19 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { signUpNewOrg } from "@/app/actions/signup"
-import { updateOrgAddress } from "@/app/actions/org"
+import { updateOrgAddress, claimOwnUnit, completeOnboarding } from "@/app/actions/org"
 
 const STEPS = ["Create Account", "Basic Data"]
 
-// The account creator's real-world relationship to the HOA determines how
-// much we can reasonably demand up front. Only someone claiming to speak
-// for the Board plausibly knows (and has authority over) the property's
-// formal address/legal identity/adoption status - a single self-managed
-// owner or a PM signing up for their own narrower purposes may not, and
-// forcing it on them would just be friction for no reason. See
+// Step 2 is a genuinely distinct flow per role (not one shared form with
+// conditional field requirements) - each role's real priority differs
+// enough to warrant it. Only someone claiming to speak for the Board
+// plausibly knows (and has authority over) the property's formal
+// address/legal identity/adoption status, so only BOARD_OFFICER is asked
+// for it. SELF_OWNER's priority is getting their own unit going fast, so
+// they claim it directly and skip the onboarding wizard entirely.
+// PROPERTY_MANAGER/OTHER have nothing role-specific to collect here and
+// go straight into the wizard to configure the property. See
 // Organization.boardApprovalStatus for the related "don't assume
 // commitment that wasn't given" reasoning.
 const ROLE_OPTIONS = [
@@ -45,10 +48,6 @@ export default function SignupPage() {
 
   const [boardApproval, setBoardApproval] = useState<"NOT_YET_DECIDED" | "BOARD_APPROVED">("NOT_YET_DECIDED")
 
-  // Only a Board Member/Officer is asked to plausibly commit the HOA's real
-  // address/legal identity/adoption status up front - everyone else can
-  // skip straight in and fill it in later from their dashboard.
-  const requiresFullBasicData = ownerRole === "BOARD_OFFICER"
   const ownerRoleLabel = ROLE_OPTIONS.find((r) => r.value === ownerRole)?.label ?? ""
 
   async function handleCreateAccount(e: React.FormEvent<HTMLFormElement>) {
@@ -87,6 +86,28 @@ export default function SignupPage() {
       setError(err instanceof Error ? err.message : "Failed to save")
       setSaving(false)
     }
+  }
+
+  // Claiming a unit already satisfies completeOnboarding()'s requirements
+  // (>=1 unit, >=1 owner on record), so a self-managed owner never needs to
+  // visit the multi-step onboarding wizard built for a Board/PM configuring
+  // a whole property - they go straight to their own dashboard.
+  async function handleClaimUnit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError("")
+    setSaving(true)
+    try {
+      await claimOwnUnit(new FormData(e.currentTarget))
+      await completeOnboarding()
+      goToDashboard()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to claim unit")
+      setSaving(false)
+    }
+  }
+
+  function goToOnboarding() {
+    router.push("/onboarding")
   }
 
   return (
@@ -186,22 +207,18 @@ export default function SignupPage() {
             </>
           )}
 
-          {step === 2 && (
+          {step === 2 && ownerRole === "BOARD_OFFICER" && (
             <>
               <CardHeader>
                 <CardTitle>Basic data</CardTitle>
-                <CardDescription>
-                  {requiresFullBasicData
-                    ? `${orgName}'s property address, so it's on file.`
-                    : `Optional for now - add it whenever you have it handy. You can always fill this in later from your dashboard.`}
-                </CardDescription>
+                <CardDescription>{orgName}&apos;s property address, so it&apos;s on file.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleBasicData} className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1 col-span-2 sm:col-span-1">
                       <Label>Address Line 1</Label>
-                      <Input name="addressLine1" required={requiresFullBasicData} />
+                      <Input name="addressLine1" required />
                     </div>
                     <div className="space-y-1 col-span-2 sm:col-span-1">
                       <Label>Address Line 2</Label>
@@ -211,7 +228,7 @@ export default function SignupPage() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <Label>City</Label>
-                      <Input name="city" required={requiresFullBasicData} />
+                      <Input name="city" required />
                     </div>
                     <div className="space-y-1">
                       <Label>State / Province</Label>
@@ -224,7 +241,7 @@ export default function SignupPage() {
                   </div>
                   <div className="space-y-1">
                     <Label>Country</Label>
-                    <Input name="country" required={requiresFullBasicData} />
+                    <Input name="country" required />
                   </div>
 
                   <div className="pt-2 border-t space-y-3">
@@ -271,17 +288,78 @@ export default function SignupPage() {
                   </div>
 
                   {error && <p className="text-sm text-red-600">{error}</p>}
-                  <div className="flex gap-2">
-                    <Button type="submit" className="flex-1" disabled={saving}>
-                      {saving ? "Saving..." : "Finish"}
-                    </Button>
-                    {!requiresFullBasicData && (
-                      <Button type="button" variant="ghost" onClick={goToDashboard} disabled={saving}>
-                        Skip for now
-                      </Button>
-                    )}
-                  </div>
+                  <Button type="submit" className="w-full" disabled={saving}>
+                    {saving ? "Saving..." : "Finish"}
+                  </Button>
                 </form>
+              </CardContent>
+            </>
+          )}
+
+          {step === 2 && ownerRole === "SELF_OWNER" && (
+            <>
+              <CardHeader>
+                <CardTitle>Claim your unit</CardTitle>
+                <CardDescription>
+                  Which unit is yours? You&apos;ll get your own Owner dashboard right away.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleClaimUnit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1 col-span-2 sm:col-span-1">
+                      <Label>Unit Number</Label>
+                      <Input name="number" placeholder="e.g. 1A, 101, B2" required />
+                    </div>
+                    <div className="space-y-1 col-span-2 sm:col-span-1">
+                      <Label>Building</Label>
+                      <Input name="building" placeholder="e.g. Building A" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Bedrooms</Label>
+                      <Input name="bedrooms" type="number" min="0" placeholder="2" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Bathrooms</Label>
+                      <Input name="bathrooms" type="number" step="0.5" min="0" placeholder="1.5" />
+                    </div>
+                  </div>
+                  {error && <p className="text-sm text-red-600">{error}</p>}
+                  <Button type="submit" className="w-full" disabled={saving}>
+                    {saving ? "Claiming..." : "This is my unit"}
+                  </Button>
+                </form>
+              </CardContent>
+            </>
+          )}
+
+          {step === 2 && ownerRole === "PROPERTY_MANAGER" && (
+            <>
+              <CardHeader>
+                <CardTitle>You&apos;re almost there</CardTitle>
+                <CardDescription>
+                  You&apos;re setting up {orgName}&apos;s portal as its property manager. Next, add its units
+                  and invite the Board and unit owners.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <Button className="w-full" onClick={goToOnboarding}>Continue</Button>
+              </CardContent>
+            </>
+          )}
+
+          {step === 2 && ownerRole === "OTHER" && (
+            <>
+              <CardHeader>
+                <CardTitle>You&apos;re almost there</CardTitle>
+                <CardDescription>
+                  Next, you&apos;ll add {orgName}&apos;s units and invite the people who&apos;ll use it.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <Button className="w-full" onClick={goToOnboarding}>Continue</Button>
               </CardContent>
             </>
           )}

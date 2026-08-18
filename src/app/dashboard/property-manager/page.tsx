@@ -32,7 +32,13 @@ export default async function PropertyManagerDashboard() {
     db.troubleTicket.count({
       where: { orgId: session.user.orgId ?? undefined, status: { in: ["OPEN", "IN_PROGRESS"] } },
     }),
-    db.membership.count({ where: { orgId: session.user.orgId ?? undefined, role: "OWNER" } }),
+    // Driven by UnitOwnership, not Membership.role === "OWNER" - a
+    // custodian who claimed their own unit (see claimOwnUnit) stays an
+    // ACCOUNT_OWNER membership but is a real owner, same reasoning as the
+    // Owner Directory page below.
+    db.user.count({
+      where: { ownedUnits: { some: { isCurrent: true, unit: { orgId: session.user.orgId ?? undefined } } } },
+    }),
     db.membership.count({ where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" } }),
     session.user.orgId ? getAttentionItems(session.user.orgId, "/dashboard/property-manager") : Promise.resolve([]),
     db.membership.findUnique({

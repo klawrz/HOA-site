@@ -48,13 +48,17 @@ function contractorLabel(c: Contractor) {
 
 type Props = ({ scope: "property"; orgId: string } | { scope: "unit"; unitId: string }) & {
   contractors: Contractor[]
+  defaultContractorId?: string
+  triggerLabel?: string
+  triggerVariant?: "default" | "outline" | "ghost"
+  triggerSize?: "default" | "sm"
 }
 
 export function NewContractDialog(props: Props) {
   const { scope } = props
   const [open, setOpen] = useState(false)
   const [contractorList, setContractorList] = useState(props.contractors)
-  const [contractorId, setContractorId] = useState("")
+  const [contractorId, setContractorId] = useState(props.defaultContractorId ?? "")
   const [type, setType] = useState<ContractType>("PROJECT")
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("MONTHLY")
   const [saving, setSaving] = useState(false)
@@ -169,7 +173,7 @@ export function NewContractDialog(props: Props) {
     if (result.success) {
       toast.success("Contract created")
       setOpen(false)
-      setContractorId("")
+      setContractorId(props.defaultContractorId ?? "")
       setType("PROJECT")
       setBillingPeriod("MONTHLY")
       setPrefill(null)
@@ -182,7 +186,9 @@ export function NewContractDialog(props: Props) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>+ New Contract</DialogTrigger>
+      <DialogTrigger render={<Button variant={props.triggerVariant ?? "default"} size={props.triggerSize ?? "default"} />}>
+        {props.triggerLabel ?? "+ New Contract"}
+      </DialogTrigger>
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Contract</DialogTitle>

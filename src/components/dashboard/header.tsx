@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
-import { LogOut, Bell, KeyRound, Building2, Shield } from "lucide-react"
+import { LogOut, Bell, KeyRound, Building2, Shield, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ChangePasswordDialog } from "@/components/dashboard/change-password-dialog"
+import { AddOrgDialog } from "@/components/dashboard/add-org-dialog"
 import { AskHopePanel } from "@/components/ask-hope/ask-hope-panel"
 import { Role } from "@/generated/prisma"
 
@@ -65,6 +66,7 @@ export function DashboardHeader({
   const router = useRouter()
   const { update } = useSession()
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const [addOrgOpen, setAddOrgOpen] = useState(false)
   const [switching, setSwitching] = useState(false)
   const initials = user.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -131,6 +133,12 @@ export function DashboardHeader({
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             )}
+            {user.role === "ACCOUNT_OWNER" && (
+              <DropdownMenuItem className="cursor-pointer" onClick={() => setAddOrgOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add another organization
+              </DropdownMenuItem>
+            )}
             {isPlatformAdmin && (
               <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/platform-admin")}>
                 <Shield className="h-4 w-4 mr-2" />
@@ -149,6 +157,7 @@ export function DashboardHeader({
         </DropdownMenu>
       </div>
       <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
+      <AddOrgDialog open={addOrgOpen} onOpenChange={setAddOrgOpen} />
     </header>
   )
 }

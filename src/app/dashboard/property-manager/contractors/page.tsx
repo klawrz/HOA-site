@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ContractorDirectory } from "@/components/contracts/contractor-directory"
+import { AddContractorDialog } from "@/components/contracts/add-contractor-dialog"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
 
@@ -18,7 +19,10 @@ export default async function ContractorsDirectoryPage() {
             assignedTickets: {
               include: { ticket: { select: { status: true, title: true, id: true } } },
             },
-            contracts: { orderBy: { createdAt: "desc" }, take: 2 },
+            // Not just the 2 most recent - an ACTIVE contract needs to be
+            // findable even if it isn't among the newest rows (e.g. a newer
+            // ENDED renewal draft sorts above it by createdAt).
+            contracts: { orderBy: { createdAt: "desc" } },
           },
         },
       },
@@ -35,11 +39,14 @@ export default async function ContractorsDirectoryPage() {
   return (
     <div className="space-y-6">
       <OnboardingStepTracker stepId="pm_contractors" alreadyComplete={onboardingStepDone} />
-      <div>
-        <h1 className="text-2xl font-bold">Contractor Directory</h1>
-        <p className="text-gray-500 mt-1">{contractors.length} contractors on file</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Contractor Directory</h1>
+          <p className="text-gray-500 mt-1">{contractors.length} contractors on file</p>
+        </div>
+        <AddContractorDialog />
       </div>
-      <ContractorDirectory contractors={contractors} />
+      <ContractorDirectory contractors={contractors} orgId={session.user.orgId ?? ""} />
     </div>
   )
 }

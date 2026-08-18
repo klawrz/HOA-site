@@ -3,6 +3,8 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
+import { slugify } from "@/lib/slugify"
+import { Prisma } from "@/generated/prisma"
 
 export async function addUnit(formData: FormData) {
   const session = await auth()
@@ -67,6 +69,47 @@ export async function claimOwnUnit(formData: FormData) {
   revalidatePath("/dashboard/account/units")
   revalidatePath("/dashboard/owner")
   return { id: unit.id, number: unit.number }
+}
+
+// Lets an existing Account Owner spin up a second, fully independent
+// organization under their own login - e.g. colocated properties that are
+// legally distinct HOAs ("Sampaguita I"/"II"/"III"). Deliberately the
+// opposite posture from signUpNewOrg's EMAIL_EXISTS rejection: there the
+// email is a stranger's until proven otherwise (anonymous public form), but
+// here the caller is already an authenticated Account Owner, so reusing
+// their own identity for a new org is exactly the point - mirrors
+// createOrganizationWithOwner's existing-user branch (platform-admin.ts),
+// minus the admin gate, since this only ever acts on the caller's own
+// account. Starts PROVISIONAL (schema default) - self-service, not
+// platform-admin-vouched.
+export async function createSiblingOrg(newOrgName: string) {
+  const session = await auth()
+  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") throw new Error("Unauthorized")
+
+  const name = newOrgName.trim()
+  if (!name) throw new Error("Organization name is required")
+
+  const sourceOrg = await db.organization.findUnique({
+    where: { id: session.user.orgId },
+    select: { unitLabel: true },
+  })
+
+  try {
+    const org = await db.$transaction(async (tx) => {
+      const org = await tx.organization.create({
+        data: { name, slug: slugify(name), unitLabel: sourceOrg?.unitLabel ?? "Unit" },
+      })
+      await tx.membership.create({ data: { userId: session.user.id, orgId: org.id, role: "ACCOUNT_OWNER" } })
+      return org
+    })
+    revalidatePath("/dashboard")
+    return { orgId: org.id, orgName: org.name }
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new Error("An organization with a very similar name already exists - try a slightly different name.")
+    }
+    throw err
+  }
 }
 
 // One or many units generated client-side (by-floor generator or a pasted

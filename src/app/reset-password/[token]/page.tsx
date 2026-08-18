@@ -15,7 +15,7 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-8">
           <Building2 className="h-7 w-7 text-blue-600" />
-          <span className="text-xl font-semibold">Sunrise HOA Portal</span>
+          <span className="text-xl font-semibold">HOPE</span>
         </div>
 
         <Card>

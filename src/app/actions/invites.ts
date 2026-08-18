@@ -23,7 +23,16 @@ export async function createInviteForOrg(input: { email: string; role: Role; org
   const session = await auth()
   const isAccountOwnerOfThisOrg = session?.user.orgId === input.orgId && session.user.role === "ACCOUNT_OWNER"
   const isPlatformAdmin = session?.user.isPlatformAdmin === true
-  if (!session || (!isAccountOwnerOfThisOrg && !isPlatformAdmin)) throw new Error("Unauthorized")
+  // Growing the Board is the Board's own call, not just the Account Owner's -
+  // but scoped narrowly to inviting other Board Members specifically, not a
+  // general HR power over Owners/PM/Contractors.
+  const isBoardMemberInvitingBoard =
+    session?.user.orgId === input.orgId &&
+    (session.user.role === "BOARD_MEMBER" || session.user.isBoardMember) &&
+    input.role === "BOARD_MEMBER"
+  if (!session || (!isAccountOwnerOfThisOrg && !isPlatformAdmin && !isBoardMemberInvitingBoard)) {
+    throw new Error("Unauthorized")
+  }
 
   const org = await db.organization.findUnique({ where: { id: input.orgId }, select: { verificationStatus: true } })
   if (org?.verificationStatus === "PROVISIONAL") {

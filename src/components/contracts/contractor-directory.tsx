@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wrench } from "lucide-react"
+import { Wrench, FileText } from "lucide-react"
 import { contractorCategoryLabel } from "@/lib/contractor-styles"
+import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
 
 const UNCATEGORIZED = "UNCATEGORIZED"
 
@@ -12,10 +13,19 @@ type ContractorRow = {
   phone: string | null
   category: string | null
   assignedTickets: { id: string; ticket: { status: string; title: string; id: string } }[]
-  contracts: { title: string; status: string }[]
+  contracts: { title: string; status: string; fileUrl: string | null }[]
 }
 
-export function ContractorDirectory({ contractors }: { contractors: ContractorRow[] }) {
+export function ContractorDirectory({
+  contractors,
+  orgId,
+}: {
+  contractors: ContractorRow[]
+  // Optional - only the PM's directory (2026-08-14) passes this to get the
+  // "+ Add Contract" shortcut per card. Account/Board's directories stay
+  // read-only as before, unaffected by this omitting it.
+  orgId?: string
+}) {
   const grouped = contractors.reduce<Record<string, ContractorRow[]>>((acc, c) => {
     const key = c.category ?? UNCATEGORIZED
     if (!acc[key]) acc[key] = []
@@ -50,6 +60,10 @@ export function ContractorDirectory({ contractors }: { contractors: ContractorRo
               const activeTickets = c.assignedTickets.filter(
                 (a) => a.ticket.status === "OPEN" || a.ticket.status === "IN_PROGRESS"
               )
+              // Prefer a genuinely ACTIVE contract over just the most recent
+              // one - a lapsed/ended contract sorting newest-first would
+              // otherwise hide an older still-active one from view.
+              const activeContract = c.contracts.find((ct) => ct.status === "ACTIVE") ?? c.contracts[0]
               return (
                 <Card key={c.id}>
                   <CardHeader className="pb-2">
@@ -72,20 +86,32 @@ export function ContractorDirectory({ contractors }: { contractors: ContractorRo
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    {c.contracts.length > 0 && (
-                      <div className="text-xs text-gray-500">
-                        <span className="font-medium">Latest contract: </span>
-                        {c.contracts[0].title} —{" "}
-                        <span
-                          className={c.contracts[0].status === "ACTIVE" ? "text-green-600" : "text-gray-400"}
-                        >
-                          {c.contracts[0].status}
+                  <CardContent className="space-y-2">
+                    {activeContract ? (
+                      <div className="text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium">
+                          {activeContract.status === "ACTIVE" ? "Active contract: " : "Latest contract: "}
                         </span>
+                        {activeContract.title} —{" "}
+                        <span className={activeContract.status === "ACTIVE" ? "text-green-600" : "text-gray-400"}>
+                          {activeContract.status}
+                        </span>
+                        {activeContract.fileUrl && (
+                          <a
+                            href={activeContract.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                          >
+                            <FileText className="h-3 w-3" /> View document
+                          </a>
+                        )}
                       </div>
+                    ) : (
+                      <p className="text-xs text-gray-400">No contract on file</p>
                     )}
                     {activeTickets.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1">
                         {activeTickets.slice(0, 3).map((a) => (
                           <span key={a.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
                             {a.ticket.title}
@@ -94,6 +120,19 @@ export function ContractorDirectory({ contractors }: { contractors: ContractorRo
                         {activeTickets.length > 3 && (
                           <span className="text-xs text-gray-400">+{activeTickets.length - 3} more</span>
                         )}
+                      </div>
+                    )}
+                    {orgId && (
+                      <div>
+                        <NewContractDialog
+                          scope="property"
+                          orgId={orgId}
+                          contractors={contractors}
+                          defaultContractorId={c.id}
+                          triggerLabel="+ Add Contract"
+                          triggerVariant="outline"
+                          triggerSize="sm"
+                        />
                       </div>
                     )}
                   </CardContent>

@@ -9,6 +9,15 @@ import { parseDateOnly } from "@/lib/occupancy"
 function revalidateBoardPaths() {
   revalidatePath("/dashboard/account/board")
   revalidatePath("/dashboard/owner/governance")
+  revalidatePath("/dashboard/board/key-info")
+  revalidatePath("/dashboard/board/board")
+}
+
+// The Board manages its own roster - not just the Account Owner. Matches
+// the same role-or-flag check used for PM contract management
+// (src/app/actions/pm.ts) since both are Board governance actions.
+function canManageBoardPositions(role: string, isBoardMember: boolean) {
+  return role === "ACCOUNT_OWNER" || role === "BOARD_MEMBER" || isBoardMember
 }
 
 // Resolves a position's holder to a userId. Most orgs have no other members
@@ -53,7 +62,9 @@ export async function createBoardPosition(data: {
   notes?: string
 }) {
   const session = await auth()
-  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") return { success: false }
+  if (!session?.user.orgId || !canManageBoardPositions(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
   const orgId = session.user.orgId
 
   const title = data.title.trim()
@@ -106,7 +117,9 @@ export async function updateBoardPosition(
   }
 ) {
   const session = await auth()
-  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") return { success: false }
+  if (!session?.user.orgId || !canManageBoardPositions(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
   const orgId = session.user.orgId
 
   const position = await db.boardPosition.findUnique({ where: { id } })
@@ -147,7 +160,9 @@ export async function updateBoardPosition(
 
 export async function deleteBoardPosition(id: string) {
   const session = await auth()
-  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") return { success: false }
+  if (!session?.user.orgId || !canManageBoardPositions(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
 
   const position = await db.boardPosition.findUnique({ where: { id } })
   if (!position || position.orgId !== session.user.orgId) return { success: false }

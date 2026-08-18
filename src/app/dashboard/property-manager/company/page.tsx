@@ -19,7 +19,7 @@ export default async function CompanyProfilePage() {
   return (
     <div className="max-w-xl space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Company Profile</h1>
+        <h1 className="text-2xl font-bold">PM Company Profile</h1>
         <p className="text-gray-500 mt-1">
           Legal identity and contact information for your property management business
         </p>

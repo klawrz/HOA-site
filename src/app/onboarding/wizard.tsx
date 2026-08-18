@@ -369,7 +369,15 @@ export function OnboardingWizard({
             <p className="text-sm font-medium text-gray-700">Who to invite</p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTED_ROLES.map((r) => {
-                const done = invitedRoles.has(r.value)
+                // The Owner requirement can also be satisfied by claiming
+                // your own unit (hasOwnerOnRecord, above) - not just by
+                // sending an invite. Without this, a custodian who claimed
+                // their own unit still saw this chip stuck on its "Required
+                // to finish setup" hint, even though setup was already
+                // unblocked - looked like the system hadn't noticed the
+                // claim at all.
+                const done = r.value === "OWNER" ? hasOwnerOnRecord : invitedRoles.has(r.value)
+                const doneLabel = r.value === "OWNER" && !invitedRoles.has("OWNER") ? "On record" : "Invited"
                 const active = role === r.value
                 return (
                   <button
@@ -388,7 +396,7 @@ export function OnboardingWizard({
                     <span>
                       <span className="font-medium">{r.label}</span>
                       <span className={`block text-xs ${done ? "text-green-600" : active ? "text-gray-300" : "text-gray-400"}`}>
-                        {done ? "Invited" : r.hint}
+                        {done ? doneLabel : r.hint}
                       </span>
                     </span>
                   </button>

@@ -7,6 +7,13 @@ import { SuspendedNotice } from "@/components/dashboard/suspended-notice"
 import { OrgDeletionBanner } from "@/components/dashboard/org-deletion-banner"
 import { ProvisionalWorkspaceBanner } from "@/components/dashboard/provisional-workspace-banner"
 
+export async function generateMetadata() {
+  const session = await auth()
+  if (!session?.user.orgId) return { title: "HOPE" }
+  const org = await db.organization.findUnique({ where: { id: session.user.orgId }, select: { name: true } })
+  return { title: org ? `${org.name} - HOPE` : "HOPE" }
+}
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session) redirect("/login")

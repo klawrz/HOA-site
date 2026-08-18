@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner"
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
 
 export const metadata: Metadata = {
-  title: "Sunrise HOA Portal",
+  title: "HOPE",
   description: "Home Owner's Association management portal",
 }
 
