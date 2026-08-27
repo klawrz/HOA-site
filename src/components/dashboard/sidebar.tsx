@@ -6,46 +6,78 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2,
+  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2, Lock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
 import { roleForPathname, ROLE_HOME } from "@/lib/role-access"
 import { Eye, X } from "lucide-react"
 
+// The fixed set of categories every role's nav is organized into, in the
+// order they always appear - Shopify-style unified nav (2026-08-27, per
+// Dara): everyone sees the same master list of categories in the same
+// slots; a role with nothing real in a category gets a dimmed, inert
+// placeholder there instead of the category just not existing for them.
+// Consistency across roles (and pairs naturally with "View as...") beats
+// each role having its own bespoke ordering.
+type CategoryKey =
+  | "key_info" | "financials" | "units" | "tickets" | "governance"
+  | "property_manager" | "contracts" | "compliance" | "reports" | "setup" | "profile"
+
+const CATEGORY_META: Record<CategoryKey, { label: string; icon: React.ElementType }> = {
+  key_info: { label: "Key Information", icon: Landmark },
+  financials: { label: "Financials", icon: DollarSign },
+  units: { label: "Units", icon: Building2 },
+  tickets: { label: "Tickets", icon: TicketIcon },
+  governance: { label: "Governance", icon: Megaphone },
+  property_manager: { label: "Property Manager", icon: Wrench },
+  contracts: { label: "Contracts", icon: FileText },
+  compliance: { label: "Compliance", icon: ShieldCheck },
+  reports: { label: "Reports", icon: FileBarChart },
+  setup: { label: "Setup", icon: ListChecks },
+  profile: { label: "Profile", icon: Settings },
+}
+
+const CATEGORY_ORDER: CategoryKey[] = [
+  "key_info", "financials", "units", "tickets", "governance",
+  "property_manager", "contracts", "compliance", "reports", "setup", "profile",
+]
+
 type NavItem = { label: string; href: string; icon: React.ElementType; indent?: boolean }
 type NavGroup = { label: string; icon: React.ElementType; children: NavItem[] }
-type NavEntry = NavItem | NavGroup
+// category lives on the top-level entry only - a group's own children don't
+// need one, the whole group occupies its category's single slot.
+type NavEntry = (NavItem | NavGroup) & { category: CategoryKey }
 
-function isGroup(entry: NavEntry): entry is NavGroup {
+function isGroup(entry: NavEntry): entry is NavGroup & { category: CategoryKey } {
   return "children" in entry
 }
 
 const navByRole: Record<Role, NavEntry[]> = {
   ACCOUNT_OWNER: [
-    { label: "Setup Status", href: "/dashboard/account/setup", icon: ListChecks },
-    { label: "Setup Units", href: "/dashboard/account/units", icon: Building2 },
-    { label: "Setup Owners", href: "/dashboard/account/members", icon: Users },
-    { label: "Setup Board", href: "/dashboard/account/board", icon: Landmark },
-    { label: "Setup PM", href: "/dashboard/account/pm", icon: Wrench },
-    { label: "Contracts", href: "/dashboard/account/contracts", icon: FileText },
-    { label: "Contractors", href: "/dashboard/account/contractors", icon: Wrench, indent: true },
-    { label: "Compliance", href: "/dashboard/account/compliance", icon: ShieldCheck },
+    { label: "Setup Status", href: "/dashboard/account/setup", icon: ListChecks, category: "setup" },
+    { label: "Setup Units", href: "/dashboard/account/units", icon: Building2, category: "setup" },
+    { label: "Setup Owners", href: "/dashboard/account/members", icon: Users, category: "setup" },
+    { label: "Setup Board", href: "/dashboard/account/board", icon: Landmark, category: "setup" },
+    { label: "Setup PM", href: "/dashboard/account/pm", icon: Wrench, category: "setup" },
+    { label: "Contracts", href: "/dashboard/account/contracts", icon: FileText, category: "contracts" },
+    { label: "Contractors", href: "/dashboard/account/contractors", icon: Wrench, indent: true, category: "contracts" },
+    { label: "Compliance", href: "/dashboard/account/compliance", icon: ShieldCheck, category: "compliance" },
   ],
   OWNER: [
-    { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign },
-    { label: "Dues & Assessments", href: "/dashboard/owner/financial/dues", icon: Receipt, indent: true },
-    { label: "Contracts", href: "/dashboard/owner/financial/contracts", icon: FileText, indent: true },
-    { label: "Expenses", href: "/dashboard/owner/financial/expenses", icon: TrendingDown, indent: true },
-    { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon },
-    { label: "Governance", href: "/dashboard/owner/governance", icon: Landmark },
-    { label: "Property Manager", href: "/dashboard/owner/property-manager", icon: Wrench },
-    { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2 },
-    { label: "Rental Pool", href: "/dashboard/owner/rental-pool", icon: Home, indent: true },
+    { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign, category: "financials" },
+    { label: "Dues & Assessments", href: "/dashboard/owner/financial/dues", icon: Receipt, indent: true, category: "financials" },
+    { label: "Contracts", href: "/dashboard/owner/financial/contracts", icon: FileText, indent: true, category: "financials" },
+    { label: "Expenses", href: "/dashboard/owner/financial/expenses", icon: TrendingDown, indent: true, category: "financials" },
+    { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon, category: "tickets" },
+    { label: "Governance", href: "/dashboard/owner/governance", icon: Landmark, category: "governance" },
+    { label: "Property Manager", href: "/dashboard/owner/property-manager", icon: Wrench, category: "property_manager" },
+    { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2, category: "units" },
+    { label: "Rental Pool", href: "/dashboard/owner/rental-pool", icon: Home, indent: true, category: "units" },
   ],
   RENTER: [
-    { label: "Submit Ticket", href: "/dashboard/renter/tickets/new", icon: TicketIcon },
-    { label: "My Tickets", href: "/dashboard/renter/tickets", icon: FileText },
+    { label: "Submit Ticket", href: "/dashboard/renter/tickets/new", icon: TicketIcon, category: "tickets" },
+    { label: "My Tickets", href: "/dashboard/renter/tickets", icon: FileText, category: "tickets" },
   ],
   // Grouped into collapsible sections (2026-08-14) - the PM role otherwise
   // carries the widest surface of any role (finances, units, governance
@@ -55,11 +87,12 @@ const navByRole: Record<Role, NavEntry[]> = {
   // landing pages) becomes that group's first child rather than trying to
   // make the group header double as both a link and a toggle.
   PROPERTY_MANAGER: [
-    { label: "Reports", href: "/dashboard/property-manager/reports", icon: FileBarChart },
-    { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
+    { label: "Reports", href: "/dashboard/property-manager/reports", icon: FileBarChart, category: "reports" },
+    { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon, category: "tickets" },
     {
       label: "Finances",
       icon: DollarSign,
+      category: "financials",
       children: [
         { label: "Overview", href: "/dashboard/property-manager/finances", icon: DollarSign },
         { label: "Dues & Assessments", href: "/dashboard/property-manager/finances/assessments", icon: Receipt },
@@ -70,6 +103,7 @@ const navByRole: Record<Role, NavEntry[]> = {
     {
       label: "Units",
       icon: Building2,
+      category: "units",
       children: [
         { label: "Owner Directory", href: "/dashboard/property-manager/owners", icon: Users },
         { label: "Unit Availability", href: "/dashboard/property-manager/units", icon: Building2 },
@@ -79,31 +113,36 @@ const navByRole: Record<Role, NavEntry[]> = {
     {
       label: "Key Information",
       icon: Landmark,
+      category: "key_info",
       children: [
         { label: "Overview", href: "/dashboard/property-manager/key-info", icon: Landmark },
         { label: "PM Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
         { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
       ],
     },
-    { label: "Announcements", href: "/dashboard/property-manager/announcements", icon: Megaphone },
-    { label: "Documents", href: "/dashboard/property-manager/documents", icon: FileText },
-    { label: "Contracts", href: "/dashboard/property-manager/contracts", icon: FileText },
-    { label: "Contractors", href: "/dashboard/property-manager/contractors", icon: Wrench, indent: true },
-    { label: "Compliance", href: "/dashboard/property-manager/compliance", icon: ShieldCheck },
+    // Tagged "governance" (not their own top-level slot) so PM's
+    // Announcements/Documents line up in the same category slot Board's
+    // Governance group occupies - same unification goal, no page moved.
+    { label: "Announcements", href: "/dashboard/property-manager/announcements", icon: Megaphone, category: "governance" },
+    { label: "Documents", href: "/dashboard/property-manager/documents", icon: FileText, category: "governance" },
+    { label: "Contracts", href: "/dashboard/property-manager/contracts", icon: FileText, category: "contracts" },
+    { label: "Contractors", href: "/dashboard/property-manager/contractors", icon: Wrench, indent: true, category: "contracts" },
+    { label: "Compliance", href: "/dashboard/property-manager/compliance", icon: ShieldCheck, category: "compliance" },
   ],
   CONTRACTOR: [
-    { label: "Work Orders", href: "/dashboard/contractor/tickets", icon: TicketIcon },
-    { label: "My Contracts", href: "/dashboard/contractor/contracts", icon: FileText },
+    { label: "Work Orders", href: "/dashboard/contractor/tickets", icon: TicketIcon, category: "tickets" },
+    { label: "My Contracts", href: "/dashboard/contractor/contracts", icon: FileText, category: "contracts" },
   ],
   // Grouped into collapsible sections (2026-08-17), mirroring the
   // PROPERTY_MANAGER treatment above - Board carries a similar breadth
   // (finances, governance records, property/units, tickets...) and the flat
   // 15-item list buried day-to-day items the same way.
   BOARD_MEMBER: [
-    { label: "Key Information", href: "/dashboard/board/key-info", icon: Landmark },
+    { label: "Key Information", href: "/dashboard/board/key-info", icon: Landmark, category: "key_info" },
     {
       label: "Finances",
       icon: DollarSign,
+      category: "financials",
       children: [
         { label: "Overview", href: "/dashboard/board/finances", icon: DollarSign },
         { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt },
@@ -111,12 +150,13 @@ const navByRole: Record<Role, NavEntry[]> = {
         { label: "Multi-Year Comparison", href: "/dashboard/board/finances/comparison", icon: TableProperties },
       ],
     },
-    { label: "Reports", href: "/dashboard/board/reports", icon: FileBarChart },
-    { label: "Property Manager", href: "/dashboard/board/pm", icon: Wrench },
-    { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon },
+    { label: "Reports", href: "/dashboard/board/reports", icon: FileBarChart, category: "reports" },
+    { label: "Property Manager", href: "/dashboard/board/pm", icon: Wrench, category: "property_manager" },
+    { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon, category: "tickets" },
     {
       label: "Governance",
       icon: Megaphone,
+      category: "governance",
       children: [
         { label: "Board Composition", href: "/dashboard/board/board", icon: Landmark },
         { label: "Setup Status", href: "/dashboard/account/setup", icon: ListChecks },
@@ -125,15 +165,15 @@ const navByRole: Record<Role, NavEntry[]> = {
         { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
       ],
     },
-    { label: "Units", href: "/dashboard/board/units", icon: Building2 },
-    { label: "Occupancy", href: "/dashboard/board/occupancy", icon: CalendarDays },
-    { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
-    { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
-    { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
+    { label: "Units", href: "/dashboard/board/units", icon: Building2, category: "units" },
+    { label: "Occupancy", href: "/dashboard/board/occupancy", icon: CalendarDays, category: "units" },
+    { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText, category: "contracts" },
+    { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true, category: "contracts" },
+    { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck, category: "compliance" },
   ],
   UNIT_MANAGER: [
-    { label: "My Units", href: "/dashboard/unit-manager", icon: LayoutDashboard },
-    { label: "My Profile", href: "/dashboard/unit-manager/profile", icon: Settings },
+    { label: "My Units", href: "/dashboard/unit-manager", icon: LayoutDashboard, category: "units" },
+    { label: "My Profile", href: "/dashboard/unit-manager/profile", icon: Settings, category: "profile" },
   ],
 }
 
@@ -211,6 +251,7 @@ export function DashboardSidebar({
         href: "/dashboard/owner/governance/board",
         icon: Landmark,
         indent: true,
+        category: "governance",
       })
     }
   }
@@ -226,7 +267,7 @@ export function DashboardSidebar({
   // previewing (that was the actual "Villa 1 in the Board Financials" bug,
   // 2026-08-27 - this splice used to fire unconditionally).
   if (role === "ACCOUNT_OWNER" && isBoardMember && !isPreviewing) {
-    navItems.push({ label: "Board Units", href: "/dashboard/board/units", icon: Landmark })
+    navItems.push({ label: "Board Units", href: "/dashboard/board/units", icon: Landmark, category: "units" })
   }
 
   // Mirror image of the splice above: a custodian who has also personally
@@ -236,12 +277,12 @@ export function DashboardSidebar({
   // !isPreviewing guard as above, same reason.
   if (role === "ACCOUNT_OWNER" && ownsUnit && !isPreviewing) {
     navItems.push(
-      { label: "My Unit", href: "/dashboard/owner", icon: Home },
-      { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign, indent: true },
-      { label: "Dues & Assessments", href: "/dashboard/owner/financial/dues", icon: Receipt, indent: true },
-      { label: "Expenses", href: "/dashboard/owner/financial/expenses", icon: TrendingDown, indent: true },
-      { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon, indent: true },
-      { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2, indent: true }
+      { label: "My Unit", href: "/dashboard/owner", icon: Home, category: "units" },
+      { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign, indent: true, category: "financials" },
+      { label: "Dues & Assessments", href: "/dashboard/owner/financial/dues", icon: Receipt, indent: true, category: "financials" },
+      { label: "Expenses", href: "/dashboard/owner/financial/expenses", icon: TrendingDown, indent: true, category: "financials" },
+      { label: "Trouble Tickets", href: "/dashboard/owner/tickets", icon: TicketIcon, indent: true, category: "tickets" },
+      { label: "Rental Settings", href: "/dashboard/owner/rental", icon: Building2, indent: true, category: "units" }
     )
   }
 
@@ -259,8 +300,27 @@ export function DashboardSidebar({
     return !!setupProgress?.[dependsOn]
   })
 
+  // Unified nav (2026-08-27): reorder this role's own entries into the
+  // fixed master CATEGORY_ORDER, and drop in an inert, dimmed placeholder
+  // for any category this role has nothing real in - so everyone sees the
+  // same list of categories in the same slots, exactly which ones light up
+  // just depends on the role. Nothing about an entry itself changes here,
+  // only its position and whether a placeholder fills its category's slot.
+  type Placeholder = { placeholder: true; category: CategoryKey }
+  const byCategory = new Map<CategoryKey, NavEntry[]>()
+  for (const entry of visibleNavItems) {
+    const bucket = byCategory.get(entry.category)
+    if (bucket) bucket.push(entry)
+    else byCategory.set(entry.category, [entry])
+  }
+  const orderedEntries: (NavEntry | Placeholder)[] = CATEGORY_ORDER.flatMap<NavEntry | Placeholder>(
+    (key) => byCategory.get(key) ?? [{ placeholder: true, category: key }]
+  )
+
   // Flatten to just the leaf (linkable) items for active-path matching -
-  // a group header itself has no href to match against.
+  // a group header itself has no href to match against. Placeholders have
+  // no href either and are excluded automatically (isGroup/href checks
+  // below only ever run against real entries).
   const leafItems = visibleNavItems.flatMap((entry) => (isGroup(entry) ? entry.children : [entry]))
   // The most specific href match wins - without this, a nested route like
   // /financial/contracts would highlight both "Financial" and "Contracts"
@@ -323,7 +383,22 @@ export function DashboardSidebar({
         )}
       </div>
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto min-h-0">
-        {visibleNavItems.map((entry) => {
+        {orderedEntries.map((entry) => {
+          if ("placeholder" in entry) {
+            const meta = CATEGORY_META[entry.category]
+            return (
+              <div
+                key={`placeholder-${entry.category}`}
+                title="Not part of your current role"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-300 cursor-not-allowed select-none"
+              >
+                <meta.icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1">{meta.label}</span>
+                <Lock className="h-3 w-3 shrink-0" />
+              </div>
+            )
+          }
+
           if (isGroup(entry)) {
             const isOpen = expanded.has(entry.label)
             const groupActive = entry.children.some((c) => c === bestMatch)
