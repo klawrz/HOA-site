@@ -24,6 +24,7 @@ import { PMKeyContactCard } from "@/components/key-info/pm-key-contact-card"
 import { setOccupancyPolicy, setRentalPoolGuidelines } from "@/app/actions/key-info"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { getPMSetupStatus } from "@/lib/setup-status"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
@@ -32,7 +33,7 @@ export default async function OwnerGovernancePage() {
   const now = new Date()
   const isBoardMember = session.user.isBoardMember
 
-  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts, orgMemberships, activePMContract, ownMembership] = await Promise.all([
+  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts, orgMemberships, activePMContract, ownMembership, pmStatus] = await Promise.all([
     db.announcement.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: {
@@ -78,6 +79,7 @@ export default async function OwnerGovernancePage() {
       where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
       select: { onboardingSteps: true },
     }),
+    getPMSetupStatus(session.user.orgId ?? ""),
   ])
   const roleByUserId = new Map(orgMemberships.map((m) => [m.userId, m.role]))
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("governance")
@@ -164,7 +166,7 @@ export default async function OwnerGovernancePage() {
 
       <BoardRosterCard positions={boardPositions} />
 
-      <PMKeyContactCard company={activePMContract?.company ?? null} />
+      <PMKeyContactCard company={activePMContract?.company ?? null} status={pmStatus} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

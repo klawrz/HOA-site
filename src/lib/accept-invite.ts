@@ -11,6 +11,9 @@ async function applyUnitEffects(tx: Prisma.TransactionClient, invite: Invite, us
     await tx.unitOwnership.create({ data: { unitId: invite.unitId, ownerId: userId } })
     await tx.unit.update({ where: { id: invite.unitId }, data: { status: "OWNER_OCCUPIED" } })
   }
+  if (invite.unitId && invite.role === "UNIT_MANAGER") {
+    await tx.unitManagerAssignment.create({ data: { unitId: invite.unitId, userId } })
+  }
   if (invite.unitId && invite.role === "RENTER") {
     // Whoever arranged this (Owner, delegated Unit Manager, or Board/PM)
     // already set the terms when the invite was sent - accepting just

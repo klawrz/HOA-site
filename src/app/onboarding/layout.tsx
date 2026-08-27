@@ -41,7 +41,11 @@ export default async function OnboardingLayout({ children }: { children: React.R
       </header>
       <main className="max-w-2xl mx-auto py-12 px-4">
         {org && org.verificationStatus === "PROVISIONAL" && (
-          <ProvisionalWorkspaceBanner orgName={org.name} verificationHref="/dashboard/account/verification" />
+          <ProvisionalWorkspaceBanner
+            orgName={org.name}
+            verificationHref="/dashboard/account/verification"
+            role={session.user.role}
+          />
         )}
         {pendingDeletionRequest && (
           <OrgDeletionBanner

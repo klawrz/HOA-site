@@ -31,6 +31,25 @@ export default async function OnboardingPage({
     include: { unit: { select: { id: true, number: true } } },
   })
 
+  const boardPositions = await db.boardPosition.findMany({
+    where: { orgId: session.user.orgId },
+    select: { id: true, title: true, userId: true },
+    orderBy: { title: "asc" },
+  })
+
+  const pendingOwnerRows = await db.pendingOwner.findMany({
+    where: { orgId: session.user.orgId },
+    include: { unit: { select: { number: true } } },
+    orderBy: { createdAt: "asc" },
+  })
+  const pendingOwners = pendingOwnerRows.map((p) => ({
+    id: p.id,
+    unitId: p.unitId,
+    unitNumber: p.unit.number,
+    name: p.name,
+    email: p.email,
+  }))
+
   return (
     <OnboardingWizard
       org={{ id: org.id, name: org.name }}
@@ -40,6 +59,8 @@ export default async function OnboardingPage({
       baseUrl={process.env.NEXTAUTH_URL ?? "http://localhost:3000"}
       unitLabel={org.unitLabel}
       ownedUnit={ownedUnitRow ? { id: ownedUnitRow.unit.id, number: ownedUnitRow.unit.number } : null}
+      boardPositions={boardPositions}
+      pendingOwners={pendingOwners}
     />
   )
 }

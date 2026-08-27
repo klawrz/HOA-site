@@ -29,6 +29,13 @@ interface Member {
   email: string
 }
 
+interface RosterOwner {
+  id: string
+  name: string | null
+  email: string | null
+  unitNumber: string
+}
+
 interface Position {
   id: string
   title: string
@@ -50,9 +57,11 @@ function toDateInputValue(d: Date) {
 
 export function BoardPositionDialog({
   members,
+  rosterOwners = [],
   position,
 }: {
   members: Member[]
+  rosterOwners?: RosterOwner[]
   position?: Position
 }) {
   const isEdit = !!position
@@ -62,24 +71,43 @@ export function BoardPositionDialog({
   const isPlaceholderHolder = !!position?.userId && !members.some((m) => m.id === position.userId)
   const [open, setOpen] = useState(false)
   const [userId, setUserId] = useState(isPlaceholderHolder ? "" : position?.userId ?? "")
+  const [holderName, setHolderName] = useState(isPlaceholderHolder ? position?.userName ?? "" : "")
+  const [holderEmail, setHolderEmail] = useState(isPlaceholderHolder ? position?.userEmail ?? "" : "")
+  const [rosterPickId, setRosterPickId] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
   const memberItems: Record<string, string> = { "": "Vacant" }
   for (const m of members) memberItems[m.id] = m.name ?? m.email
 
+  const rosterItems: Record<string, string> = { "": "Choose from your Owner Roster..." }
+  for (const o of rosterOwners) rosterItems[o.id] = `${o.name ?? o.email ?? "Unnamed"} — Unit ${o.unitNumber}`
+
+  // Picking a staged/imported owner just fills in the same "record a holder
+  // directly" fields below (name/email as free text) - this owner isn't a
+  // real portal member yet (see PendingOwner in schema.prisma), so there's
+  // no userId to assign, only their name/contact to save re-typing it.
+  function handleRosterPick(id: string) {
+    setRosterPickId(id)
+    const owner = rosterOwners.find((o) => o.id === id)
+    if (owner) {
+      setUserId("")
+      setHolderName(owner.name ?? "")
+      setHolderEmail(owner.email ?? "")
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError("")
     setSaving(true)
     const form = new FormData(e.currentTarget)
-    const holderEmail = (form.get("holderEmail") as string) ?? ""
     const data = {
       title: form.get("title") as string,
       // A directly-typed name/email (for a seat not yet held by an existing
       // portal member) takes priority over whatever's picked in the dropdown.
       userId: holderEmail.trim() ? undefined : userId || undefined,
-      holderName: (form.get("holderName") as string) || undefined,
+      holderName: holderName || undefined,
       holderEmail: holderEmail || undefined,
       termStart: form.get("termStart") as string,
       termEnd: (form.get("termEnd") as string) || undefined,
@@ -93,6 +121,9 @@ export function BoardPositionDialog({
       setOpen(false)
       if (!isEdit) {
         setUserId("")
+        setHolderName("")
+        setHolderEmail("")
+        setRosterPickId("")
         ;(document.getElementById("board-position-form-new") as HTMLFormElement)?.reset()
       }
     } else {
@@ -154,17 +185,33 @@ export function BoardPositionDialog({
           </div>
           <div className="space-y-1 border-t pt-3">
             <Label>Or record a holder directly</Label>
+            {rosterOwners.length > 0 && (
+              <Select value={rosterPickId} onValueChange={(v) => handleRosterPick(v ?? "")} items={rosterItems}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose from your Owner Roster..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {rosterOwners.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name ?? o.email ?? "Unnamed"} — Unit {o.unitNumber}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <Input
                 name="holderName"
                 placeholder="Name"
-                defaultValue={isPlaceholderHolder ? position?.userName ?? undefined : undefined}
+                value={holderName}
+                onChange={(e) => setHolderName(e.target.value)}
               />
               <Input
                 name="holderEmail"
                 type="email"
                 placeholder="Email"
-                defaultValue={isPlaceholderHolder ? position?.userEmail ?? undefined : undefined}
+                value={holderEmail}
+                onChange={(e) => setHolderEmail(e.target.value)}
               />
             </div>
             <p className="text-xs text-gray-400">

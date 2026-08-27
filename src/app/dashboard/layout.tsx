@@ -6,6 +6,7 @@ import { DashboardHeader } from "@/components/dashboard/header"
 import { SuspendedNotice } from "@/components/dashboard/suspended-notice"
 import { OrgDeletionBanner } from "@/components/dashboard/org-deletion-banner"
 import { ProvisionalWorkspaceBanner } from "@/components/dashboard/provisional-workspace-banner"
+import { getUnitsSetupStatus, getMembersSetupStatus, getBoardRosterSetupStatus, getPMSetupStatus } from "@/lib/setup-status"
 
 export async function generateMetadata() {
   const session = await auth()
@@ -33,11 +34,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
     return <SuspendedNotice orgName={org.name} />
   }
 
-  if (org && !org.onboardingComplete && session.user.role === "ACCOUNT_OWNER") {
-    redirect("/onboarding")
-  }
+  // Deliberately not gating dashboard access on onboardingComplete - the
+  // custodian should be able to set up units, owners, board, and PM in
+  // whatever order they actually have the paperwork for (see the sidebar's
+  // four independent "Setup X" links + checkmarks in setup-status.ts),
+  // rather than being forced through /onboarding's fixed Units-then-Owners
+  // sequence before touching anything else. The wizard stays reachable as
+  // an optional guided path (linked from the Setup Status page) for anyone
+  // who wants it; completeOnboarding() is just a "did the guided pass"
+  // marker now, not a hard prerequisite.
 
-  const [memberships, pendingDeletionRequest, ownsUnit] = await Promise.all([
+  const [memberships, pendingDeletionRequest, ownsUnit, setupProgress] = await Promise.all([
     db.membership.findMany({
       where: { userId: session.user.id },
       include: { org: { select: { id: true, name: true } } },
@@ -48,6 +55,29 @@ export default async function DashboardLayout({ children }: { children: React.Re
           .count({ where: { ownerId: session.user.id, isCurrent: true, unit: { orgId: session.user.orgId } } })
           .then((c) => c > 0)
       : Promise.resolve(false),
+    // Sidebar checkmarks for the custodian, so each step's completion is
+    // visible without a trip to the Setup Status page - only queried for
+    // ACCOUNT_OWNER since no other role sees these nav items.
+    session.user.role === "ACCOUNT_OWNER"
+      ? Promise.all([
+          getUnitsSetupStatus(session.user.orgId),
+          getMembersSetupStatus(session.user.orgId),
+          getBoardRosterSetupStatus(session.user.orgId),
+          getPMSetupStatus(session.user.orgId),
+        ]).then(([units, members, board, pm]) => ({
+          units: units.state === "done",
+          // Unlike the other three, "done" for Owners depends on someone
+          // ELSE accepting an invite - not something the custodian can force.
+          // Staging owners on the roster (see PendingOwner) or sending an
+          // invite is the custodian's actual, real work here; gating the
+          // checkmark and the Board/PM reveal on a stranger's action made it
+          // look like real progress had vanished, so "not started" is the
+          // only state this treats as not-yet-done.
+          members: members.state !== "not_started",
+          board: board.state === "done",
+          pm: pm.state === "done",
+        }))
+      : Promise.resolve(undefined),
   ])
 
   const isAccountOwnerSlotOpen =
@@ -68,6 +98,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         isBoardMember={session.user.isBoardMember}
         orgName={org?.name ?? ""}
         ownsUnit={ownsUnit}
+        setupProgress={setupProgress}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         <DashboardHeader
@@ -80,7 +111,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         />
         <main className="flex-1 overflow-y-auto p-6 print:p-0 print:overflow-visible">
           {org && org.verificationStatus === "PROVISIONAL" && (
-            <ProvisionalWorkspaceBanner orgName={org.name} verificationHref="/dashboard/account/verification" />
+            <ProvisionalWorkspaceBanner
+              orgName={org.name}
+              verificationHref="/dashboard/account/verification"
+              role={session.user.role}
+            />
           )}
           {pendingDeletionRequest && (
             <OrgDeletionBanner

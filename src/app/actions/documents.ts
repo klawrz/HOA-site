@@ -13,7 +13,14 @@ function resolveFileUrl(formData: FormData, fallbackUrl: string | null) {
 export async function createDocument(formData: FormData) {
   const session = await auth()
   if (!session || !session.user.orgId) return { success: false }
-  if (session.user.role !== "BOARD_MEMBER" && !session.user.isBoardMember) return { success: false }
+  // Board-managed in the general case, but the custodian is the one
+  // holding the actual paperwork at setup time (constitution, contracts,
+  // minutes) before any Board exists to file it themselves - retaining a
+  // document isn't a governance decision like approving a budget or PM
+  // contract, so letting the Account Owner file it too is just recordkeeping,
+  // not a conflict of interest.
+  const canFile = session.user.role === "BOARD_MEMBER" || session.user.isBoardMember || session.user.role === "ACCOUNT_OWNER"
+  if (!canFile) return { success: false }
 
   const title = formData.get("title") as string
   if (!title?.trim()) return { success: false, error: "Title required" }

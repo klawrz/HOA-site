@@ -370,6 +370,7 @@ model Organization {
   memberships         Membership[]
   units               Unit[]
   invites             Invite[]
+  pendingOwners       PendingOwner[]
   meetings            Meeting[]
   pmContracts         PMContract[]
   pmAccessGrants      PMAccessGrant[]
@@ -568,9 +569,54 @@ model Invite {
   leaseStartDate DateTime?
   leaseEndDate   DateTime?
 
+  // Only meaningful when role is OWNER, from a document-import roster -
+  // UnitContact/UnitManagerAssignment are owner-managed records (see
+  // requireCurrentOwner in unit-profile.ts), so a custodian importing a
+  // roster can't write them directly. Staged here instead, and offered to
+  // the real owner as a one-click prompt once they accept - see
+  // ImportedContactPrompt. Cleared (all set to null) once applied or
+  // dismissed, so the prompt doesn't linger.
+  importedOwnerPhone             String?
+  importedEmergencyContactName   String?
+  importedEmergencyContactPhone  String?
+  importedUnitManagerName        String?
+  importedUnitManagerCompany     String?
+  importedUnitManagerEmail       String?
+  importedUnitManagerPhone       String?
+
   org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   unit   Unit?        @relation(fields: [unitId], references: [id])
   sentBy User         @relation("SentInvites", fields: [sentById], references: [id])
+}
+
+// A staged owner roster entry - deliberately separate from Invite. Adding
+// someone here (by hand, or from a document import) never creates a real
+// invite token or grants any access; it's just content the custodian is
+// assembling, possibly over several days while showing the roster to
+// others, before choosing to actually send anything. "Send" is its own
+// explicit action (see sendPendingOwnerInvite/sendAllPendingOwners in
+// invites.ts) that converts one of these into a real Invite and deletes
+// the row - a PendingOwner and an Invite for the same unit never coexist.
+model PendingOwner {
+  id                    String   @id @default(cuid())
+  orgId                 String
+  unitId                String
+  name                  String?
+  email                 String?
+  phone                 String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  unitManagerName       String?
+  unitManagerCompany    String?
+  unitManagerEmail      String?
+  unitManagerPhone      String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  unit Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, unitId])
 }
 
 // Single-use, expiring token for the "forgot password" flow. A user can have
@@ -673,6 +719,7 @@ model Unit {
   leases              Lease[]
   tickets             TroubleTicket[]
   invites             Invite[]
+  pendingOwners       PendingOwner[]
   contacts            UnitContact[]
   managers            UnitManagerAssignment[]
   contracts           Contract[]

@@ -8,7 +8,7 @@ export default async function AccountBoardPage() {
   const session = await auth()
   if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") redirect("/dashboard")
 
-  const [positions, memberMemberships] = await Promise.all([
+  const [positions, memberMemberships, pendingOwnerRows] = await Promise.all([
     db.boardPosition.findMany({
       where: { orgId: session.user.orgId },
       include: { user: true },
@@ -19,8 +19,22 @@ export default async function AccountBoardPage() {
       include: { user: true },
       orderBy: { user: { name: "asc" } },
     }),
+    // Staged owners (see PendingOwner in schema.prisma) aren't real portal
+    // members yet, but a custodian filling a board seat with one of them
+    // shouldn't have to re-type a name/email HOPE already has on file.
+    db.pendingOwner.findMany({
+      where: { orgId: session.user.orgId },
+      include: { unit: { select: { number: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
   ])
   const members = memberMemberships.map((m) => m.user)
+  const rosterOwners = pendingOwnerRows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    unitNumber: p.unit.number,
+  }))
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -33,6 +47,7 @@ export default async function AccountBoardPage() {
         </div>
         <BoardPositionDialog
           members={members.map((m) => ({ id: m.id, name: m.name, email: m.email }))}
+          rosterOwners={rosterOwners}
         />
       </div>
 
@@ -51,6 +66,7 @@ export default async function AccountBoardPage() {
               notes: p.notes,
             }}
             members={members.map((m) => ({ id: m.id, name: m.name, email: m.email }))}
+            rosterOwners={rosterOwners}
           />
         ))}
         {positions.length === 0 && (

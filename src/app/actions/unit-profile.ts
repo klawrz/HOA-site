@@ -202,3 +202,120 @@ export async function setUnitManagerGrant(
   revalidateUnitPaths(assignment.unitId)
   return { success: true }
 }
+
+// A custodian's document import (see setup-import.ts) can find an owner's
+// phone, emergency contact, and unit manager detail from a roster - but
+// UnitContact/UnitManagerAssignment are owner-managed records, so that data
+// is staged on the Invite (Invite.imported*) rather than written directly.
+// This surfaces it to the real owner once they've accepted, for them to
+// apply under their own session.
+export async function getImportedUnitContactData(unitId: string) {
+  const session = await auth()
+  if (!session || session.user.role !== "OWNER" || !session.user.email) return null
+  if (!(await requireCurrentOwner(unitId, session.user.id))) return null
+
+  const invite = await db.invite.findFirst({
+    where: { unitId, email: session.user.email, role: "OWNER", acceptedAt: { not: null } },
+    orderBy: { createdAt: "desc" },
+  })
+  if (!invite) return null
+  const hasAny =
+    invite.importedOwnerPhone ||
+    invite.importedEmergencyContactName ||
+    invite.importedUnitManagerName ||
+    invite.importedUnitManagerCompany
+  if (!hasAny) return null
+
+  return {
+    ownerPhone: invite.importedOwnerPhone,
+    emergencyContactName: invite.importedEmergencyContactName,
+    emergencyContactPhone: invite.importedEmergencyContactPhone,
+    unitManagerName: invite.importedUnitManagerName,
+    unitManagerCompany: invite.importedUnitManagerCompany,
+    unitManagerEmail: invite.importedUnitManagerEmail,
+    unitManagerPhone: invite.importedUnitManagerPhone,
+  }
+}
+
+async function clearImportedUnitContactData(inviteId: string) {
+  await db.invite.update({
+    where: { id: inviteId },
+    data: {
+      importedOwnerPhone: null,
+      importedEmergencyContactName: null,
+      importedEmergencyContactPhone: null,
+      importedUnitManagerName: null,
+      importedUnitManagerCompany: null,
+      importedUnitManagerEmail: null,
+      importedUnitManagerPhone: null,
+    },
+  })
+}
+
+export async function dismissImportedUnitContactData(unitId: string) {
+  const session = await auth()
+  if (!session || session.user.role !== "OWNER" || !session.user.email) return { success: false }
+  if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
+
+  const invite = await db.invite.findFirst({
+    where: { unitId, email: session.user.email, role: "OWNER", acceptedAt: { not: null } },
+    orderBy: { createdAt: "desc" },
+  })
+  if (invite) await clearImportedUnitContactData(invite.id)
+
+  revalidateUnitPaths(unitId)
+  return { success: true }
+}
+
+// Applies the staged import data as real records, under the owner's own
+// session - same effect as if they'd filled in Contacts/Unit Manager by
+// hand. Only fills User.phone if the owner hasn't already set one
+// themselves (never overwrites a value they entered).
+export async function applyImportedUnitContactData(unitId: string) {
+  const session = await auth()
+  if (!session || session.user.role !== "OWNER" || !session.user.email) return { success: false }
+  if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
+
+  const invite = await db.invite.findFirst({
+    where: { unitId, email: session.user.email, role: "OWNER", acceptedAt: { not: null } },
+    orderBy: { createdAt: "desc" },
+  })
+  if (!invite) return { success: false }
+
+  if (invite.importedOwnerPhone) {
+    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { phone: true } })
+    if (user && !user.phone) {
+      await db.user.update({ where: { id: session.user.id }, data: { phone: invite.importedOwnerPhone } })
+    }
+  }
+
+  if (invite.importedEmergencyContactName && invite.importedEmergencyContactPhone) {
+    await db.unitContact.create({
+      data: {
+        unitId,
+        kind: "EMERGENCY",
+        name: invite.importedEmergencyContactName,
+        phone: invite.importedEmergencyContactPhone,
+      },
+    })
+  }
+
+  if (invite.importedUnitManagerName || invite.importedUnitManagerCompany) {
+    await db.unitManagerAssignment.create({
+      data: {
+        unitId,
+        name: invite.importedUnitManagerName ?? invite.importedUnitManagerCompany,
+        phone: invite.importedUnitManagerPhone,
+        email: invite.importedUnitManagerEmail,
+        notes:
+          invite.importedUnitManagerName && invite.importedUnitManagerCompany
+            ? invite.importedUnitManagerCompany
+            : null,
+      },
+    })
+  }
+
+  await clearImportedUnitContactData(invite.id)
+  revalidateUnitPaths(unitId)
+  return { success: true }
+}

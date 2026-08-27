@@ -12,12 +12,13 @@ import { PMKeyContactCard } from "@/components/key-info/pm-key-contact-card"
 import { AccountOwnerCard } from "@/components/key-info/account-owner-card"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { getPMSetupStatus } from "@/lib/setup-status"
 
 export default async function BoardKeyInfoPage() {
   const session = await auth()
   if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
-  const [org, contacts, boardPositions, activePMContract, ownMembership] = await Promise.all([
+  const [org, contacts, boardPositions, activePMContract, ownMembership, pmStatus] = await Promise.all([
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     db.keyContact.findMany({
       where: { orgId: session.user.orgId ?? undefined },
@@ -37,6 +38,7 @@ export default async function BoardKeyInfoPage() {
       where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
       select: { onboardingSteps: true },
     }),
+    getPMSetupStatus(session.user.orgId ?? ""),
   ])
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("board_key_info")
 
@@ -76,7 +78,7 @@ export default async function BoardKeyInfoPage() {
 
       <BoardRosterCard positions={boardPositions} />
 
-      <PMKeyContactCard company={activePMContract?.company ?? null} />
+      <PMKeyContactCard company={activePMContract?.company ?? null} status={pmStatus} />
 
       <AccountOwnerCard
         accountOwner={{

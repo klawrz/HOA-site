@@ -11,6 +11,7 @@ import { getAttentionItems } from "@/lib/attention"
 import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel"
 import { BOARD_ONBOARDING_STEPS, BOARD_STEP_IDS, parseCompletedSteps, isOnboardingComplete } from "@/lib/onboarding-steps"
 import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
+import { BoardRosterPrompt } from "@/components/dashboard/board-roster-prompt"
 
 export default async function BoardDashboard() {
   const session = await auth()
@@ -25,6 +26,7 @@ export default async function BoardDashboard() {
     recentDocs,
     attentionItems,
     ownMembership,
+    ownBoardPosition,
   ] = await Promise.all([
     db.meeting.count({ where: { orgId: session.user.orgId ?? undefined } }),
     db.document.count({ where: { orgId: session.user.orgId ?? undefined } }),
@@ -45,6 +47,10 @@ export default async function BoardDashboard() {
       where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
       select: { onboardingSteps: true },
     }),
+    db.boardPosition.findFirst({
+      where: { orgId: session.user.orgId ?? undefined, userId: session.user.id },
+      select: { id: true },
+    }),
   ])
   const completedSteps = parseCompletedSteps(ownMembership?.onboardingSteps ?? null)
   const onboardingDone = isOnboardingComplete(ownMembership?.onboardingSteps ?? null, BOARD_STEP_IDS)
@@ -55,6 +61,8 @@ export default async function BoardDashboard() {
         <h1 className="text-2xl font-bold">Board of Directors Dashboard</h1>
         <p className="text-gray-500 mt-1">Community governance and institutional memory</p>
       </div>
+
+      {!ownBoardPosition && <BoardRosterPrompt href="/dashboard/board/board" />}
 
       <OnboardingChecklistCard
         steps={BOARD_ONBOARDING_STEPS}

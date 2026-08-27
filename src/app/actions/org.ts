@@ -46,15 +46,36 @@ export async function claimOwnUnit(formData: FormData) {
 
   const number = formData.get("number") as string
   if (!number?.trim()) throw new Error("Unit number required")
+  const trimmed = number.trim()
 
-  const existing = await db.unit.findFirst({ where: { orgId: session.user.orgId, number: number.trim() } })
-  if (existing) throw new Error(`A unit numbered "${number.trim()}" already exists`)
+  const existing = await db.unit.findFirst({
+    where: { orgId: session.user.orgId, number: trimmed },
+    include: { ownerships: { where: { isCurrent: true } } },
+  })
+
+  // A unit already on file (e.g. pre-populated via document import or added
+  // manually earlier) isn't a conflict - claim ownership of that same unit
+  // instead of trying to create a second one with the same number. Only a
+  // genuine conflict - someone else already owns it - stays an error.
+  if (existing) {
+    if (existing.ownerships.length > 0) {
+      throw new Error(`Unit "${trimmed}" already has an owner on file`)
+    }
+    await db.$transaction(async (tx) => {
+      await tx.unitOwnership.create({ data: { unitId: existing.id, ownerId: session.user.id } })
+      await tx.unit.update({ where: { id: existing.id }, data: { status: "OWNER_OCCUPIED" } })
+    })
+    revalidatePath("/onboarding")
+    revalidatePath("/dashboard/account/units")
+    revalidatePath("/dashboard/owner")
+    return { id: existing.id, number: existing.number }
+  }
 
   const unit = await db.$transaction(async (tx) => {
     const unit = await tx.unit.create({
       data: {
         orgId: session.user.orgId!,
-        number: number.trim(),
+        number: trimmed,
         building: (formData.get("building") as string) || null,
         bedrooms: formData.get("bedrooms") ? Number(formData.get("bedrooms")) : null,
         bathrooms: formData.get("bathrooms") ? Number(formData.get("bathrooms")) : null,
@@ -388,26 +409,29 @@ export async function setBoardMember(memberId: string, isBoardMember: boolean) {
 }
 
 // "Onboarded" means: at least one unit exists, and at least one unit owner
-// has been invited (the invite need not be accepted yet - generating the
-// link is the same "entered" action addUnit is for units). A single-unit
-// self-managed owner satisfies this by inviting themselves, so this doesn't
-// force anyone to have a multi-unit HOA before HOPE considers them set up.
+// is on record - invited (need not be accepted yet), staged on the pending
+// roster (see PendingOwner in schema.prisma - added so the custodian can
+// finish setup without being forced to send real invites right away), or
+// self-claimed. A single-unit self-managed owner satisfies this by claiming
+// their own unit, so this doesn't force anyone to have a multi-unit HOA
+// before HOPE considers them set up.
 export async function completeOnboarding() {
   const session = await auth()
   if (!session?.user.orgId) throw new Error("Unauthorized")
   const orgId = session.user.orgId
 
-  const [unitCount, ownerInviteCount, selfOwnedCount] = await Promise.all([
+  const [unitCount, ownerInviteCount, pendingOwnerCount, selfOwnedCount] = await Promise.all([
     db.unit.count({ where: { orgId } }),
     db.invite.count({ where: { orgId, role: "OWNER" } }),
+    db.pendingOwner.count({ where: { orgId } }),
     db.unitOwnership.count({ where: { unit: { orgId }, isCurrent: true } }),
   ])
   if (unitCount === 0) throw new Error("Add at least one unit before finishing setup")
   // A custodian who claimed their own unit (claimOwnUnit) is a confirmed
   // owner on record already - more definitively than a pending unaccepted
   // invite - so either satisfies this requirement.
-  if (ownerInviteCount === 0 && selfOwnedCount === 0) {
-    throw new Error("Add or invite at least one unit owner before finishing setup")
+  if (ownerInviteCount === 0 && pendingOwnerCount === 0 && selfOwnedCount === 0) {
+    throw new Error("Add at least one unit owner before finishing setup")
   }
 
   await db.organization.update({

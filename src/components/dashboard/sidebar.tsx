@@ -6,7 +6,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart,
+  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -21,10 +21,11 @@ function isGroup(entry: NavEntry): entry is NavGroup {
 
 const navByRole: Record<Role, NavEntry[]> = {
   ACCOUNT_OWNER: [
-    { label: "Units", href: "/dashboard/account/units", icon: Building2 },
-    { label: "Members", href: "/dashboard/account/members", icon: Users },
-    { label: "Board", href: "/dashboard/account/board", icon: Landmark },
-    { label: "Property Manager", href: "/dashboard/account/pm", icon: Wrench },
+    { label: "Setup Status", href: "/dashboard/account/setup", icon: ListChecks },
+    { label: "Setup Units", href: "/dashboard/account/units", icon: Building2 },
+    { label: "Setup Owners", href: "/dashboard/account/members", icon: Users },
+    { label: "Setup Board", href: "/dashboard/account/board", icon: Landmark },
+    { label: "Setup PM", href: "/dashboard/account/pm", icon: Wrench },
     { label: "Contracts", href: "/dashboard/account/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/account/contractors", icon: Wrench, indent: true },
     { label: "Compliance", href: "/dashboard/account/compliance", icon: ShieldCheck },
@@ -116,6 +117,7 @@ const navByRole: Record<Role, NavEntry[]> = {
       icon: Megaphone,
       children: [
         { label: "Board Composition", href: "/dashboard/board/board", icon: Landmark },
+        { label: "Setup Status", href: "/dashboard/account/setup", icon: ListChecks },
         { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
         { label: "Announcements", href: "/dashboard/board/announcements", icon: Megaphone },
         { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
@@ -142,16 +144,45 @@ const roleLabels: Record<Role, string> = {
   UNIT_MANAGER: "Unit Manager Portal",
 }
 
+// Maps a nav item's href to the matching key in setupProgress - checked
+// off as the custodian completes each step, so progress is visible right
+// in the sidebar instead of only on the separate Setup Status page.
+const SETUP_PROGRESS_HREFS: Record<string, keyof NonNullable<SetupProgress>> = {
+  "/dashboard/account/units": "units",
+  "/dashboard/account/members": "members",
+  "/dashboard/account/board": "board",
+  "/dashboard/account/pm": "pm",
+}
+
+type SetupProgress = { units: boolean; members: boolean; board: boolean; pm: boolean } | undefined
+
+// What has to be done before each "Setup X" link reveals itself - Setup
+// Units is always visible; Owners needs Units; Board and PM both just need
+// Owners; done in PARALLEL with each other rather than PM waiting on Board,
+// since there's no real dependency between them and the custodian may want
+// either first (see the "any order" framing already established for this
+// whole flow). This only hides the *shortcut* - the pages themselves are
+// still reachable directly (Setup Status, a bookmark, the wizard)
+// regardless of what's revealed here, so nothing is actually order-gated,
+// just the sidebar's suggested path.
+const SETUP_REVEAL_DEPENDS_ON: Partial<Record<keyof NonNullable<SetupProgress>, keyof NonNullable<SetupProgress>>> = {
+  members: "units",
+  board: "members",
+  pm: "members",
+}
+
 export function DashboardSidebar({
   role,
   isBoardMember,
   orgName,
   ownsUnit,
+  setupProgress,
 }: {
   role: Role
   isBoardMember: boolean
   orgName: string
   ownsUnit?: boolean
+  setupProgress?: SetupProgress
 }) {
   const pathname = usePathname()
   // Copy - navByRole is a module-level singleton, and splicing below must
@@ -188,9 +219,23 @@ export function DashboardSidebar({
     )
   }
 
+  // Reveal each "Setup X" link only once the previous one in the sequence
+  // is done - see SETUP_REVEAL_ORDER. Filtered here (not at the navByRole
+  // source) so it only ever affects ACCOUNT_OWNER's own sidebar, and only
+  // once setupProgress has actually loaded (undefined for every other
+  // role, where SETUP_PROGRESS_HREFS has no matching hrefs anyway).
+  const visibleNavItems = navItems.filter((entry) => {
+    if (isGroup(entry)) return true
+    const key = SETUP_PROGRESS_HREFS[entry.href]
+    if (!key) return true
+    const dependsOn = SETUP_REVEAL_DEPENDS_ON[key]
+    if (!dependsOn) return true
+    return !!setupProgress?.[dependsOn]
+  })
+
   // Flatten to just the leaf (linkable) items for active-path matching -
   // a group header itself has no href to match against.
-  const leafItems = navItems.flatMap((entry) => (isGroup(entry) ? entry.children : [entry]))
+  const leafItems = visibleNavItems.flatMap((entry) => (isGroup(entry) ? entry.children : [entry]))
   // The most specific href match wins - without this, a nested route like
   // /financial/contracts would highlight both "Financial" and "Contracts"
   // at once, since a plain prefix check matches both of their hrefs.
@@ -200,7 +245,7 @@ export function DashboardSidebar({
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>()
-    for (const entry of navItems) {
+    for (const entry of visibleNavItems) {
       if (isGroup(entry) && entry.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))) {
         initial.add(entry.label)
       }
@@ -212,7 +257,7 @@ export function DashboardSidebar({
   // just navigated to, so following a link never leaves you looking at a
   // page with its own sidebar entry hidden inside a closed group.
   useEffect(() => {
-    for (const entry of navItems) {
+    for (const entry of visibleNavItems) {
       if (isGroup(entry) && entry.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))) {
         setExpanded((prev) => (prev.has(entry.label) ? prev : new Set(prev).add(entry.label)))
       }
@@ -243,7 +288,7 @@ export function DashboardSidebar({
         </span>
       </div>
       <nav className="flex-1 p-3 space-y-1">
-        {navItems.map((entry) => {
+        {visibleNavItems.map((entry) => {
           if (isGroup(entry)) {
             const isOpen = expanded.has(entry.label)
             const groupActive = entry.children.some((c) => c === bestMatch)
@@ -291,6 +336,8 @@ export function DashboardSidebar({
           }
 
           const isActive = entry === bestMatch
+          const progressKey = SETUP_PROGRESS_HREFS[entry.href]
+          const isDone = progressKey ? setupProgress?.[progressKey] : false
           return (
             <Link
               key={entry.href}
@@ -305,6 +352,12 @@ export function DashboardSidebar({
             >
               <entry.icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{entry.label}</span>
+              {isDone && (
+                <CheckCircle2
+                  className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-green-400" : "text-green-600")}
+                  aria-label="Set up"
+                />
+              )}
               {isActive && <ChevronRight className="h-3 w-3" />}
             </Link>
           )

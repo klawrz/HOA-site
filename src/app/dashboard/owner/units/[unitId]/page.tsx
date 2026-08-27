@@ -18,6 +18,8 @@ import { Receipt } from "lucide-react"
 import Link from "next/link"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { getImportedUnitContactData } from "@/app/actions/unit-profile"
+import { ImportedContactPrompt } from "./imported-contact-prompt"
 
 export default async function UnitDetailPage({
   params,
@@ -89,10 +91,12 @@ export default async function UnitDetailPage({
     orderBy: { user: { name: "asc" } },
   })
   const unitManagerDirectory = unitManagerMemberships.map((m) => m.user)
+  const importedContactData = await getImportedUnitContactData(unit.id)
 
   return (
     <div className="max-w-2xl space-y-4">
       <OnboardingStepTracker stepId="unit" alreadyComplete={onboardingStepDone} />
+      {importedContactData && <ImportedContactPrompt unitId={unit.id} data={importedContactData} />}
       <div>
         <h1 className="text-2xl font-bold">{unitName}</h1>
         <p className="text-gray-500 mt-1">

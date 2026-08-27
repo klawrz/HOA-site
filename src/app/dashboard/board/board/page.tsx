@@ -9,7 +9,7 @@ export default async function BoardCompositionPage() {
   const session = await auth()
   if (!session?.user.orgId || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
 
-  const [positions, memberMemberships] = await Promise.all([
+  const [positions, memberMemberships, pendingOwnerRows] = await Promise.all([
     db.boardPosition.findMany({
       where: { orgId: session.user.orgId },
       include: { user: true },
@@ -20,8 +20,19 @@ export default async function BoardCompositionPage() {
       include: { user: true },
       orderBy: { user: { name: "asc" } },
     }),
+    db.pendingOwner.findMany({
+      where: { orgId: session.user.orgId },
+      include: { unit: { select: { number: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
   ])
   const members = memberMemberships.map((m) => m.user)
+  const rosterOwners = pendingOwnerRows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    unitNumber: p.unit.number,
+  }))
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -36,6 +47,7 @@ export default async function BoardCompositionPage() {
           <InviteBoardMemberDialog baseUrl={process.env.NEXTAUTH_URL ?? "http://localhost:3000"} />
           <BoardPositionDialog
             members={members.map((m) => ({ id: m.id, name: m.name, email: m.email }))}
+            rosterOwners={rosterOwners}
           />
         </div>
       </div>
@@ -55,6 +67,7 @@ export default async function BoardCompositionPage() {
               notes: p.notes,
             }}
             members={members.map((m) => ({ id: m.id, name: m.name, email: m.email }))}
+            rosterOwners={rosterOwners}
           />
         ))}
         {positions.length === 0 && (

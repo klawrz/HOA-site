@@ -8,6 +8,7 @@ import { formatDateISO } from "@/lib/utils"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { getDuesSetupStatus, setupStatusMessage } from "@/lib/setup-status"
 
 const typeLabel: Record<string, string> = {
   REGULAR_DUES: "Regular Dues",
@@ -34,7 +35,7 @@ export default async function OwnerDuesPage() {
   })
   const unitIds = ownerships.map((o) => o.unitId)
 
-  const [charges, unitLabel, ownMembership] = await Promise.all([
+  const [charges, unitLabel, ownMembership, duesStatus] = await Promise.all([
     unitIds.length
       ? db.assessmentCharge.findMany({
           where: { unitId: { in: unitIds }, assessment: { status: "ISSUED" } },
@@ -47,6 +48,7 @@ export default async function OwnerDuesPage() {
       where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
       select: { onboardingSteps: true },
     }),
+    getDuesSetupStatus(session.user.orgId ?? ""),
   ])
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("dues")
 
@@ -75,7 +77,7 @@ export default async function OwnerDuesPage() {
         <Card>
           <CardContent className="py-12 text-center text-gray-500">
             <Receipt className="h-10 w-10 mx-auto mb-3 text-gray-300" />
-            No dues or assessments issued yet.
+            {duesStatus.state !== "done" ? setupStatusMessage(duesStatus) : "No dues or assessments issued yet."}
           </CardContent>
         </Card>
       ) : (

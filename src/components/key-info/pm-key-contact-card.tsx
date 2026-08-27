@@ -1,5 +1,6 @@
 import { Wrench, Mail, Phone } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { SetupStatus, setupStatusMessage } from "@/lib/setup-status"
 
 interface Company {
   legalName: string
@@ -12,8 +13,11 @@ interface Company {
 
 // Read-only summary for Key Information, pulled from the active PMContract's
 // company - full contract terms/history stay on the dedicated PM page, this
-// is just "who to call."
-export function PMKeyContactCard({ company }: { company: Company | null }) {
+// is just "who to call." When there's no active PM, `status` (from
+// getPMSetupStatus) explains which step is actually missing and who can
+// act next, instead of a flat "no PM on file" that looked the same whether
+// nobody had signed up yet or a contract was one Board approval away.
+export function PMKeyContactCard({ company, status }: { company: Company | null; status?: SetupStatus }) {
   return (
     <Card>
       <CardHeader>
@@ -22,7 +26,11 @@ export function PMKeyContactCard({ company }: { company: Company | null }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="text-sm space-y-2">
-        {!company && <p className="text-gray-400">No active Property Manager on file.</p>}
+        {!company && (
+          <p className="text-gray-400">
+            {status && status.state !== "done" ? setupStatusMessage(status) : "No active Property Manager on file."}
+          </p>
+        )}
         {company && (
           <>
             <p className="font-medium">{company.legalName}</p>

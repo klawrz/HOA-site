@@ -13,6 +13,13 @@ interface Member {
   email: string
 }
 
+interface RosterOwner {
+  id: string
+  name: string | null
+  email: string | null
+  unitNumber: string
+}
+
 interface PositionRow {
   id: string
   title: string
@@ -24,7 +31,15 @@ interface PositionRow {
   notes: string | null
 }
 
-export function BoardPositionCard({ position, members }: { position: PositionRow; members: Member[] }) {
+export function BoardPositionCard({
+  position,
+  members,
+  rosterOwners,
+}: {
+  position: PositionRow
+  members: Member[]
+  rosterOwners: RosterOwner[]
+}) {
   const [removing, setRemoving] = useState(false)
 
   async function handleRemove() {
@@ -54,6 +69,7 @@ export function BoardPositionCard({ position, members }: { position: PositionRow
         <div className="flex items-center gap-2 shrink-0">
           <BoardPositionDialog
             members={members}
+            rosterOwners={rosterOwners}
             position={{
               id: position.id,
               title: position.title,
