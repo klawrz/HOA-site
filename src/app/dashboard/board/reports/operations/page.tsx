@@ -3,10 +3,11 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { getOperationsReportData } from "@/lib/reports-data"
 import { OperationsReportView } from "@/components/reports/operations-report-view"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardOperationsReportPage() {
   const session = await auth()
-  if (!session?.user.orgId || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session?.user.orgId || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [data, org] = await Promise.all([
     getOperationsReportData(session.user.orgId),

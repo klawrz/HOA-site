@@ -4,10 +4,11 @@ import { db } from "@/lib/db"
 import { BoardPositionCard } from "@/app/dashboard/account/board/board-position-card"
 import { BoardPositionDialog } from "@/app/dashboard/account/board/board-position-dialog"
 import { InviteBoardMemberDialog } from "./invite-board-member-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardCompositionPage() {
   const session = await auth()
-  if (!session?.user.orgId || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session?.user.orgId || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [positions, memberMemberships, pendingOwnerRows] = await Promise.all([
     db.boardPosition.findMany({

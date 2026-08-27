@@ -26,7 +26,16 @@ import { documentCategoryLabel } from "@/lib/document-styles"
 
 const categories = Object.keys(documentCategoryLabel) as DocumentCategory[]
 
-export function NewDocumentDialog() {
+export function NewDocumentDialog({
+  meetingId,
+  triggerLabel = "+ Add Document",
+}: {
+  // Pre-attaches the new document to a specific meeting (e.g. the AGM) so
+  // it shows up in that meeting's own document list, not just the general
+  // repository. Omit for the plain repository-wide "Add Document" button.
+  meetingId?: string
+  triggerLabel?: string
+}) {
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState<DocumentCategory>("OTHER")
   const [restricted, setRestricted] = useState(false)
@@ -37,6 +46,7 @@ export function NewDocumentDialog() {
     setSaving(true)
     const form = new FormData(e.currentTarget)
     form.set("category", category)
+    if (meetingId) form.set("meetingId", meetingId)
     form.set("visibility", restricted ? "BOARD_AND_PM" : "OWNERS")
     const uploadedFile = form.get("file")
     if (uploadedFile instanceof File && uploadedFile.size === 0) form.delete("file")
@@ -57,7 +67,7 @@ export function NewDocumentDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button />}>
-        + Add Document
+        {triggerLabel}
       </DialogTrigger>
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>

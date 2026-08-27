@@ -5,10 +5,16 @@ import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { AssessmentList } from "@/components/assessments/assessment-list"
 import { NewAssessmentDialog } from "@/components/assessments/new-assessment-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function OwnerBoardAssessmentsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) redirect("/dashboard")
+  if (
+    !session ||
+    (session.user.role !== "ACCOUNT_OWNER" &&
+      (!canPreviewRole(session.user.role, "OWNER") || !session.user.isBoardMember))
+  )
+    redirect("/dashboard")
 
   const [assessments, budgets, approvedBudget] = await Promise.all([
     db.assessment.findMany({

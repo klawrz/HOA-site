@@ -3,10 +3,11 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketRequestForm } from "@/app/dashboard/_components/ticket-request-form"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function NewUnitManagerTicketPage() {
   const session = await auth()
-  if (!session || session.user.role !== "UNIT_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "UNIT_MANAGER")) redirect("/dashboard")
 
   const assignments = await db.unitManagerAssignment.findMany({
     where: { userId: session.user.id, grants: { some: { area: "TICKETS", level: "MANAGE" } } },

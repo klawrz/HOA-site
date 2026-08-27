@@ -3,10 +3,11 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { BoardPositionCard } from "./board-position-card"
 import { BoardPositionDialog } from "./board-position-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function AccountBoardPage() {
   const session = await auth()
-  if (!session?.user.orgId || session.user.role !== "ACCOUNT_OWNER") redirect("/dashboard")
+  if (!session?.user.orgId || !canPreviewRole(session.user.role, "ACCOUNT_OWNER")) redirect("/dashboard")
 
   const [positions, memberMemberships, pendingOwnerRows] = await Promise.all([
     db.boardPosition.findMany({

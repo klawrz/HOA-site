@@ -5,10 +5,11 @@ import { ContractorDirectory } from "@/components/contracts/contractor-directory
 import { AddContractorDialog } from "@/components/contracts/add-contractor-dialog"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function ContractorsDirectoryPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const [memberships, ownMembership] = await Promise.all([
     db.membership.findMany({

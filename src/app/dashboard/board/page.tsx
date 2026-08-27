@@ -12,10 +12,11 @@ import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-pane
 import { BOARD_ONBOARDING_STEPS, BOARD_STEP_IDS, parseCompletedSteps, isOnboardingComplete } from "@/lib/onboarding-steps"
 import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
 import { BoardRosterPrompt } from "@/components/dashboard/board-roster-prompt"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardDashboard() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [
     meetingCount,

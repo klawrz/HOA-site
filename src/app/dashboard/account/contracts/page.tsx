@@ -3,10 +3,11 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ContractList } from "@/components/contracts/contract-list"
 import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function AccountContractsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "ACCOUNT_OWNER" || !session.user.orgId) redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "ACCOUNT_OWNER") || !session.user.orgId) redirect("/dashboard")
 
   const contracts = await db.contract.findMany({
     where: { orgId: session.user.orgId, scope: "PROPERTY" },

@@ -4,10 +4,11 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RentalPolicy } from "@/generated/prisma"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function OwnersDirectoryPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   // Driven by UnitOwnership - the actual source of truth for "who owns a
   // unit here" - rather than Membership.role === "OWNER". A custodian who

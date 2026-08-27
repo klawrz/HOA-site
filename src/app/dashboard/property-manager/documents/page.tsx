@@ -9,10 +9,12 @@ import {
   documentVisibilityLabel,
   documentVisibilityColor,
 } from "@/lib/document-styles"
+import { canPreviewRole } from "@/lib/role-access"
+import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
 
 export default async function PropertyManagerDocumentsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const documents = await db.document.findMany({
     where: { orgId: session.user.orgId ?? undefined },
@@ -27,11 +29,14 @@ export default async function PropertyManagerDocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Document Repository</h1>
-        <p className="text-gray-500 mt-1">
-          The Board&apos;s document repository - includes items restricted from Owners that you have access to.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Document Repository</h1>
+          <p className="text-gray-500 mt-1">
+            The Board&apos;s document repository - includes items restricted from Owners that you have access to.
+          </p>
+        </div>
+        <NewDocumentDialog />
       </div>
 
       <Card>

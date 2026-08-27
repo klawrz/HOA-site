@@ -4,10 +4,11 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AddStaffForm } from "./add-staff-form"
 import { StaffAccessGrid } from "./staff-access-grid"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function StaffPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const membership = await db.pMStaffMembership.findFirst({
     where: { userId: session.user.id },

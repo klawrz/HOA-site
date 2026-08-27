@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Megaphone } from "lucide-react"
 import { AnnouncementList } from "@/components/announcements/announcement-list"
 import { NewAnnouncementDialog } from "@/components/announcements/new-announcement-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PropertyManagerAnnouncementsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const [announcements, orgMemberships] = await Promise.all([
     db.announcement.findMany({

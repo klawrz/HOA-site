@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -7,10 +8,11 @@ import { NewMeetingDialog } from "./new-meeting-dialog"
 import { MeetingMinutesDialog } from "./minutes-dialog"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function MeetingsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [meetings, ownMembership] = await Promise.all([
     db.meeting.findMany({
@@ -42,7 +44,25 @@ export default async function MeetingsPage() {
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-base">{m.title}</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    {m.type === "AGM" ? (
+                      <Link href="/dashboard/board/key-info/agm" className="hover:underline">
+                        {m.title}
+                      </Link>
+                    ) : (
+                      m.title
+                    )}
+                    {m.type !== "OTHER" && (
+                      <span
+                        className={
+                          "text-xs px-2 py-0.5 rounded-full " +
+                          (m.type === "AGM" ? "bg-indigo-100 text-indigo-700" : "bg-amber-100 text-amber-700")
+                        }
+                      >
+                        {m.type === "AGM" ? "AGM" : "Dues"}
+                      </span>
+                    )}
+                  </CardTitle>
                   <p className="text-sm text-gray-500 mt-0.5">
                     {new Date(m.date).toLocaleDateString("en-US", {
                       weekday: "long",

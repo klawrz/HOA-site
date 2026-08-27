@@ -3,10 +3,11 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ComplianceDocumentList } from "@/components/compliance/compliance-document-list"
 import { NewComplianceDocumentDialog } from "@/components/compliance/new-compliance-document-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardCompliancePage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER" || !session.user.orgId) redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER") || !session.user.orgId) redirect("/dashboard")
 
   const documents = await db.complianceDocument.findMany({
     where: { orgId: session.user.orgId },

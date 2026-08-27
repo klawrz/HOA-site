@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { AssessmentEditor } from "@/components/assessments/assessment-editor"
 import { getUnitLabel } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardAssessmentDetailPage({
   params,
@@ -13,7 +14,7 @@ export default async function BoardAssessmentDetailPage({
 }) {
   const { id } = await params
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [assessment, unitLabel] = await Promise.all([
     db.assessment.findUnique({

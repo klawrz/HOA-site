@@ -5,10 +5,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Building2 } from "lucide-react"
 import { ComplianceDocumentList } from "@/components/compliance/compliance-document-list"
 import { NewComplianceDocumentDialog } from "@/components/compliance/new-compliance-document-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PMCompliancePage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const membership = await db.pMStaffMembership.findFirst({
     where: { userId: session.user.id },

@@ -1,10 +1,11 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { ReportNavCards } from "@/components/reports/report-nav-cards"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PropertyManagerReportsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   return (
     <div className="space-y-6">

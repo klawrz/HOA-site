@@ -13,10 +13,26 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { createMeeting } from "@/app/actions/meetings"
+import type { MeetingType } from "@/generated/prisma"
+
+const meetingTypeLabel: Record<MeetingType, string> = {
+  AGM: "Annual General Meeting (AGM)",
+  DUES: "Dues Meeting",
+  OTHER: "Other",
+}
+const meetingTypes = Object.keys(meetingTypeLabel) as MeetingType[]
 
 export function NewMeetingDialog() {
   const [open, setOpen] = useState(false)
+  const [type, setType] = useState<MeetingType>("OTHER")
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -25,6 +41,7 @@ export function NewMeetingDialog() {
     const form = new FormData(e.currentTarget)
     const result = await createMeeting({
       title: form.get("title") as string,
+      type,
       date: form.get("date") as string,
       location: form.get("location") as string,
       agenda: form.get("agenda") as string,
@@ -32,8 +49,14 @@ export function NewMeetingDialog() {
     })
     setSaving(false)
     if (result.success) {
-      toast.success("Meeting created")
+      toast.success(
+        type === "AGM"
+          ? "AGM created - add the chairperson, proxy process, and other AGM details from its own page"
+          : "Meeting created"
+      )
       setOpen(false)
+      setType("OTHER")
+      ;(document.getElementById("new-meeting-form") as HTMLFormElement)?.reset()
     } else {
       toast.error("Failed to create meeting")
     }
@@ -48,10 +71,37 @@ export function NewMeetingDialog() {
         <DialogHeader>
           <DialogTitle>Schedule a Meeting</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="new-meeting-form" onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <Label>Type</Label>
+            <Select value={type} onValueChange={(v) => setType(v as MeetingType)} items={meetingTypeLabel}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {meetingTypes.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {meetingTypeLabel[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {type === "AGM" && (
+              <p className="text-xs text-gray-500">
+                Creates the AGM and links it to its own page for the chairperson, proxy process/form,
+                and agenda - fill those in there right after.
+              </p>
+            )}
+          </div>
           <div className="space-y-1">
             <Label>Meeting Title</Label>
-            <Input name="title" placeholder="e.g. Monthly Board Meeting" required />
+            <Input
+              name="title"
+              placeholder={type === "AGM" ? "Annual General Meeting" : "e.g. Monthly Board Meeting"}
+              defaultValue={type === "AGM" ? "Annual General Meeting" : undefined}
+              key={type}
+              required
+            />
           </div>
           <div className="space-y-1">
             <Label>Date</Label>

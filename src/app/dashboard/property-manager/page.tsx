@@ -10,10 +10,11 @@ import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-pane
 import { PM_ONBOARDING_STEPS, PM_STEP_IDS, parseCompletedSteps, isOnboardingComplete } from "@/lib/onboarding-steps"
 import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
 import { PMReferralCard } from "@/components/dashboard/pm-referral-card"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PropertyManagerDashboard() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const [
     totalUnits,

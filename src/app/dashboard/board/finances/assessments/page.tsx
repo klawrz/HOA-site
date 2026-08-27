@@ -5,10 +5,11 @@ import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { AssessmentList } from "@/components/assessments/assessment-list"
 import { NewAssessmentDialog } from "@/components/assessments/new-assessment-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardAssessmentsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [assessments, budgets, approvedBudget] = await Promise.all([
     db.assessment.findMany({

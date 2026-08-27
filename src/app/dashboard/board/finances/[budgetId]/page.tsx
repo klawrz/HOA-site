@@ -4,6 +4,7 @@ import Link from "next/link"
 import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { BudgetEditor } from "@/components/budgets/budget-editor"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardBudgetDetailPage({
   params,
@@ -12,7 +13,7 @@ export default async function BoardBudgetDetailPage({
 }) {
   const { budgetId } = await params
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [budget, contracts, meetings, org] = await Promise.all([
     db.budget.findUnique({

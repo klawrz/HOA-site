@@ -105,6 +105,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           user={session.user}
           orgName={org?.name ?? ""}
           isPlatformAdmin={session.user.isPlatformAdmin}
+          isBoardMember={isBoardMember}
           otherOrgs={memberships
             .filter((m) => m.orgId !== session.user.orgId)
             .map((m) => ({ orgId: m.org.id, orgName: m.org.name, role: m.role }))}

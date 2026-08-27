@@ -4,10 +4,11 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketRequestForm } from "@/app/dashboard/_components/ticket-request-form"
 import { getUnitLabel, unitDisplayName, compareUnitNumbers } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function NewPropertyManagerTicketPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const [allUnits, unitLabel] = await Promise.all([
     db.unit.findMany({

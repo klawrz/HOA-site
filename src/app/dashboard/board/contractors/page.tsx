@@ -2,10 +2,11 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ContractorDirectory } from "@/components/contracts/contractor-directory"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardContractorsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const memberships = await db.membership.findMany({
     where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" },

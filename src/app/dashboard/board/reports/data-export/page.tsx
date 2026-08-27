@@ -2,10 +2,11 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { DataExportCard } from "@/components/reports/data-export-card"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardDataExportPage() {
   const session = await auth()
-  if (!session?.user.orgId || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session?.user.orgId || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const org = await db.organization.findUnique({ where: { id: session.user.orgId }, select: { name: true } })
 

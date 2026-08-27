@@ -9,15 +9,17 @@ import { ReserveTransactionDialog } from "@/components/reserve-fund/reserve-tran
 import { ReserveDetailsDialog } from "@/components/reserve-fund/reserve-details-dialog"
 import { ReserveYearTable } from "@/components/reserve-fund/reserve-year-table"
 import { TransactionList } from "@/components/reserve-fund/transaction-list"
+import { CapitalItemsTable } from "@/components/reserve-fund/capital-items-table"
 import { reserveYearRange, computeReserveYearRows } from "@/lib/reserve-fund"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardReservePage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
-  const [org, transactions, yearNotes, ownMembership] = await Promise.all([
+  const [org, transactions, yearNotes, capitalItems, ownMembership] = await Promise.all([
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     db.reserveTransaction.findMany({
       where: { orgId: session.user.orgId ?? undefined },
@@ -25,6 +27,7 @@ export default async function BoardReservePage() {
       orderBy: { date: "desc" },
     }),
     db.reserveYearNote.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.reserveCapitalItem.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
     db.membership.findUnique({
       where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
       select: { onboardingSteps: true },
@@ -74,6 +77,8 @@ export default async function BoardReservePage() {
       </Card>
 
       <ReserveYearTable rows={yearRows} comments={comments} canManage />
+
+      <CapitalItemsTable items={capitalItems} canManage />
 
       <TransactionList
         transactions={transactions.map((t) => ({

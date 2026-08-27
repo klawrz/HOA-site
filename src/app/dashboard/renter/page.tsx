@@ -9,10 +9,11 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn, formatDateTime, formatDateISO } from "@/lib/utils"
 import { statusColor } from "@/lib/ticket-styles"
 import { getUnitLabel } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function RenterDashboard() {
   const session = await auth()
-  if (!session || session.user.role !== "RENTER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "RENTER")) redirect("/dashboard")
 
   const [lease, unitLabel] = await Promise.all([
     db.lease.findFirst({

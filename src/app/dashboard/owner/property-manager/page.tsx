@@ -6,10 +6,11 @@ import { Building2, Mail, Phone, Wrench } from "lucide-react"
 import { formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor } from "@/lib/ticket-styles"
 import { PMContractBoard } from "@/components/pm/pm-contract-board"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function OwnerPropertyManagerPage() {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "OWNER")) redirect("/dashboard")
 
   const isBoardMember = session.user.isBoardMember
 

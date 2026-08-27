@@ -3,10 +3,11 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { PMContractBoard } from "@/components/pm/pm-contract-board"
 import { PMSetupPanel } from "./pm-setup-panel"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function AccountPMPage() {
   const session = await auth()
-  if (!session || session.user.role !== "ACCOUNT_OWNER" || !session.user.orgId) redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "ACCOUNT_OWNER") || !session.user.orgId) redirect("/dashboard")
 
   const [contracts, companies, meetings, pmInvites] = await Promise.all([
     db.pMContract.findMany({

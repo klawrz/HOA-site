@@ -5,10 +5,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Building2 } from "lucide-react"
 import { ContractList } from "@/components/contracts/contract-list"
 import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PMContractsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const membership = await db.pMStaffMembership.findFirst({
     where: { userId: session.user.id },

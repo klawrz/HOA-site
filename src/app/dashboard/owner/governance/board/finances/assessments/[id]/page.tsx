@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { AssessmentEditor } from "@/components/assessments/assessment-editor"
 import { getUnitLabel } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function OwnerBoardAssessmentDetailPage({
   params,
@@ -13,7 +14,12 @@ export default async function OwnerBoardAssessmentDetailPage({
 }) {
   const { id } = await params
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) redirect("/dashboard")
+  if (
+    !session ||
+    (session.user.role !== "ACCOUNT_OWNER" &&
+      (!canPreviewRole(session.user.role, "OWNER") || !session.user.isBoardMember))
+  )
+    redirect("/dashboard")
 
   const [assessment, unitLabel] = await Promise.all([
     db.assessment.findUnique({

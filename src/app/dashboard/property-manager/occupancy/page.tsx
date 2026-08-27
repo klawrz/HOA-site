@@ -3,10 +3,11 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { TodayOccupancy } from "@/components/occupancy/today-occupancy"
 import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PropertyManagerOccupancyPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const [units, unitLabel] = await Promise.all([
     db.unit.findMany({

@@ -2,10 +2,11 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { getFinancialReportData } from "@/lib/reports-data"
 import { FinancialReportView } from "@/components/reports/financial-report-view"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PropertyManagerFinancialReportPage() {
   const session = await auth()
-  if (!session?.user.orgId || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session?.user.orgId || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const data = await getFinancialReportData(session.user.orgId)
 

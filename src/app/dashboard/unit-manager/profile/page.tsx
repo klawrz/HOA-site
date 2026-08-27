@@ -4,10 +4,11 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProfileForm } from "./profile-form"
 import { parseSpecialties } from "@/lib/unit-manager-specialties"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function UnitManagerProfilePage() {
   const session = await auth()
-  if (!session || session.user.role !== "UNIT_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "UNIT_MANAGER")) redirect("/dashboard")
 
   const user = await db.user.findUnique({ where: { id: session.user.id } })
   if (!user) redirect("/dashboard")

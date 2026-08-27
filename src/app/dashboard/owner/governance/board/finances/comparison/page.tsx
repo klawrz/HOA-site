@@ -4,10 +4,16 @@ import Link from "next/link"
 import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { BudgetComparisonTable } from "@/components/budgets/budget-comparison-table"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function OwnerBoardBudgetComparisonPage() {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) redirect("/dashboard")
+  if (
+    !session ||
+    (session.user.role !== "ACCOUNT_OWNER" &&
+      (!canPreviewRole(session.user.role, "OWNER") || !session.user.isBoardMember))
+  )
+    redirect("/dashboard")
 
   const budgets = await db.budget.findMany({
     where: { orgId: session.user.orgId ?? undefined },

@@ -20,15 +20,18 @@ import { KeyContactDialog } from "@/components/key-info/key-contact-dialog"
 import { PolicyTextCard } from "@/components/key-info/policy-text-card"
 import { PropertyAddressCard } from "@/components/key-info/property-address-card"
 import { BoardRosterCard } from "@/components/key-info/board-roster-card"
+import { KeyDatesCard } from "@/components/key-info/key-dates-card"
+import { getUpcomingKeyDates } from "@/lib/key-dates"
 import { PMKeyContactCard } from "@/components/key-info/pm-key-contact-card"
 import { setOccupancyPolicy, setRentalPoolGuidelines } from "@/app/actions/key-info"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
 import { getPMSetupStatus } from "@/lib/setup-status"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function OwnerGovernancePage() {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "OWNER")) redirect("/dashboard")
 
   const now = new Date()
   const isBoardMember = session.user.isBoardMember
@@ -83,6 +86,10 @@ export default async function OwnerGovernancePage() {
   ])
   const roleByUserId = new Map(orgMemberships.map((m) => [m.userId, m.role]))
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("governance")
+  const keyDates = await getUpcomingKeyDates(session.user.orgId ?? "", {
+    agm: "/dashboard/owner/governance/agm",
+    dues: "/dashboard/owner/financial/dues",
+  })
 
   const reserveBalance = reserveTransactions.reduce(
     (s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount),
@@ -107,6 +114,10 @@ export default async function OwnerGovernancePage() {
           News, your Board, upcoming meetings, and the document repository
         </p>
       </div>
+
+      <BoardRosterCard positions={boardPositions} />
+
+      <KeyDatesCard dates={keyDates} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -163,8 +174,6 @@ export default async function OwnerGovernancePage() {
         }}
         canManage={isBoardMember}
       />
-
-      <BoardRosterCard positions={boardPositions} />
 
       <PMKeyContactCard company={activePMContract?.company ?? null} status={pmStatus} />
 

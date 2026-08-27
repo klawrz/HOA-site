@@ -9,13 +9,20 @@ import { ReserveTransactionDialog } from "@/components/reserve-fund/reserve-tran
 import { ReserveDetailsDialog } from "@/components/reserve-fund/reserve-details-dialog"
 import { ReserveYearTable } from "@/components/reserve-fund/reserve-year-table"
 import { TransactionList } from "@/components/reserve-fund/transaction-list"
+import { CapitalItemsTable } from "@/components/reserve-fund/capital-items-table"
 import { reserveYearRange, computeReserveYearRows } from "@/lib/reserve-fund"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function OwnerBoardReservePage() {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) redirect("/dashboard")
+  if (
+    !session ||
+    (session.user.role !== "ACCOUNT_OWNER" &&
+      (!canPreviewRole(session.user.role, "OWNER") || !session.user.isBoardMember))
+  )
+    redirect("/dashboard")
 
-  const [org, transactions, yearNotes] = await Promise.all([
+  const [org, transactions, yearNotes, capitalItems] = await Promise.all([
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     db.reserveTransaction.findMany({
       where: { orgId: session.user.orgId ?? undefined },
@@ -23,6 +30,7 @@ export default async function OwnerBoardReservePage() {
       orderBy: { date: "desc" },
     }),
     db.reserveYearNote.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
+    db.reserveCapitalItem.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
   ])
 
   const balance = transactions.reduce((s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount), 0)
@@ -66,6 +74,8 @@ export default async function OwnerBoardReservePage() {
       </Card>
 
       <ReserveYearTable rows={yearRows} comments={comments} canManage />
+
+      <CapitalItemsTable items={capitalItems} canManage />
 
       <TransactionList
         transactions={transactions.map((t) => ({

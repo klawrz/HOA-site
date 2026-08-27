@@ -384,6 +384,8 @@ model Organization {
   assessments         Assessment[]
   reserveTransactions ReserveTransaction[]
   reserveYearNotes    ReserveYearNote[]
+  reserveCapitalItems ReserveCapitalItem[]
+  keyDates            KeyDate[]
   keyContacts         KeyContact[]
   verificationRequests OrgVerificationRequest[]
 }
@@ -450,6 +452,31 @@ model ReserveTransaction {
   createdBy User         @relation(fields: [createdById], references: [id])
 }
 
+// A reserve fund study / capital component schedule - physical items the
+// reserve fund exists to eventually pay for (roof, pool pump, paving, etc.),
+// distinct from ReserveTransaction (which tracks money actually moving) and
+// from Budget/BudgetLineItem (a single fiscal year's line items). This is
+// forward-looking across many years and drives "is the fund on track,"
+// which condo/HOA audits sometimes specifically require. Estimated
+// expenditure date/year is deliberately NOT stored - it's always
+// lastDone + lifeExpectancyYears, computed live in src/lib/reserve-fund.ts,
+// same "derive, don't duplicate" approach as the year-by-year balance table.
+model ReserveCapitalItem {
+  id                  String   @id @default(cuid())
+  orgId               String
+  name                String
+  lastDone            DateTime
+  lifeExpectancyYears Int
+  estimatedCost       Float?
+  notes               String?
+  createdById         String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy User         @relation(fields: [createdById], references: [id])
+}
+
 // Institutional contacts shown on the Governance "Key Information" tab -
 // the PM, lawyer, accountant, insurance company, and employees an Owner
 // might otherwise have no idea how to reach. Bank info lives directly on
@@ -478,6 +505,46 @@ model KeyContact {
   updatedAt DateTime           @updatedAt
 
   org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// One entry per type per org - AGM data gets updated in place year to year
+// rather than kept as history, since the "Key Dates" block (see
+// src/components/key-info/key-dates-card.tsx) only ever surfaces the
+// current/upcoming one. Only AGM lives here - Dues due dates are
+// deliberately NOT duplicated into this table, they're derived live from
+// Assessment.dueDate (see getUpcomingKeyDates in src/lib/key-dates.ts),
+// same "derive, don't duplicate" reasoning as the reserve fund balance.
+enum KeyDateType {
+  AGM
+}
+
+model KeyDate {
+  id              String      @id @default(cuid())
+  orgId           String
+  type            KeyDateType
+  date            DateTime
+  location        String?
+  chairpersonName String?
+  agenda          String?
+  proxyProcess    String?
+  proxyFormUrl    String?
+  notes           String?
+  createdById     String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Linked lazily - the first time an AGM is saved (either from the New
+  // Meeting dialog with type AGM, or straight from the AGM edit dialog), a
+  // companion Meeting row is created and linked here so the AGM page can
+  // reuse the existing Meeting/Document (meetingId) and minutes machinery
+  // instead of inventing a second attachment mechanism for "AGM documents."
+  meetingId String? @unique
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy User         @relation(fields: [createdById], references: [id])
+  meeting   Meeting?     @relation(fields: [meetingId], references: [id])
+
+  @@unique([orgId, type])
 }
 
 // Board news/updates shown to Owners on the Governance page - distinct
@@ -680,6 +747,8 @@ model User {
   passwordResetTokens         PasswordResetToken[]
   createdAssessments          Assessment[]
   reserveTransactions         ReserveTransaction[]
+  reserveCapitalItems         ReserveCapitalItem[]
+  keyDates                    KeyDate[]
   announcementComments        AnnouncementComment[]
   announcementReads           AnnouncementRead[]
   recordedRentPayments        RentPayment[]
@@ -858,22 +927,35 @@ model Document {
   meeting Meeting?     @relation(fields: [meetingId], references: [id])
 }
 
+// Tags a meeting's nature for the Meetings list and lets "New Meeting"
+// route AGM entries into the richer AGM flow (see KeyDate.meetingId above).
+// DUES is a plain category tag only - it does NOT feed the Key Dates card's
+// derived dues-due-date entries, those still come solely from
+// Assessment.dueDate.
+enum MeetingType {
+  AGM
+  DUES
+  OTHER
+}
+
 model Meeting {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   orgId     String
   title     String
+  type      MeetingType @default(OTHER)
   date      DateTime
   location  String?
   agenda    String?
   minutes   String?
   attendees String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   documents   Document[]
   budgets     Budget[]
   pmContracts PMContract[]
+  keyDate     KeyDate?
 }
 
 // Property-level contracts (scope PROPERTY, no unitId) are the HOA's own

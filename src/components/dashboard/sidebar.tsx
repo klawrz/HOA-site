@@ -10,6 +10,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
+import { roleForPathname, ROLE_HOME } from "@/lib/role-access"
+import { Eye, X } from "lucide-react"
 
 type NavItem = { label: string; href: string; icon: React.ElementType; indent?: boolean }
 type NavGroup = { label: string; icon: React.ElementType; children: NavItem[] }
@@ -123,6 +125,7 @@ const navByRole: Record<Role, NavEntry[]> = {
         { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
       ],
     },
+    { label: "Units", href: "/dashboard/board/units", icon: Building2 },
     { label: "Occupancy", href: "/dashboard/board/occupancy", icon: CalendarDays },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
@@ -185,9 +188,17 @@ export function DashboardSidebar({
   setupProgress?: SetupProgress
 }) {
   const pathname = usePathname()
+  // Which role's nav to actually show - normally just `role`, but an
+  // Account Owner previewing another role's section (see "View as..." in
+  // the header) needs THAT role's sidebar, not their own, or the switch
+  // looks incomplete (Board content with the Account Owner's own nav and
+  // "My Unit" still wrapped around it - exactly what was reported
+  // 2026-08-27). Everyone else always just gets their own role's nav.
+  const previewRole = roleForPathname(pathname, role)
+  const isPreviewing = previewRole !== role
   // Copy - navByRole is a module-level singleton, and splicing below must
   // not mutate it or the injected item would leak into every render.
-  const navItems: NavEntry[] = [...(navByRole[role] ?? [])]
+  const navItems: NavEntry[] = [...(navByRole[previewRole] ?? [])]
 
   // isBoardMember is independent of the primary role (see schema.prisma) -
   // an Owner who also holds Board governance access gets a sub-tab under
@@ -204,11 +215,26 @@ export function DashboardSidebar({
     }
   }
 
+  // Same dual-role idea as the OWNER+isBoardMember splice above, for an
+  // Account Owner who's also personally a Board Member (single signin,
+  // per Dara 2026-08-27 - a real person, not two accounts). Links straight
+  // at the shared /dashboard/board/units page rather than a duplicated
+  // Account-scoped route, since that page's own permission check already
+  // accepts isBoardMember regardless of primary role. Guarded on
+  // !isPreviewing - these are the real Account Owner's own extra capacities,
+  // appended to THEIR OWN nav only, never onto another role's nav while
+  // previewing (that was the actual "Villa 1 in the Board Financials" bug,
+  // 2026-08-27 - this splice used to fire unconditionally).
+  if (role === "ACCOUNT_OWNER" && isBoardMember && !isPreviewing) {
+    navItems.push({ label: "Board Units", href: "/dashboard/board/units", icon: Landmark })
+  }
+
   // Mirror image of the splice above: a custodian who has also personally
   // claimed a unit (see claimOwnUnit / requireOwnerAccess) gets the same
   // unit-scoped pages an OWNER sees, appended rather than swapping their
-  // whole nav - they're still primarily the Account admin.
-  if (role === "ACCOUNT_OWNER" && ownsUnit) {
+  // whole nav - they're still primarily the Account admin. Same
+  // !isPreviewing guard as above, same reason.
+  if (role === "ACCOUNT_OWNER" && ownsUnit && !isPreviewing) {
     navItems.push(
       { label: "My Unit", href: "/dashboard/owner", icon: Home },
       { label: "Financial", href: "/dashboard/owner/financial", icon: DollarSign, indent: true },
@@ -275,7 +301,7 @@ export function DashboardSidebar({
   }
 
   return (
-    <aside className="w-64 bg-white border-r flex flex-col shrink-0 print:hidden">
+    <aside className="w-64 bg-white border-r flex flex-col shrink-0 min-h-0 print:hidden">
       <div className="p-4 border-b space-y-2">
         <Link href="/dashboard">
           <Image src="/HOPE-logo.png" alt="HOPE" height={36} width={120} className="object-contain" />
@@ -284,10 +310,19 @@ export function DashboardSidebar({
           {orgName}
         </p>
         <span className="inline-block text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-          {roleLabels[role].toUpperCase()}
+          {roleLabels[previewRole].toUpperCase()}
         </span>
+        {isPreviewing && (
+          <div className="flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 w-fit">
+            <Eye className="h-3 w-3 shrink-0" />
+            <span>Previewing</span>
+            <Link href={ROLE_HOME[role]} className="ml-0.5 hover:text-amber-900" title="Back to Account Holder">
+              <X className="h-3 w-3" />
+            </Link>
+          </div>
+        )}
       </div>
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto min-h-0">
         {visibleNavItems.map((entry) => {
           if (isGroup(entry)) {
             const isOpen = expanded.has(entry.label)

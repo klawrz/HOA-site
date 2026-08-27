@@ -10,6 +10,7 @@ import { Building2 } from "lucide-react"
 import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
 import { LeaseStatusCard } from "@/components/lease/lease-status-card"
 import { AccessCodeSection } from "@/components/lease/access-code-section"
+import { canPreviewRole } from "@/lib/role-access"
 
 const AREA_LABELS: Record<string, string> = {
   GUESTS: "Guests",
@@ -20,7 +21,7 @@ const AREA_LABELS: Record<string, string> = {
 
 export default async function UnitManagerDashboard() {
   const session = await auth()
-  if (!session || session.user.role !== "UNIT_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "UNIT_MANAGER")) redirect("/dashboard")
 
   // Unit Manager assignments can span multiple orgs, each with its own
   // label - fetched per-unit via the relation, not a single global value.

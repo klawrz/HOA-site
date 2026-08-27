@@ -2,10 +2,11 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { PMContractBoard } from "@/components/pm/pm-contract-board"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardPMPage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [contracts, companies, meetings] = await Promise.all([
     db.pMContract.findMany({

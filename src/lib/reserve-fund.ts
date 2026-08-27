@@ -24,3 +24,21 @@ export function computeReserveYearRows(
     return { year, opening, additions, drawdowns, closing: opening + additions - drawdowns }
   })
 }
+
+// Estimated expenditure date is always lastDone + lifeExpectancyYears -
+// never stored, so editing lastDone or lifeExpectancyYears can't leave a
+// stale date sitting around. Preserves month/day (e.g. a roof last done
+// June 2020 with a 20-year life is due June 2040, not just "2040").
+export function estimatedExpenditureDate(lastDone: Date, lifeExpectancyYears: number): Date {
+  const d = new Date(lastDone)
+  d.setFullYear(d.getFullYear() + lifeExpectancyYears)
+  return d
+}
+
+// "Within 5 years" per the audit/planning framing this section exists for
+// - items further out still show, just not flagged as near-term.
+export function isWithinYears(estimatedDate: Date, years: number): boolean {
+  const cutoff = new Date()
+  cutoff.setFullYear(cutoff.getFullYear() + years)
+  return estimatedDate <= cutoff
+}

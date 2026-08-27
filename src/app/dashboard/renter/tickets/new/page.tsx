@@ -4,10 +4,11 @@ import { db } from "@/lib/db"
 import { NewTicketForm } from "./new-ticket-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getUnitLabel } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function NewTicketPage() {
   const session = await auth()
-  if (!session || session.user.role !== "RENTER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "RENTER")) redirect("/dashboard")
 
   const [lease, unitLabel] = await Promise.all([
     db.lease.findFirst({

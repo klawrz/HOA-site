@@ -5,10 +5,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { FileText } from "lucide-react"
 import { NewDocumentDialog } from "./new-document-dialog"
 import { documentCategoryLabel, documentCategoryColor, documentVisibilityLabel, documentVisibilityColor } from "@/lib/document-styles"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function DocumentsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const documents = await db.document.findMany({
     where: { orgId: session.user.orgId ?? undefined },

@@ -4,10 +4,11 @@ import { db } from "@/lib/db"
 import { ContractList } from "@/components/contracts/contract-list"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function ContractorContractsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "CONTRACTOR") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "CONTRACTOR")) redirect("/dashboard")
 
   const [contracts, ownMembership] = await Promise.all([
     db.contract.findMany({

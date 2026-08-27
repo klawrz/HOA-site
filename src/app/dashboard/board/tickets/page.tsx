@@ -8,10 +8,11 @@ import { TicketManageForm } from "@/app/dashboard/_components/ticket-manage-form
 import { cn, formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardTicketsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [tickets, contractorMemberships, unitLabel] = await Promise.all([
     db.troubleTicket.findMany({

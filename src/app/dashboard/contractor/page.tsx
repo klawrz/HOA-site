@@ -9,10 +9,11 @@ import { formatDateTime } from "@/lib/utils"
 import { priorityColor, scopeLabel } from "@/lib/ticket-styles"
 import { CONTRACTOR_ONBOARDING_STEPS, CONTRACTOR_STEP_IDS, parseCompletedSteps, isOnboardingComplete } from "@/lib/onboarding-steps"
 import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function ContractorDashboard() {
   const session = await auth()
-  if (!session || session.user.role !== "CONTRACTOR") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "CONTRACTOR")) redirect("/dashboard")
 
   const me = await db.user.findUnique({ where: { id: session.user.id } })
   const ownMembership = await db.membership.findUnique({

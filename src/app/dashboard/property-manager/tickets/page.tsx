@@ -10,10 +10,11 @@ import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function AllTicketsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const [tickets, contractorMemberships, unitLabel, ownMembership] = await Promise.all([
     db.troubleTicket.findMany({

@@ -7,6 +7,7 @@ import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
 import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 function toBudgetRow(b: { id: string; year: number; version: string; status: string; lineItems: { budgetedAmount: number }[] }) {
   return {
@@ -21,7 +22,12 @@ function toBudgetRow(b: { id: string; year: number; version: string; status: str
 
 export default async function OwnerBoardFinancesPage() {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) redirect("/dashboard")
+  if (
+    !session ||
+    (session.user.role !== "ACCOUNT_OWNER" &&
+      (!canPreviewRole(session.user.role, "OWNER") || !session.user.isBoardMember))
+  )
+    redirect("/dashboard")
 
   const [budgets, units, unitLabel] = await Promise.all([
     db.budget.findMany({

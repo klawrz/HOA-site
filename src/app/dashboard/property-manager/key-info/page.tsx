@@ -8,15 +8,18 @@ import { KeyContactList } from "@/components/key-info/key-contact-list"
 import { KeyContactDialog } from "@/components/key-info/key-contact-dialog"
 import { PropertyAddressCard } from "@/components/key-info/property-address-card"
 import { BoardRosterCard } from "@/components/key-info/board-roster-card"
+import { KeyDatesCard } from "@/components/key-info/key-dates-card"
+import { getUpcomingKeyDates } from "@/lib/key-dates"
 import { PMKeyContactCard } from "@/components/key-info/pm-key-contact-card"
 import { AccountOwnerCard } from "@/components/key-info/account-owner-card"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
 import { getPMSetupStatus } from "@/lib/setup-status"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PropertyManagerKeyInfoPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const [org, contacts, boardPositions, activePMContract, ownMembership, pmStatus] = await Promise.all([
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
@@ -41,6 +44,10 @@ export default async function PropertyManagerKeyInfoPage() {
     getPMSetupStatus(session.user.orgId ?? ""),
   ])
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("pm_key_info")
+  const keyDates = await getUpcomingKeyDates(session.user.orgId ?? "", {
+    agm: "/dashboard/property-manager/key-info/agm",
+    dues: "/dashboard/property-manager/finances/assessments",
+  })
 
   return (
     <div className="space-y-6">
@@ -49,6 +56,10 @@ export default async function PropertyManagerKeyInfoPage() {
         <h1 className="text-2xl font-bold">Key Information</h1>
         <p className="text-gray-500 mt-1">Bank details and the institutional contacts owners rely on</p>
       </div>
+
+      <BoardRosterCard positions={boardPositions} />
+
+      <KeyDatesCard dates={keyDates} />
 
       <PropertyAddressCard
         address={{
@@ -75,8 +86,6 @@ export default async function PropertyManagerKeyInfoPage() {
         }}
         canManage
       />
-
-      <BoardRosterCard positions={boardPositions} />
 
       <PMKeyContactCard company={activePMContract?.company ?? null} status={pmStatus} />
 

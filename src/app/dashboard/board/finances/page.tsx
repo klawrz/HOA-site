@@ -9,6 +9,7 @@ import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
 import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
+import { canPreviewRole } from "@/lib/role-access"
 
 function toBudgetRow(b: { id: string; year: number; version: string; status: string; lineItems: { budgetedAmount: number }[] }) {
   return {
@@ -23,7 +24,7 @@ function toBudgetRow(b: { id: string; year: number; version: string; status: str
 
 export default async function BoardFinancesPage() {
   const session = await auth()
-  if (!session || session.user.role !== "BOARD_MEMBER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
   const [budgets, units, unitLabel, ownMembership] = await Promise.all([
     db.budget.findMany({

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { RentalPolicy, UnitStatus } from "@/generated/prisma"
 import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
+import { canPreviewRole } from "@/lib/role-access"
 
 const policyConfig: Record<
   RentalPolicy,
@@ -39,7 +40,7 @@ const statusConfig: Record<UnitStatus, { label: string; color: string }> = {
 
 export default async function UnitAvailabilityPage() {
   const session = await auth()
-  if (!session || session.user.role !== "PROPERTY_MANAGER") redirect("/dashboard")
+  if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
   const [units, unitLabel] = await Promise.all([
     db.unit.findMany({

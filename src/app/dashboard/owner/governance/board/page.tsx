@@ -5,10 +5,15 @@ import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Users, Mail, Phone } from "lucide-react"
 import { formatDateISO } from "@/lib/utils"
+import { canPreviewRole } from "@/lib/role-access"
 
 export default async function OwnerBoardRosterPage() {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.isBoardMember) {
+  if (
+    !session ||
+    (session.user.role !== "ACCOUNT_OWNER" &&
+      (!canPreviewRole(session.user.role, "OWNER") || !session.user.isBoardMember))
+  ) {
     redirect("/dashboard")
   }
 
