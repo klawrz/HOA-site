@@ -21,7 +21,7 @@ interface RentPaymentRow {
 interface CurrentLease {
   id: string
   renterName: string | null
-  renterEmail: string
+  renterEmail: string | null
   monthlyRent: number | null
   startDate: Date
   endDate: Date | null

@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { transferUnitOwnership } from "@/app/actions/unit-ownership"
+import { proposeOwnershipTransfer } from "@/app/actions/unit-ownership"
 
 export function TransferOwnershipDialog({
   unitId,
@@ -33,7 +33,7 @@ export function TransferOwnershipDialog({
     setError("")
     setSaving(true)
     const form = new FormData(e.currentTarget)
-    const result = await transferUnitOwnership({
+    const result = await proposeOwnershipTransfer({
       unitId,
       newOwnerEmail: form.get("email") as string,
       newOwnerName: form.get("name") as string,
@@ -41,10 +41,10 @@ export function TransferOwnershipDialog({
     })
     setSaving(false)
     if (result.success) {
-      toast.success("Ownership transferred")
+      toast.success("Transfer proposed - waiting on confirmation")
       setOpen(false)
     } else {
-      setError(result.error || "Failed to transfer ownership")
+      setError(result.error || "Failed to propose transfer")
     }
   }
 
@@ -59,25 +59,26 @@ export function TransferOwnershipDialog({
       />
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Transfer Ownership - {unitDisplay}</DialogTitle>
+          <DialogTitle>Propose Ownership Transfer - {unitDisplay}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           {currentOwnerName && (
             <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-              Currently owned by <span className="font-medium">{currentOwnerName}</span> - recording a
-              transfer ends their ownership as of the date below.
+              Currently owned by <span className="font-medium">{currentOwnerName}</span> - proposing a
+              transfer won&apos;t change anything yet. Every current owner must confirm they&apos;re
+              divesting, and the new owner must confirm by accepting their invite, before ownership
+              actually moves.
             </p>
           )}
           <div className="space-y-1">
             <Label>New Owner&apos;s Name</Label>
-            <Input name="name" placeholder="e.g. Jane Ellmann" />
+            <Input name="name" placeholder="e.g. Jane Ellmann" required />
           </div>
           <div className="space-y-1">
             <Label>New Owner&apos;s Email</Label>
             <Input name="email" type="email" placeholder="owner@example.com" required />
             <p className="text-xs text-gray-400">
-              An account is created for them automatically - it stays inactive until they set a
-              password and log in.
+              They&apos;ll get an invite to confirm - nothing changes until they accept it.
             </p>
           </div>
           <div className="space-y-1">
@@ -87,7 +88,7 @@ export function TransferOwnershipDialog({
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2 justify-end pt-1">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Transfer"}</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Proposing..." : "Propose Transfer"}</Button>
           </div>
         </form>
       </DialogContent>

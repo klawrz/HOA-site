@@ -3,61 +3,37 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, FileText, Mail, Phone, Megaphone, DollarSign, PiggyBank, ChevronRight } from "lucide-react"
-import { documentCategoryLabel, documentCategoryColor } from "@/lib/document-styles"
-import { formatDateISO } from "@/lib/utils"
-import { AnnouncementList } from "@/components/announcements/announcement-list"
-import { MarkAnnouncementsRead } from "@/components/announcements/mark-announcements-read"
-import { NewAnnouncementDialog } from "@/components/announcements/new-announcement-dialog"
-import { NewMeetingDialog } from "@/app/dashboard/board/meetings/new-meeting-dialog"
-import { MeetingMinutesDialog } from "@/app/dashboard/board/meetings/minutes-dialog"
-import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
+import { DollarSign, FileText, Receipt, ChevronRight } from "lucide-react"
 import { BudgetEditor } from "@/components/budgets/budget-editor"
-import { ReserveFundSummary } from "@/components/reserve-fund/reserve-fund-summary"
-import { BankInfoCard } from "@/components/key-info/bank-info-card"
-import { KeyContactList } from "@/components/key-info/key-contact-list"
-import { KeyContactDialog } from "@/components/key-info/key-contact-dialog"
-import { PolicyTextCard } from "@/components/key-info/policy-text-card"
-import { PropertyAddressCard } from "@/components/key-info/property-address-card"
 import { BoardRosterCard } from "@/components/key-info/board-roster-card"
-import { KeyDatesCard } from "@/components/key-info/key-dates-card"
-import { getUpcomingKeyDates } from "@/lib/key-dates"
 import { PMKeyContactCard } from "@/components/key-info/pm-key-contact-card"
-import { setOccupancyPolicy, setRentalPoolGuidelines } from "@/app/actions/key-info"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
 import { getPMSetupStatus } from "@/lib/setup-status"
 import { canPreviewRole } from "@/lib/role-access"
 
+// Tightened 2026-08-28 per Dara: "Only the financial governance block
+// below that - budget, dues, link to documents." Everything else that
+// used to live here (Key Dates, Announcements, Property Address, Bank
+// Info, Insurance, generic Key Contacts, the two policy-text cards,
+// Upcoming Meetings, Reserve Fund) is gone from this page - Key Dates and
+// Announcements already have their own home on the Owner home page, the
+// rest stays reachable from Board's/PM's/Account Owner's own fuller Key
+// Information pages. An owner clicking "Board" now sees exactly: who's on
+// it, the PM (highlighted), and financial governance (budget/dues/docs).
 export default async function OwnerGovernancePage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "OWNER")) redirect("/dashboard")
 
-  const now = new Date()
   const isBoardMember = session.user.isBoardMember
 
-  const [announcements, boardPositions, meetings, documents, latestApprovedBudget, org, reserveTransactions, keyContacts, orgMemberships, activePMContract, ownMembership, pmStatus] = await Promise.all([
-    db.announcement.findMany({
-      where: { orgId: session.user.orgId ?? undefined },
-      include: {
-        author: true,
-        comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
+  const [boardPositions, documents, latestApprovedBudget, org, activePMContract, ownMembership, pmStatus] = await Promise.all([
     db.boardPosition.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { user: true },
       orderBy: { title: "asc" },
     }),
-    db.meeting.findMany({
-      where: { orgId: session.user.orgId ?? undefined },
-      orderBy: { date: "desc" },
-    }),
     db.document.findMany({
-      // Board-authorized owners also see BOARD_AND_PM-visibility documents,
-      // not just the OWNERS tier - matches what they'd see on the (removed)
-      // separate Board management page this content used to live on.
       where: { orgId: session.user.orgId ?? undefined, ...(isBoardMember ? {} : { visibility: "OWNERS" }) },
       orderBy: { createdAt: "desc" },
     }),
@@ -67,15 +43,9 @@ export default async function OwnerGovernancePage() {
       orderBy: { year: "desc" },
     }),
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
-    db.reserveTransaction.findMany({ where: { orgId: session.user.orgId ?? undefined } }),
-    db.keyContact.findMany({
-      where: { orgId: session.user.orgId ?? undefined },
-      orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
-    }),
-    db.membership.findMany({ where: { orgId: session.user.orgId ?? undefined }, select: { userId: true, role: true } }),
     db.pMContract.findFirst({
       where: { orgId: session.user.orgId ?? undefined, status: "ACTIVE" },
-      include: { company: true },
+      include: { company: { include: { emergencyContacts: { orderBy: { createdAt: "asc" } } } } },
       orderBy: { startDate: "desc" },
     }),
     db.membership.findUnique({
@@ -84,355 +54,98 @@ export default async function OwnerGovernancePage() {
     }),
     getPMSetupStatus(session.user.orgId ?? ""),
   ])
-  const roleByUserId = new Map(orgMemberships.map((m) => [m.userId, m.role]))
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("governance")
-  const keyDates = await getUpcomingKeyDates(session.user.orgId ?? "", {
-    agm: "/dashboard/owner/governance/agm",
-    dues: "/dashboard/owner/financial/dues",
-  })
-
-  const reserveBalance = reserveTransactions.reduce(
-    (s, t) => s + (t.type === "DEPOSIT" ? t.amount : -t.amount),
-    0
-  )
-
-  const upcomingMeetings = meetings.filter((m) => m.date >= now).sort((a, b) => a.date.getTime() - b.date.getTime())
-  const pastMeetings = meetings.filter((m) => m.date < now)
-
-  const groupedDocs = documents.reduce<Record<string, typeof documents>>((acc, d) => {
-    if (!acc[d.category]) acc[d.category] = []
-    acc[d.category].push(d)
-    return acc
-  }, {})
 
   return (
     <div className="space-y-6">
       <OnboardingStepTracker stepId="governance" alreadyComplete={onboardingStepDone} />
       <div>
         <h1 className="text-2xl font-bold">Governance</h1>
-        <p className="text-gray-500 mt-1">
-          News, your Board, upcoming meetings, and the document repository
-        </p>
+        <p className="text-gray-500 mt-1">Your Board, the Property Manager, and financial governance</p>
       </div>
 
       <BoardRosterCard positions={boardPositions} />
 
-      <KeyDatesCard dates={keyDates} />
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Megaphone className="h-4 w-4" /> Announcements
-          </CardTitle>
-          {isBoardMember && <NewAnnouncementDialog />}
-        </CardHeader>
-        <CardContent>
-          <MarkAnnouncementsRead announcementIds={announcements.map((a) => a.id)} />
-          <AnnouncementList
-            announcements={announcements.map((a) => ({
-              id: a.id,
-              title: a.title,
-              content: a.content,
-              createdAt: a.createdAt,
-              author: { name: a.author.name, email: a.author.email, role: roleByUserId.get(a.authorId) ?? "OWNER" },
-              comments: a.comments.map((c) => ({
-                id: c.id,
-                content: c.content,
-                createdAt: c.createdAt,
-                authorId: c.authorId,
-                author: { name: c.author.name, email: c.author.email, role: roleByUserId.get(c.authorId) ?? "OWNER" },
-              })),
-            }))}
-            canManage={isBoardMember}
-            currentUserId={session.user.id}
-          />
-        </CardContent>
-      </Card>
-
-      <PropertyAddressCard
-        address={{
-          addressLine1: org?.addressLine1 ?? null,
-          addressLine2: org?.addressLine2 ?? null,
-          city: org?.city ?? null,
-          state: org?.state ?? null,
-          postalCode: org?.postalCode ?? null,
-          country: org?.country ?? null,
-        }}
-      />
-
-      <BankInfoCard
-        bank={{
-          bankName: org?.bankName ?? null,
-          bankAddress: org?.bankAddress ?? null,
-          bankPhone: org?.bankPhone ?? null,
-          bankAccountName: org?.bankAccountName ?? null,
-          bankSigningAuthority: org?.bankSigningAuthority ?? null,
-          bankPaymentInstructions: org?.bankPaymentInstructions ?? null,
-          bankContactName: org?.bankContactName ?? null,
-          bankContactPhone: org?.bankContactPhone ?? null,
-          bankContactEmail: org?.bankContactEmail ?? null,
-        }}
-        canManage={isBoardMember}
-      />
-
-      <PMKeyContactCard company={activePMContract?.company ?? null} status={pmStatus} />
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4" /> Key Contacts
-          </CardTitle>
-          {isBoardMember && <KeyContactDialog />}
-        </CardHeader>
-        <CardContent>
-          <KeyContactList
-            contacts={keyContacts.map((c) => ({
-              id: c.id,
-              category: c.category,
-              name: c.name,
-              role: c.role,
-              phone: c.phone,
-              email: c.email,
-              notes: c.notes,
-            }))}
-            canManage={isBoardMember}
-          />
-        </CardContent>
-      </Card>
-
-      <PolicyTextCard
-        icon="eye"
-        title="Occupancy Visibility Policy"
-        description="Whether this HOA expects occupancy to be visible to the Board/PM - a statement of intent, never enforced. Each owner's own choice on their unit always stands."
-        placeholder="e.g. For security and access purposes, we ask owners to make occupancy visible to the Board..."
-        value={org?.occupancyVisibilityPolicy ?? null}
-        canManage={isBoardMember}
-        action={setOccupancyPolicy}
-        successMessage="Occupancy visibility policy updated"
-      />
-
-      <PolicyTextCard
-        icon="home"
-        title="Rental Pool Guidelines"
-        description="Shown to any owner considering joining the property's shared rental coordination pool."
-        placeholder="e.g. Pool members agree to a minimum 2-night notice before referring overflow guests..."
-        value={org?.rentalPoolGuidelines ?? null}
-        canManage={isBoardMember}
-        action={setRentalPoolGuidelines}
-        successMessage="Rental pool guidelines updated"
+      <PMKeyContactCard
+        company={activePMContract?.company ?? null}
+        status={pmStatus}
+        highlighted
+        ticketsHref="/dashboard/owner/tickets"
       />
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4" /> Board of Directors
+            <DollarSign className="h-4 w-4" /> Financial Governance
           </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {boardPositions.length === 0 && (
-            <p className="text-sm text-gray-500">No Board positions on file yet.</p>
-          )}
-          {boardPositions.map((p) => (
-            <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-              <div>
-                <p className="text-sm font-medium">
-                  {p.title}
-                  {p.user && <span className="text-gray-400 font-normal"> — {p.user.name ?? p.user.email}</span>}
-                  {!p.user && <span className="text-gray-400 font-normal"> — Vacant</span>}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {formatDateISO(p.termStart)}
-                  {p.termEnd ? ` – ${formatDateISO(p.termEnd)}` : " – present"}
-                </p>
-              </div>
-              {p.user && (
-                <div className="flex gap-3 text-xs text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <Mail className="h-3 w-3" /> {p.user.email}
-                  </span>
-                  {p.user.phone && (
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-3 w-3" /> {p.user.phone}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" /> Upcoming Meetings
-          </CardTitle>
-          {isBoardMember && <NewMeetingDialog />}
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {upcomingMeetings.length === 0 && (
-            <p className="text-sm text-gray-500">No upcoming meetings scheduled.</p>
-          )}
-          {upcomingMeetings.map((m) => (
-            <div key={m.id} className="bg-gray-50 rounded-lg px-3 py-2">
-              <p className="text-sm font-medium">{m.title}</p>
-              <p className="text-xs text-gray-400">
-                {m.date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-                {m.location && ` · ${m.location}`}
-              </p>
-              {m.agenda && <p className="text-xs text-gray-600 mt-1 whitespace-pre-line">{m.agenda}</p>}
-              {isBoardMember && <MeetingMinutesDialog meeting={m} />}
-            </div>
-          ))}
-          {pastMeetings.length > 0 && (
-            <details className="pt-2">
-              <summary className="text-xs text-gray-400 cursor-pointer">
-                {pastMeetings.length} past meeting{pastMeetings.length !== 1 ? "s" : ""}
-              </summary>
-              <div className="space-y-2 mt-2">
-                {pastMeetings.map((m) => (
-                  <div key={m.id} className="bg-gray-50 rounded-lg px-3 py-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{m.title}</p>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          m.minutes ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {m.minutes ? "Minutes filed" : "Minutes pending"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-400">{m.date.toLocaleDateString()}</p>
-                    {m.minutes && (
-                      <p className="text-xs text-gray-600 mt-1 whitespace-pre-line line-clamp-3">{m.minutes}</p>
-                    )}
-                    {isBoardMember && <MeetingMinutesDialog meeting={m} />}
-                  </div>
-                ))}
-              </div>
-            </details>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <DollarSign className="h-4 w-4" /> Approved Budget
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isBoardMember && (
-            <Link
-              href="/dashboard/owner/governance/board/finances"
-              className="flex items-center justify-between text-sm text-blue-600 hover:underline pb-3"
-            >
-              Manage all budgets
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          )}
-          {latestApprovedBudget ? (
-            <BudgetEditor
-              budget={{
-                id: latestApprovedBudget.id,
-                year: latestApprovedBudget.year,
-                version: latestApprovedBudget.version,
-                status: latestApprovedBudget.status,
-                notes: latestApprovedBudget.notes,
-                approvedAt: latestApprovedBudget.approvedAt,
-                approvalExchangeRate: latestApprovedBudget.approvalExchangeRate,
-                meetingTitle: latestApprovedBudget.meeting?.title ?? null,
-                lineItems: latestApprovedBudget.lineItems.map((i) => ({
-                  id: i.id,
-                  label: i.label,
-                  budgetedAmount: i.budgetedAmount,
-                  actualAmount: i.actualAmount,
-                  previousYearActual: i.previousYearActual,
-                  contractId: i.contractId,
-                  contractTitle: i.contract?.title ?? null,
-                })),
-              }}
-              contracts={[]}
-              meetings={[]}
-              canManage={false}
-              canApprove={false}
-              baseCurrency={org?.baseCurrency}
-              currentExchangeRate={org?.currentExchangeRate ?? null}
-              exchangeRateUpdatedAt={org?.exchangeRateUpdatedAt ?? null}
-            />
-          ) : (
-            <p className="text-sm text-gray-500">No approved budget yet.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <PiggyBank className="h-4 w-4" /> Reserve Fund
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ReserveFundSummary
-            balance={reserveBalance}
-            target={org?.reserveTarget ?? null}
-            policy={org?.reservePolicy ?? null}
-            heldAt={org?.reserveHeldAt ?? null}
-          />
-          {isBoardMember && (
-            <Link
-              href="/dashboard/owner/governance/board/finances/reserve"
-              className="flex items-center justify-between text-sm text-blue-600 hover:underline pt-3"
-            >
-              Manage reserve fund
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Document Repository
-          </CardTitle>
-          {isBoardMember && <NewDocumentDialog />}
         </CardHeader>
         <CardContent className="space-y-4">
-          {documents.length === 0 && <p className="text-sm text-gray-500">No documents on file yet.</p>}
-          {Object.entries(groupedDocs).map(([category, docs]) => {
-            return (
-              <div key={category}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${documentCategoryColor[category]}`}>
-                    {documentCategoryLabel[category]}
-                  </span>
-                  <span className="text-xs text-gray-400">{docs.length} document{docs.length !== 1 ? "s" : ""}</span>
-                </div>
-                <div className="space-y-2">
-                  {docs.map((d) => (
-                    <div key={d.id} className="flex items-start justify-between gap-3 bg-gray-50 rounded-lg px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">{d.title}</p>
-                        {d.description && <p className="text-xs text-gray-500 mt-0.5">{d.description}</p>}
-                        <p className="text-xs text-gray-400 mt-1">{d.createdAt.toLocaleDateString()}</p>
-                      </div>
-                      {d.fileUrl && (
-                        <a
-                          href={d.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline shrink-0"
-                        >
-                          View file
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+          <div>
+            {isBoardMember && (
+              <Link
+                href="/dashboard/owner/governance/board/finances"
+                className="flex items-center justify-between text-sm text-blue-600 hover:underline pb-3"
+              >
+                Manage all budgets
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            )}
+            {latestApprovedBudget ? (
+              <BudgetEditor
+                budget={{
+                  id: latestApprovedBudget.id,
+                  year: latestApprovedBudget.year,
+                  version: latestApprovedBudget.version,
+                  status: latestApprovedBudget.status,
+                  notes: latestApprovedBudget.notes,
+                  approvedAt: latestApprovedBudget.approvedAt,
+                  approvalExchangeRate: latestApprovedBudget.approvalExchangeRate,
+                  meetingTitle: latestApprovedBudget.meeting?.title ?? null,
+                  lineItems: latestApprovedBudget.lineItems.map((i) => ({
+                    id: i.id,
+                    label: i.label,
+                    budgetedAmount: i.budgetedAmount,
+                    actualAmount: i.actualAmount,
+                    previousYearActual: i.previousYearActual,
+                    contractId: i.contractId,
+                    contractTitle: i.contract?.title ?? null,
+                  })),
+                }}
+                contracts={[]}
+                meetings={[]}
+                canManage={false}
+                canApprove={false}
+                baseCurrency={org?.baseCurrency}
+                currentExchangeRate={org?.currentExchangeRate ?? null}
+                exchangeRateUpdatedAt={org?.exchangeRateUpdatedAt ?? null}
+              />
+            ) : (
+              <p className="text-sm text-gray-500">No approved budget yet.</p>
+            )}
+          </div>
+
+          <Link
+            href="/dashboard/owner/financial/dues"
+            className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-2.5 transition-colors"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <Receipt className="h-4 w-4 text-gray-500" /> Dues & Assessments
+            </span>
+            <ChevronRight className="h-4 w-4 text-gray-300" />
+          </Link>
+
+          <Link
+            href="/dashboard/owner/governance/documents"
+            className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-2.5 transition-colors"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <FileText className="h-4 w-4 text-gray-500" /> Document Repository
+              <span className="text-gray-400 font-normal">
+                · {documents.length} document{documents.length !== 1 ? "s" : ""}
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-gray-300" />
+          </Link>
         </CardContent>
       </Card>
     </div>

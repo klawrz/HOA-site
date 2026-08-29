@@ -25,7 +25,7 @@ type Unit = {
   sqft: number | null
   description: string | null
   civicRoll: string | null
-  owner: { name: string | null; email: string } | null
+  owner: { name: string | null; email: string | null } | null
 }
 
 export function EditUnitDialog({ unit, unitLabel }: { unit: Unit; unitLabel: string }) {

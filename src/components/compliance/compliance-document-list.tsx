@@ -31,7 +31,7 @@ type ComplianceDoc = {
   minutesFiled: boolean | null
   minutesFiledAt: Date | null
   createdAt: Date
-  uploadedBy: { name: string | null; email: string }
+  uploadedBy: { name: string | null; email: string | null }
 }
 
 export function ComplianceDocumentList({

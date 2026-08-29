@@ -44,10 +44,11 @@ export default async function PropertyManagerKeyInfoPage() {
     getPMSetupStatus(session.user.orgId ?? ""),
   ])
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("pm_key_info")
-  const keyDates = await getUpcomingKeyDates(session.user.orgId ?? "", {
-    agm: "/dashboard/property-manager/key-info/agm",
-    dues: "/dashboard/property-manager/finances/assessments",
-  })
+  const keyDates = await getUpcomingKeyDates(
+    session.user.orgId ?? "",
+    { agm: "/dashboard/property-manager/key-info/agm", dues: "/dashboard/property-manager/finances/assessments" },
+    ["PROPERTY_MANAGER"]
+  )
 
   return (
     <div className="space-y-6">
@@ -59,7 +60,7 @@ export default async function PropertyManagerKeyInfoPage() {
 
       <BoardRosterCard positions={boardPositions} />
 
-      <KeyDatesCard dates={keyDates} />
+      <KeyDatesCard dates={keyDates} canManage />
 
       <PropertyAddressCard
         address={{

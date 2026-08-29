@@ -31,15 +31,17 @@ interface ContactData {
 export function KeyContactDialog({
   contact,
   trigger,
+  defaultCategory,
 }: {
   contact?: ContactData
   trigger?: React.ReactNode
+  defaultCategory?: KeyContactCategory
 }) {
   const isEdit = !!contact
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [category, setCategory] = useState<KeyContactCategory>(contact?.category ?? "PROPERTY_MANAGER")
+  const [category, setCategory] = useState<KeyContactCategory>(contact?.category ?? defaultCategory ?? "PROPERTY_MANAGER")
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

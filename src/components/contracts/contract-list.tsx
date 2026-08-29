@@ -27,7 +27,7 @@ type ContractRow = {
   billingPeriod: string | null
   description: string | null
   fileUrl: string | null
-  contractor: { name: string | null; email: string; company: string | null }
+  contractor: { name: string | null; email: string | null; company: string | null }
 }
 
 export function ContractList({
@@ -95,7 +95,7 @@ export function ContractList({
                       )}
                     </div>
                     <p className="text-sm text-gray-500">
-                      {c.contractor.name ?? c.contractor.email}
+                      {c.contractor.name ?? c.contractor.email ?? "Unnamed"}
                       {c.contractor.company && ` · ${c.contractor.company}`}
                     </p>
                     {c.description && (

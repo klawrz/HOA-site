@@ -4,7 +4,7 @@ import { Role } from "@/generated/prisma"
 export interface OrgPerson {
   userId: string
   name: string | null
-  email: string
+  email: string | null
   hasPortalAccess: boolean
   membershipRole: Role | null
   unitNumbers: string[]
@@ -34,7 +34,7 @@ export async function getOrgPeople(orgId: string): Promise<OrgPerson[]> {
   ])
 
   const people = new Map<string, OrgPerson>()
-  function ensure(user: { id: string; name: string | null; email: string }) {
+  function ensure(user: { id: string; name: string | null; email: string | null }) {
     let p = people.get(user.id)
     if (!p) {
       p = {

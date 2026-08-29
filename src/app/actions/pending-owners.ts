@@ -166,6 +166,62 @@ export async function sendPendingOwnerInvite(id: string) {
   }
 }
 
+// Converts a staged roster entry directly into real owner(s) - Membership
+// + UnitOwnership - WITHOUT going through Invite/acceptance at all. Per
+// Dara, 2026-08-28: "all identified owners get membership whether or not
+// they need or use it" - the owner roster is a right of governance,
+// independent of whether that person ever logs into HOPE (same reasoning
+// as the old transferUnitOwnership's eager User creation). No email is
+// ever sent here - this is a purely internal record, safe to redo/correct
+// since nothing external is triggered. Accepts more than one {name, email}
+// pair since a unit's PendingOwner entry can represent joint owners
+// (a married couple, family members) sharing one staged row.
+//
+// email is optional (User.email became nullable 2026-08-28, per Dara:
+// "many owners may not have provided emails but can be pending full
+// members") - a no-email owner always gets a brand-new User (there's no
+// email to look up an existing one by, and none is fabricated), and
+// simply has no way to log in until a real email is added later.
+export async function convertPendingOwnerToRealOwners(
+  pendingOwnerId: string,
+  owners: { name: string; email?: string | null }[]
+) {
+  const { orgId } = await requireAccountOwner()
+
+  const pending = await db.pendingOwner.findFirst({ where: { id: pendingOwnerId, orgId } })
+  if (!pending) return { success: false, error: "Not found" }
+  if (owners.length === 0) return { success: false, error: "At least one owner is required" }
+
+  await db.$transaction(async (tx) => {
+    for (const o of owners) {
+      const email = o.email?.trim().toLowerCase() || null
+      let user = email ? await tx.user.findUnique({ where: { email } }) : null
+      if (!user) {
+        user = await tx.user.create({ data: { email, name: o.name.trim() || null, password: null } })
+      }
+      const existingMembership = await tx.membership.findUnique({
+        where: { userId_orgId: { userId: user.id, orgId } },
+      })
+      if (!existingMembership) {
+        await tx.membership.create({ data: { userId: user.id, orgId, role: "OWNER" } })
+      }
+      const existingOwnership = await tx.unitOwnership.findFirst({
+        where: { unitId: pending.unitId, ownerId: user.id, isCurrent: true },
+      })
+      if (!existingOwnership) {
+        await tx.unitOwnership.create({ data: { unitId: pending.unitId, ownerId: user.id } })
+      }
+    }
+    await tx.unit.update({ where: { id: pending.unitId }, data: { status: "OWNER_OCCUPIED" } })
+    await tx.pendingOwner.delete({ where: { id: pending.id } })
+  })
+
+  revalidateOwnerPaths()
+  revalidatePath("/dashboard/board/units")
+  revalidatePath("/dashboard/owner")
+  return { success: true }
+}
+
 // Bulk version - sends every staged owner that has an email, leaving
 // anyone still missing one on the roster rather than failing the batch.
 export async function sendAllPendingOwners() {

@@ -10,7 +10,7 @@ import { formatDateISO } from "@/lib/utils"
 interface Member {
   id: string
   name: string | null
-  email: string
+  email: string | null
 }
 
 interface RosterOwner {

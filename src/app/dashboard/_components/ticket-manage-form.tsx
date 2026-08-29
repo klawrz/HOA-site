@@ -16,7 +16,7 @@ import { TicketPriority } from "@/generated/prisma"
 interface Contractor {
   id: string
   name: string | null
-  email: string
+  email: string | null
   company: string | null
 }
 
@@ -82,7 +82,7 @@ export function TicketManageForm({
         value={contractorId}
         onValueChange={(v) => setContractorId(v ?? "")}
         items={Object.fromEntries(
-          contractors.map((c) => [c.id, `${c.name ?? c.email}${c.company ? ` (${c.company})` : ""}`])
+          contractors.map((c) => [c.id, `${c.name ?? c.email ?? "Unnamed"}${c.company ? ` (${c.company})` : ""}`])
         )}
       >
         <SelectTrigger className="h-8 text-xs">

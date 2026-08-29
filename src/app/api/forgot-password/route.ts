@@ -24,7 +24,11 @@ export async function POST(req: Request) {
       })
 
       const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000"
-      await sendPasswordResetEmail(user.email, `${baseUrl}/reset-password/${token.token}`)
+      // Use the request's own email, not user.email (now nullable on the
+      // model) - this user was looked up BY that exact address, so they're
+      // guaranteed equal here; a null-email account could never have
+      // matched the findUnique above in the first place.
+      await sendPasswordResetEmail(email, `${baseUrl}/reset-password/${token.token}`)
     }
 
     return NextResponse.json({ ok: true })

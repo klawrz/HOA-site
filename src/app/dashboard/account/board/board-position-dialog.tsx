@@ -26,7 +26,7 @@ import { createBoardPosition, updateBoardPosition } from "@/app/actions/board-po
 interface Member {
   id: string
   name: string | null
-  email: string
+  email: string | null
 }
 
 interface RosterOwner {
@@ -78,7 +78,7 @@ export function BoardPositionDialog({
   const [error, setError] = useState("")
 
   const memberItems: Record<string, string> = { "": "Vacant" }
-  for (const m of members) memberItems[m.id] = m.name ?? m.email
+  for (const m of members) memberItems[m.id] = m.name ?? m.email ?? "Unnamed"
 
   const rosterItems: Record<string, string> = { "": "Choose from your Owner Roster..." }
   for (const o of rosterOwners) rosterItems[o.id] = `${o.name ?? o.email ?? "Unnamed"} — Unit ${o.unitNumber}`

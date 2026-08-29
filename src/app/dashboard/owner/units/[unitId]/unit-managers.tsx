@@ -101,7 +101,7 @@ function ManagerGrantRow({
 
 interface DirectoryEntry {
   name: string | null
-  email: string
+  email: string | null
   company: string | null
   headline: string | null
   bio: string | null
@@ -380,25 +380,29 @@ export function UnitManagers({
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Unit Manager Directory</label>
                   <div className="space-y-2">
-                    {directory.map((d) => (
-                      <div key={d.email} className="border rounded-lg p-2.5 text-sm space-y-1">
+                    {directory.map((d, i) => (
+                      <div key={d.email ?? i} className="border rounded-lg p-2.5 text-sm space-y-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="font-medium">
-                              {d.name ?? d.email}
+                              {d.name ?? d.email ?? "Unnamed"}
                               {d.company && <span className="text-gray-400 font-normal"> · {d.company}</span>}
                             </p>
                             {d.headline && <p className="text-xs text-gray-600 mt-0.5">{d.headline}</p>}
                           </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="shrink-0"
-                            disabled={saving}
-                            onClick={() => handleAssignDirect(d.email)}
-                          >
-                            Assign
-                          </Button>
+                          {/* No email on file means there's nothing to assign
+                              by - assignment is always by email lookup. */}
+                          {d.email && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="shrink-0"
+                              disabled={saving}
+                              onClick={() => handleAssignDirect(d.email!)}
+                            >
+                              Assign
+                            </Button>
+                          )}
                         </div>
                         {d.specialties.length > 0 && (
                           <div className="flex flex-wrap gap-1">

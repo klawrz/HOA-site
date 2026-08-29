@@ -195,7 +195,7 @@ export async function extractContractFromFile(formData: FormData): Promise<
       const emailLower = fields.contractorEmail?.trim().toLowerCase()
       const match = contractors.find(
         (c) =>
-          (emailLower && c.user.email.toLowerCase() === emailLower) ||
+          (emailLower && c.user.email?.toLowerCase() === emailLower) ||
           (nameLower && c.user.name?.trim().toLowerCase() === nameLower)
       )
       matchedContractorId = match?.userId ?? null

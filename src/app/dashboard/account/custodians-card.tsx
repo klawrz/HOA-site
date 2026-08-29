@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { inviteCustodian, promoteToCustodian, stepDownAsCustodian } from "@/app/actions/custodians"
 
-type Member = { id: string; role: string; isBoardMember: boolean; user: { id: string; name: string | null; email: string } }
+type Member = { id: string; role: string; isBoardMember: boolean; user: { id: string; name: string | null; email: string | null } }
 
 export function CustodiansCard({
   members,

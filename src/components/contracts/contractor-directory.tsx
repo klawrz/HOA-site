@@ -8,7 +8,7 @@ const UNCATEGORIZED = "UNCATEGORIZED"
 type ContractorRow = {
   id: string
   name: string | null
-  email: string
+  email: string | null
   company: string | null
   phone: string | null
   category: string | null

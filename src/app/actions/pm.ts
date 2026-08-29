@@ -222,10 +222,15 @@ export async function approvePMContract(contractId: string, meetingId?: string) 
   return { success: true }
 }
 
+// Board-only, same as approving - per Dara, 2026-08-28: "only a Board
+// member can terminate that contract." Previously used the broader
+// canManagePMContract (which also allows ACCOUNT_OWNER, same as creating
+// a contract) - ending one is now held to the stricter bar, matching
+// approvePMContract's existing rule, not creation's looser one.
 export async function endPMContract(contractId: string) {
   const session = await auth()
-  if (!session?.user.orgId || !canManagePMContract(session.user.role, session.user.isBoardMember)) {
-    return { success: false }
+  if (!session?.user.orgId || !canApprovePMContract(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Only a Board Member can terminate a Property Manager contract" }
   }
 
   const contract = await db.pMContract.findUnique({ where: { id: contractId } })

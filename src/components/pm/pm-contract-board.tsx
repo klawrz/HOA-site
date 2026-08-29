@@ -42,8 +42,8 @@ interface PMContractRow {
   terminationTerms: string
   terms: string | null
   approvedAt: Date | null
-  createdBy: { name: string | null; email: string }
-  approvedBy: { name: string | null; email: string } | null
+  createdBy: { name: string | null; email: string | null }
+  approvedBy: { name: string | null; email: string | null } | null
   company: {
     id: string
     entityType: string
@@ -130,7 +130,7 @@ function PMContractCard({
   function handleEnd() {
     startEndTransition(async () => {
       const result = await endPMContract(c.id)
-      if (!result.success) toast.error("Failed to end contract")
+      if (!result.success) toast.error(result.error || "Failed to end contract")
     })
   }
 
@@ -171,7 +171,11 @@ function PMContractCard({
             {c.status === "PENDING" && canApprove && (
               <ApprovePMContractDialog contractId={c.id} meetings={meetings} />
             )}
-            {c.status !== "ENDED" && canManage && (
+            {/* Board-only, same bar as approving (canApprove), not the
+                looser canManage (which also covers ACCOUNT_OWNER) - per
+                Dara, 2026-08-28: "only a Board member can terminate that
+                contract." */}
+            {c.status !== "ENDED" && canApprove && (
               <Button
                 size="sm"
                 variant="outline"

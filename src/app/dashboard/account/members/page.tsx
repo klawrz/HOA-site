@@ -17,7 +17,7 @@ export default async function AccountMembersPage() {
     getUnitLabel(orgId),
   ])
 
-  const sorted = [...people].sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email))
+  const sorted = [...people].sort((a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? ""))
 
   // The document-import + staged-roster owner tooling is Account-Owner-only
   // (see requireAccountOwner in pending-owners.ts) - everyone else just sees

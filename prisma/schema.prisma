@@ -371,6 +371,7 @@ model Organization {
   units               Unit[]
   invites             Invite[]
   pendingOwners       PendingOwner[]
+  ownershipTransferRequests OwnershipTransferRequest[]
   meetings            Meeting[]
   pmContracts         PMContract[]
   pmAccessGrants      PMAccessGrant[]
@@ -380,6 +381,7 @@ model Organization {
   complianceDocuments ComplianceDocument[]
   boardPositions      BoardPosition[]
   announcements       Announcement[]
+  customKeyDates      CustomKeyDate[]
   budgets             Budget[]
   assessments         Assessment[]
   reserveTransactions ReserveTransaction[]
@@ -556,13 +558,65 @@ model Announcement {
   title     String
   content   String
   authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Audience targeting, added 2026-08-28 - null/empty means visible to
+  // everyone (the original, only behavior); otherwise a comma-separated
+  // list of Role values, same lightweight-string convention as
+  // Membership.onboardingSteps (see src/lib/onboarding-steps.ts) rather
+  // than a join table, since this is a small, rarely-multi-valued set.
+  // Parse/serialize/check helpers live in src/lib/audience.ts.
+  visibleRoles String?
+  // Optional self-cleaning expiry, added 2026-08-28 per Dara ("add a
+  // remove date or it will clutter") - null means it stays until manually
+  // deleted (the original, only behavior). Once past, it's filtered out of
+  // every list query (see the shared `notExpired` where-clause helper in
+  // src/app/actions/announcements.ts) rather than deleted outright, so it's
+  // still recoverable/auditable if ever needed.
+  removeAfter DateTime?
+  // Optional scheduled publish, added 2026-08-28 per Dara - null means it
+  // goes live immediately on creation (the original, only behavior). While
+  // in the future, it's excluded from the Owner-facing feed but STILL
+  // shown on the poster's own management view (with a "Scheduled" badge)
+  // so it can be tracked/edited before it goes live - the opposite
+  // treatment from removeAfter, which hides everywhere including the
+  // poster's own view once past.
+  postOn      DateTime?
+  // Soft-delete, added 2026-08-28 per Dara ("all announcements are long
+  // term archived") - governance communications need to stay retrievable
+  // for record-keeping even once retired, so the trash icon now archives
+  // (sets this) instead of a real db.announcement.delete(). null = active.
+  // Naturally-expired ones (removeAfter passed) are already never actually
+  // deleted either - they just get filtered by date - so both paths land
+  // in the same "Archived" section (see the Board/PM announcements pages)
+  // rather than needing two different history views.
+  archivedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   org      Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
   author   User                  @relation(fields: [authorId], references: [id])
   comments AnnouncementComment[]
   reads    AnnouncementRead[]
+}
+
+// A growing calendar-style list (meetings, payment dates, maintenance,
+// inspections, etc.) - deliberately separate from the singleton `KeyDate`
+// model above (AGM is "the one current AGM," updated in place; these are
+// many independent entries that accumulate and get deleted once past).
+// Same audience-targeting convention as Announcement.
+model CustomKeyDate {
+  id           String   @id @default(cuid())
+  orgId        String
+  title        String
+  date         DateTime
+  location     String?
+  notes        String?
+  visibleRoles String?
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy User         @relation(fields: [createdById], references: [id])
 }
 
 // Structured Q&A on a specific announcement, replacing the reply-all/
@@ -651,9 +705,75 @@ model Invite {
   importedUnitManagerEmail       String?
   importedUnitManagerPhone       String?
 
-  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  unit   Unit?        @relation(fields: [unitId], references: [id])
-  sentBy User         @relation("SentInvites", fields: [sentById], references: [id])
+  // Set only when this invite exists to carry a buyer's confirmation of a
+  // proposed ownership transfer (see OwnershipTransferRequest below) - a
+  // plain "join as owner" invite (bulk import, direct invite) leaves this
+  // null and keeps today's behavior (accepting it just adds a
+  // UnitOwnership row). When set, accepting this invite does NOT create
+  // the UnitOwnership immediately - it only records the buyer's
+  // confirmation; the actual ownership change waits for every required
+  // seller confirmation too (see tryCompleteOwnershipTransfer).
+  transferRequestId String? @unique
+
+  org             Organization             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  unit            Unit?                    @relation(fields: [unitId], references: [id])
+  sentBy          User                     @relation("SentInvites", fields: [sentById], references: [id])
+  transferRequest OwnershipTransferRequest? @relation(fields: [transferRequestId], references: [id])
+}
+
+// A Board-proposed ownership change, added 2026-08-28 per Dara ("no change
+// allowed... without verification by Board Member... and confirmation
+// acceptance by new owner and selling owner") - replaces the old immediate
+// transferUnitOwnership behavior. Nothing in UnitOwnership actually
+// changes until every required party has confirmed: every CURRENT owner
+// of the unit at proposal time (snapshotted into
+// OwnershipTransferSellerConfirmation - a unit can have more than one,
+// e.g. a married couple, and Dara's call was that ALL of them must
+// confirm, not just one on the unit's behalf) plus the new owner, whose
+// confirmation is just accepting the real Invite this creates (reusing
+// that existing flow rather than inventing a second one - see
+// applyUnitEffects in src/lib/accept-invite.ts).
+model OwnershipTransferRequest {
+  id            String                 @id @default(cuid())
+  orgId         String
+  unitId        String
+  newOwnerEmail String
+  newOwnerName  String
+  since         DateTime
+  status        TransferRequestStatus  @default(PENDING)
+  proposedById  String
+  completedAt   DateTime?
+  cancelledAt   DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  org                 Organization                          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  unit                Unit                                  @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  proposedBy          User                                  @relation(fields: [proposedById], references: [id])
+  invite              Invite?
+  sellerConfirmations OwnershipTransferSellerConfirmation[]
+}
+
+enum TransferRequestStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+// One row per current owner who must confirm - snapshotted at proposal
+// time so a later, unrelated ownership change elsewhere doesn't retroactively
+// add or remove who needs to sign off on THIS request.
+model OwnershipTransferSellerConfirmation {
+  id            String    @id @default(cuid())
+  requestId     String
+  ownerId       String
+  confirmedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  request OwnershipTransferRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  owner   User                     @relation(fields: [ownerId], references: [id])
+
+  @@unique([requestId, ownerId])
 }
 
 // A staged owner roster entry - deliberately separate from Invite. Adding
@@ -704,7 +824,15 @@ model PasswordResetToken {
 model User {
   id        String              @id @default(cuid())
   name      String?
-  email     String              @unique
+  // Nullable as of 2026-08-28, per Dara: "many owners may not have provided
+  // emails but can be pending full members" - a real Membership/UnitOwnership
+  // can now exist for someone with no email on file at all (shown honestly
+  // as "No email on file," never a fabricated placeholder address). Still
+  // @unique when present - SQLite (and Postgres) don't enforce uniqueness
+  // among NULLs, so any number of no-email users can coexist. A null-email
+  // user simply has no way to log in (no address to send an invite/reset
+  // to, no credential to match against) until one is added.
+  email     String?             @unique
   password  String?
   phone     String?
   company   String?
@@ -730,6 +858,8 @@ model User {
   memberships                 Membership[]
   sentInvites                 Invite[]                    @relation("SentInvites")
   ownedUnits                  UnitOwnership[]
+  proposedOwnershipTransfers  OwnershipTransferRequest[]
+  ownershipTransferSellerConfirmations OwnershipTransferSellerConfirmation[]
   leases                      Lease[]
   assignedTickets             TicketAssignment[]
   contracts                   Contract[]
@@ -743,6 +873,7 @@ model User {
   createdOccupancyShareLinks  OccupancyShareLink[]
   boardPositions              BoardPosition[]
   announcements               Announcement[]
+  createdCustomKeyDates       CustomKeyDate[]
   createdBudgets              Budget[]
   passwordResetTokens         PasswordResetToken[]
   createdAssessments          Assessment[]
@@ -785,6 +916,7 @@ model Unit {
 
   org                 Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
   ownerships          UnitOwnership[]
+  ownershipTransferRequests OwnershipTransferRequest[]
   leases              Lease[]
   tickets             TroubleTicket[]
   invites             Invite[]

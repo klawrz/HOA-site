@@ -20,6 +20,7 @@ import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-t
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
 import { getImportedUnitContactData } from "@/app/actions/unit-profile"
 import { ImportedContactPrompt } from "./imported-contact-prompt"
+import { ConfirmTransferButton } from "@/components/units/confirm-transfer-button"
 
 export default async function UnitDetailPage({
   params,
@@ -93,10 +94,27 @@ export default async function UnitDetailPage({
   const unitManagerDirectory = unitManagerMemberships.map((m) => m.user)
   const importedContactData = await getImportedUnitContactData(unit.id)
 
+  // A pending transfer this owner still needs to confirm they're divesting -
+  // shown right on the unit itself, not just the home page banner, since
+  // this is exactly the unit it's about.
+  const pendingSellerConfirmation = await db.ownershipTransferSellerConfirmation.findFirst({
+    where: { ownerId: session.user.id, confirmedAt: null, request: { unitId: unit.id, status: "PENDING" } },
+    include: { request: true },
+  })
+
   return (
     <div className="max-w-2xl space-y-4">
       <OnboardingStepTracker stepId="unit" alreadyComplete={onboardingStepDone} />
       {importedContactData && <ImportedContactPrompt unitId={unit.id} data={importedContactData} />}
+      {pendingSellerConfirmation && (
+        <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-sm text-amber-800">
+            This unit is being transferred to {pendingSellerConfirmation.request.newOwnerName}, effective{" "}
+            {formatDateTime(pendingSellerConfirmation.request.since)}. Confirm you&apos;re divesting to proceed.
+          </p>
+          <ConfirmTransferButton requestId={pendingSellerConfirmation.request.id} />
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold">{unitName}</h1>
         <p className="text-gray-500 mt-1">
@@ -249,7 +267,7 @@ export default async function UnitDetailPage({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="unit-manager">
         <CardHeader>
           <CardTitle className="text-base">Unit Manager</CardTitle>
           <p className="text-xs text-gray-400">

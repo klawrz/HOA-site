@@ -30,7 +30,7 @@ import { createContractorRecord } from "@/app/actions/contractor-profile"
 interface Contractor {
   id: string
   name: string | null
-  email: string
+  email: string | null
   company: string | null
   category: string | null
 }
@@ -41,7 +41,7 @@ const billingPeriods = Object.keys(billingPeriodLabel) as BillingPeriod[]
 
 function contractorLabel(c: Contractor) {
   const category = c.category ? contractorCategoryLabel[c.category] : null
-  const name = c.name ?? c.email
+  const name = c.name ?? c.email ?? "Unnamed"
   const company = c.company ? ` (${c.company})` : ""
   return category ? `${category} — ${name}${company}` : `${name}${company}`
 }
@@ -125,7 +125,7 @@ export function NewContractDialog(props: Props) {
     const catA = a.category ?? "￿"
     const catB = b.category ?? "￿"
     if (catA !== catB) return catA.localeCompare(catB)
-    return (a.name ?? a.email).localeCompare(b.name ?? b.email)
+    return (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")
   })
 
   async function handleAddContractor() {

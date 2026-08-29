@@ -44,10 +44,11 @@ export default async function BoardKeyInfoPage() {
     getPMSetupStatus(session.user.orgId ?? ""),
   ])
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("board_key_info")
-  const keyDates = await getUpcomingKeyDates(session.user.orgId ?? "", {
-    agm: "/dashboard/board/key-info/agm",
-    dues: "/dashboard/board/finances/assessments",
-  })
+  const keyDates = await getUpcomingKeyDates(
+    session.user.orgId ?? "",
+    { agm: "/dashboard/board/key-info/agm", dues: "/dashboard/board/finances/assessments" },
+    ["BOARD_MEMBER"]
+  )
 
   return (
     <div className="space-y-6">
@@ -59,7 +60,7 @@ export default async function BoardKeyInfoPage() {
 
       <BoardRosterCard positions={boardPositions} />
 
-      <KeyDatesCard dates={keyDates} />
+      <KeyDatesCard dates={keyDates} canManage />
 
       <PropertyAddressCard
         address={{

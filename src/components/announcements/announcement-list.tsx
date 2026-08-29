@@ -2,19 +2,25 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Megaphone, Trash2, Eye, MessageCircle } from "lucide-react"
-import { formatDateTime } from "@/lib/utils"
-import { deleteAnnouncement, addAnnouncementComment, deleteAnnouncementComment } from "@/app/actions/announcements"
+import { Megaphone, Trash2, Eye, MessageCircle, Users, Clock, ArchiveRestore, Archive } from "lucide-react"
+import { formatDateISO, formatDateTime } from "@/lib/utils"
+import {
+  archiveAnnouncement,
+  restoreAnnouncement,
+  addAnnouncementComment,
+  deleteAnnouncementComment,
+} from "@/app/actions/announcements"
+import { parseVisibleRoles, audienceRoleLabel } from "@/lib/audience"
+import { NewAnnouncementDialog } from "./new-announcement-dialog"
 
 type CommentRow = {
   id: string
   content: string
   createdAt: Date
   authorId: string
-  author: { name: string | null; email: string; role: string }
+  author: { name: string | null; email: string | null; role: string }
 }
 
 type AnnouncementRow = {
@@ -22,9 +28,13 @@ type AnnouncementRow = {
   title: string
   content: string
   createdAt: Date
-  author: { name: string | null; email: string; role: string }
+  author: { name: string | null; email: string | null; role: string }
   comments: CommentRow[]
   readCount?: number
+  visibleRoles?: string | null
+  removeAfter?: Date | null
+  postOn?: Date | null
+  archivedAt?: Date | null
 }
 
 const authorRoleLabel: Record<string, string> = {
@@ -109,49 +119,102 @@ export function AnnouncementList({
   announcements,
   canManage,
   currentUserId,
+  archivedView,
 }: {
   announcements: AnnouncementRow[]
   canManage: boolean
   currentUserId: string
+  // Renders the Restore action instead of Archive, and skips the
+  // scheduled/expiry badges (irrelevant once something's already archived).
+  archivedView?: boolean
 }) {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedContent, setExpandedContent] = useState<Set<string>>(new Set())
+
+  function toggleContent(id: string) {
+    setExpandedContent((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   async function handleRemove(id: string) {
     setRemovingId(id)
-    const result = await deleteAnnouncement(id)
+    const result = archivedView ? await restoreAnnouncement(id) : await archiveAnnouncement(id)
     setRemovingId(null)
-    if (!result.success) toast.error("Failed to remove announcement")
+    if (!result.success) toast.error(archivedView ? "Failed to restore announcement" : "Failed to archive announcement")
   }
 
   if (announcements.length === 0) {
-    return <p className="text-sm text-gray-500">No announcements yet.</p>
+    return <p className="text-sm text-gray-500">{archivedView ? "Nothing archived." : "No announcements yet."}</p>
   }
 
   return (
-    <div className="space-y-2">
-      {announcements.map((a) => (
-        <Card key={a.id}>
-          <CardContent className="py-3 px-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <Megaphone className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
+    <div className="space-y-1.5">
+      {announcements.map((a) => {
+        const isLong = a.content.length > 140 || a.content.includes("\n")
+        const showFull = expandedContent.has(a.id)
+        return (
+          <div key={a.id} className="bg-gray-50 rounded-lg px-3 py-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2 flex-1 min-w-0">
+                <Megaphone className="h-3.5 w-3.5 text-purple-500 mt-0.5 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-sm">{a.title}</p>
-                  <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{a.content}</p>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <p className="text-xs text-gray-400">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="font-semibold text-sm">{a.title}</span>
+                    <span className="text-xs text-gray-400">
                       {authorRoleLabel[a.author.role] ?? a.author.role} · {a.author.name ?? a.author.email} ·{" "}
                       {formatDateTime(a.createdAt)}
-                    </p>
+                    </span>
+                  </div>
+                  <p
+                    className={`text-sm text-gray-600 mt-0.5 whitespace-pre-line ${!showFull && isLong ? "line-clamp-2" : ""}`}
+                  >
+                    {a.content}
+                  </p>
+                  {isLong && (
+                    <button
+                      onClick={() => toggleContent(a.id)}
+                      className="text-xs text-gray-400 hover:text-gray-600 hover:underline"
+                    >
+                      {showFull ? "Show less" : "Show more"}
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2.5 mt-1 flex-wrap">
                     {canManage && a.readCount != null && (
-                      <span className="flex items-center gap-1 text-xs text-gray-400">
-                        <Eye className="h-3 w-3" /> Read by {a.readCount}
+                      <span className="flex items-center gap-1 text-[11px] text-gray-400">
+                        <Eye className="h-3 w-3" /> {a.readCount}
+                      </span>
+                    )}
+                    {canManage && (() => {
+                      const targets = parseVisibleRoles(a.visibleRoles ?? null)
+                      return targets ? (
+                        <span className="flex items-center gap-1 text-[11px] text-purple-600" title={targets.map((r) => audienceRoleLabel[r]).join(", ")}>
+                          <Users className="h-3 w-3" /> {targets.length === 1 ? audienceRoleLabel[targets[0]] : `${targets.length} roles`}
+                        </span>
+                      ) : null
+                    })()}
+                    {canManage && !archivedView && a.removeAfter && (
+                      <span className="flex items-center gap-1 text-[11px] text-gray-400">
+                        <Clock className="h-3 w-3" /> Removes {formatDateISO(a.removeAfter)}
+                      </span>
+                    )}
+                    {canManage && !archivedView && a.postOn && a.postOn > new Date() && (
+                      <span className="flex items-center gap-1 text-[11px] text-amber-600 font-medium">
+                        <Clock className="h-3 w-3" /> Scheduled {formatDateISO(a.postOn)}
+                      </span>
+                    )}
+                    {archivedView && a.archivedAt && (
+                      <span className="flex items-center gap-1 text-[11px] text-gray-400">
+                        <Archive className="h-3 w-3" /> Archived {formatDateISO(a.archivedAt)}
                       </span>
                     )}
                     <button
                       onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                      className="flex items-center gap-1 text-[11px] text-blue-600 hover:underline"
                     >
                       <MessageCircle className="h-3 w-3" />
                       {a.comments.length > 0 ? `${a.comments.length} repl${a.comments.length !== 1 ? "ies" : "y"}` : "Reply"}
@@ -168,18 +231,35 @@ export function AnnouncementList({
                 </div>
               </div>
               {canManage && (
-                <button
-                  onClick={() => handleRemove(a.id)}
-                  disabled={removingId === a.id}
-                  className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 shrink-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <NewAnnouncementDialog
+                    existing={{
+                      id: a.id,
+                      title: a.title,
+                      content: a.content,
+                      visibleRoles: a.visibleRoles ?? null,
+                      removeAfter: a.removeAfter ?? null,
+                      postOn: a.postOn ?? null,
+                    }}
+                  />
+                  <button
+                    onClick={() => handleRemove(a.id)}
+                    disabled={removingId === a.id}
+                    title={archivedView ? "Restore" : "Archive"}
+                    className={
+                      archivedView
+                        ? "text-gray-400 hover:text-green-600 transition-colors disabled:opacity-50 p-1"
+                        : "text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 p-1"
+                    }
+                  >
+                    {archivedView ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-      ))}
+          </div>
+        )
+      })}
     </div>
   )
 }

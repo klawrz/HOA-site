@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { Building2 } from "lucide-react"
 import { getUnitLabel, unitDisplayName, compareUnitNumbers } from "@/lib/unit-label"
 import { TransferOwnershipDialog } from "@/components/units/transfer-ownership-dialog"
+import { CancelTransferButton } from "@/components/units/cancel-transfer-button"
 import { canPreviewRole } from "@/lib/role-access"
 
 const statusColors: Record<string, string> = {
@@ -23,7 +24,7 @@ export default async function BoardUnitsPage() {
   if (!session?.user.orgId) redirect("/login")
   if (!canPreviewRole(session.user.role, "BOARD_MEMBER") && !session.user.isBoardMember) redirect("/dashboard")
 
-  const [units, unitLabel] = await Promise.all([
+  const [units, unitLabel, pendingTransfers] = await Promise.all([
     db.unit.findMany({
       where: { orgId: session.user.orgId },
       include: {
@@ -32,8 +33,13 @@ export default async function BoardUnitsPage() {
       },
     }),
     getUnitLabel(session.user.orgId),
+    db.ownershipTransferRequest.findMany({
+      where: { orgId: session.user.orgId, status: "PENDING" },
+      include: { sellerConfirmations: { include: { owner: true } }, invite: true },
+    }),
   ])
   units.sort(compareUnitNumbers)
+  const pendingByUnit = new Map(pendingTransfers.map((t) => [t.unitId, t]))
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -53,42 +59,73 @@ export default async function BoardUnitsPage() {
         )}
         {units.map((u) => {
           const display = unitDisplayName(unitLabel, u.number)
-          const owner = u.ownerships[0]?.owner
+          // A unit can have more than one current owner (a married couple,
+          // partners, co-owning friends - a real pattern in Dara's own
+          // imported owner roster) - show all of them, not just whichever
+          // happened to be first.
+          const ownerNames = u.ownerships.map((o) => o.owner.name ?? o.owner.email).join(" & ")
+          const earliestSince = u.ownerships.reduce<Date | null>(
+            (min, o) => (min === null || o.since < min ? o.since : min),
+            null
+          )
+          const pending = pendingByUnit.get(u.id)
           return (
-            <div key={u.id} className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="min-w-0">
-                  <p className="font-medium">{display}</p>
-                  <p className="text-xs text-gray-400">
-                    {[u.building, u.bedrooms && `${u.bedrooms}bd`, u.bathrooms && `${u.bathrooms}ba`]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+            <div key={u.id} className="px-5 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="min-w-0">
+                    <p className="font-medium">{display}</p>
+                    <p className="text-xs text-gray-400">
+                      {[u.building, u.bedrooms && `${u.bedrooms}bd`, u.bathrooms && `${u.bathrooms}ba`]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
+                    {u.status.replace(/_/g, " ")}
+                  </span>
+                  <div className="text-right text-xs">
+                    {ownerNames && <p className="text-gray-600">{ownerNames}</p>}
+                    {earliestSince && (
+                      <p className="text-gray-400">
+                        Since {new Date(earliestSince).toLocaleDateString()}
+                      </p>
+                    )}
+                    {u.managers[0] && (
+                      <p className="text-gray-400">
+                        UM: {u.managers[0].user?.name ?? u.managers[0].user?.email ?? u.managers[0].name}
+                      </p>
+                    )}
+                  </div>
+                  {!pending && (
+                    <TransferOwnershipDialog
+                      unitId={u.id}
+                      unitDisplay={display}
+                      currentOwnerName={ownerNames || null}
+                    />
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-4 shrink-0">
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
-                  {u.status.replace(/_/g, " ")}
-                </span>
-                <div className="text-right text-xs">
-                  {owner && <p className="text-gray-600">{owner.name ?? owner.email}</p>}
-                  {u.ownerships[0]?.since && (
-                    <p className="text-gray-400">
-                      Since {new Date(u.ownerships[0].since).toLocaleDateString()}
+              {pending && (
+                <div className="mt-3 flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs">
+                  <div className="text-amber-800">
+                    <p className="font-medium">
+                      Transfer to {pending.newOwnerName} pending confirmation
                     </p>
-                  )}
-                  {u.managers[0] && (
-                    <p className="text-gray-400">
-                      UM: {u.managers[0].user?.name ?? u.managers[0].user?.email ?? u.managers[0].name}
+                    <p className="text-amber-700">
+                      Sellers:{" "}
+                      {pending.sellerConfirmations
+                        .map((c) => `${c.owner.name ?? c.owner.email}${c.confirmedAt ? " ✓" : " (waiting)"}`)
+                        .join(", ") || "none required"}
+                      {" · "}
+                      Buyer: {pending.invite?.acceptedAt ? "✓ confirmed" : "waiting"}
                     </p>
-                  )}
+                  </div>
+                  <CancelTransferButton requestId={pending.id} />
                 </div>
-                <TransferOwnershipDialog
-                  unitId={u.id}
-                  unitDisplay={display}
-                  currentOwnerName={owner ? (owner.name ?? owner.email) : null}
-                />
-              </div>
+              )}
             </div>
           )
         })}

@@ -28,7 +28,7 @@ const roleColors: Record<string, string> = {
 type Member = {
   id: string
   name: string | null
-  email: string
+  email: string | null
   role: string | null
   units: string[]
   boardTitles: string[]
@@ -41,7 +41,7 @@ export function MembersList({ members, unitLabel }: { members: Member[]; unitLab
   const filtered = members.filter((m) => {
     const q = query.trim().toLowerCase()
     if (!q) return true
-    return (m.name ?? "").toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+    return (m.name ?? "").toLowerCase().includes(q) || (m.email ?? "").toLowerCase().includes(q)
   })
 
   return (
@@ -75,11 +75,15 @@ export function MembersList({ members, unitLabel }: { members: Member[]; unitLab
               className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{m.name ?? m.email}</p>
+                <p className="text-sm font-medium truncate">{m.name ?? m.email ?? "Unnamed"}</p>
                 <p className="text-xs text-gray-400 truncate">
-                  {m.email}
-                  {m.units.length > 0 && ` · ${unitLabel} ${m.units.join(", ")}`}
-                  {m.boardTitles.length > 0 && ` · ${m.boardTitles.join(", ")}`}
+                  {[
+                    m.email,
+                    m.units.length > 0 ? `${unitLabel} ${m.units.join(", ")}` : null,
+                    m.boardTitles.length > 0 ? m.boardTitles.join(", ") : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 ml-2">

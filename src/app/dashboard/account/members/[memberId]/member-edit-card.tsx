@@ -16,7 +16,7 @@ export function MemberEditCard({
 }: {
   memberId: string
   name: string | null
-  email: string
+  email: string | null
   phone: string | null
 }) {
   const [editing, setEditing] = useState(false)
@@ -44,11 +44,13 @@ export function MemberEditCard({
       <div className="bg-white border rounded-xl p-5">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-semibold">{name ?? email}</h2>
+            <h2 className="text-lg font-semibold">{name ?? email ?? "Unnamed"}</h2>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
-              <span className="flex items-center gap-1">
-                <Mail className="h-3.5 w-3.5" /> {email}
-              </span>
+              {email && (
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3.5 w-3.5" /> {email}
+                </span>
+              )}
               {phone && (
                 <span className="flex items-center gap-1">
                   <PhoneIcon className="h-3.5 w-3.5" /> {phone}

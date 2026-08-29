@@ -3,13 +3,19 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
+import { serializeVisibleRoles } from "@/lib/audience"
+import type { Role } from "@/generated/prisma"
 
 // Both the Board (formal notices, dues reminders, meeting news) and the
 // Property Manager (utility interruptions, access code changes, filter
 // reminders) issue news to Owners - unlike Meetings/Documents, which are
-// Board-only record-keeping.
+// Board-only record-keeping. ACCOUNT_OWNER added 2026-08-28 - every other
+// governance-ish action (documents, key dates, meetings) already includes
+// the custodian; this one had been missed, which is what actually blocked
+// Dara's own live test (he posts as ACCOUNT_OWNER on Sampaguita/
+// SampaguitaNEW, not as a Board Member).
 function canPostAnnouncement(role: string, isBoardMember: boolean) {
-  return role === "BOARD_MEMBER" || role === "PROPERTY_MANAGER" || isBoardMember
+  return role === "BOARD_MEMBER" || role === "PROPERTY_MANAGER" || role === "ACCOUNT_OWNER" || isBoardMember
 }
 
 function revalidateAnnouncementPaths() {
@@ -20,7 +26,26 @@ function revalidateAnnouncementPaths() {
   revalidatePath("/dashboard/board/announcements")
 }
 
-export async function createAnnouncement(data: { title: string; content: string }) {
+// End-of-day for removeAfter (a post should stay visible through its whole
+// last day), start-of-day for postOn (goes live first thing that day) -
+// same YYYY-MM-DD <input type="date"> value from the form either way, just
+// anchored to a different end of the day depending on which field it is.
+function parseDateField(raw: string | null | undefined, endOfDay: boolean): { ok: true; value: Date | null } | { ok: false } {
+  if (!raw) return { ok: true, value: null }
+  const parsed = new Date(`${raw}T${endOfDay ? "23:59:59" : "00:00:00"}`)
+  if (isNaN(parsed.getTime())) return { ok: false }
+  return { ok: true, value: parsed }
+}
+
+type AnnouncementInput = {
+  title: string
+  content: string
+  visibleRoles?: Role[] | null
+  removeAfter?: string | null
+  postOn?: string | null
+}
+
+export async function createAnnouncement(data: AnnouncementInput) {
   const session = await auth()
   if (!session || !session.user.orgId) return { success: false }
   if (!canPostAnnouncement(session.user.role, session.user.isBoardMember)) return { success: false }
@@ -34,12 +59,20 @@ export async function createAnnouncement(data: { title: string; content: string 
   const content = data.content.trim()
   if (!title || !content) return { success: false, error: "Title and content required" }
 
+  const removeAfter = parseDateField(data.removeAfter, true)
+  if (!removeAfter.ok) return { success: false, error: "Invalid remove-after date" }
+  const postOn = parseDateField(data.postOn, false)
+  if (!postOn.ok) return { success: false, error: "Invalid post-on date" }
+
   await db.announcement.create({
     data: {
       orgId: session.user.orgId,
       title,
       content,
       authorId: session.user.id,
+      visibleRoles: serializeVisibleRoles(data.visibleRoles),
+      removeAfter: removeAfter.value,
+      postOn: postOn.value,
     },
   })
 
@@ -47,7 +80,45 @@ export async function createAnnouncement(data: { title: string; content: string 
   return { success: true }
 }
 
-export async function deleteAnnouncement(id: string) {
+// Same permission model as archiveAnnouncement (no per-author restriction) -
+// any role that can post announcements at all can also edit any of them,
+// not just their own, mirroring how delete already works for this feature.
+export async function updateAnnouncement(id: string, data: AnnouncementInput) {
+  const session = await auth()
+  if (!session?.user.orgId) return { success: false }
+  if (!canPostAnnouncement(session.user.role, session.user.isBoardMember)) return { success: false }
+
+  const existing = await db.announcement.findUnique({ where: { id } })
+  if (!existing || existing.orgId !== session.user.orgId) return { success: false }
+
+  const title = data.title.trim()
+  const content = data.content.trim()
+  if (!title || !content) return { success: false, error: "Title and content required" }
+
+  const removeAfter = parseDateField(data.removeAfter, true)
+  if (!removeAfter.ok) return { success: false, error: "Invalid remove-after date" }
+  const postOn = parseDateField(data.postOn, false)
+  if (!postOn.ok) return { success: false, error: "Invalid post-on date" }
+
+  await db.announcement.update({
+    where: { id },
+    data: {
+      title,
+      content,
+      visibleRoles: serializeVisibleRoles(data.visibleRoles),
+      removeAfter: removeAfter.value,
+      postOn: postOn.value,
+    },
+  })
+
+  revalidateAnnouncementPaths()
+  return { success: true }
+}
+
+// Soft-delete, not a real db.announcement.delete() - governance
+// communications stay retrievable in the Archived section (see Board/PM
+// announcements pages) rather than being permanently erased.
+export async function archiveAnnouncement(id: string) {
   const session = await auth()
   if (!session?.user.orgId) return { success: false }
   if (!canPostAnnouncement(session.user.role, session.user.isBoardMember)) return { success: false }
@@ -55,7 +126,21 @@ export async function deleteAnnouncement(id: string) {
   const announcement = await db.announcement.findUnique({ where: { id } })
   if (!announcement || announcement.orgId !== session.user.orgId) return { success: false }
 
-  await db.announcement.delete({ where: { id } })
+  await db.announcement.update({ where: { id }, data: { archivedAt: new Date() } })
+
+  revalidateAnnouncementPaths()
+  return { success: true }
+}
+
+export async function restoreAnnouncement(id: string) {
+  const session = await auth()
+  if (!session?.user.orgId) return { success: false }
+  if (!canPostAnnouncement(session.user.role, session.user.isBoardMember)) return { success: false }
+
+  const announcement = await db.announcement.findUnique({ where: { id } })
+  if (!announcement || announcement.orgId !== session.user.orgId) return { success: false }
+
+  await db.announcement.update({ where: { id }, data: { archivedAt: null } })
 
   revalidateAnnouncementPaths()
   return { success: true }

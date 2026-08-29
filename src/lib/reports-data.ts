@@ -89,7 +89,7 @@ export interface ContractRow {
   startDate: Date
   endDate: Date | null
   amount: number | null
-  contractor: { name: string | null; email: string } | null
+  contractor: { name: string | null; email: string | null } | null
   unitNumber: string | null
   expiryStatus: ExpiryStatus
 }

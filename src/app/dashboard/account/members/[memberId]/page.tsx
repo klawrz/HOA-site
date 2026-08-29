@@ -96,12 +96,19 @@ export default async function MemberDetailPage({
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900 flex items-start gap-2">
           <Mail className="h-4 w-4 shrink-0 mt-0.5" />
           <p>
-            {user.name ?? user.email} is on file here but hasn&apos;t been invited to HOPE yet. Send an
-            invite to <span className="font-medium">{user.email}</span> from the{" "}
-            <Link href="/dashboard/account" className="underline">
-              Send Invites
-            </Link>{" "}
-            panel to give them portal access.
+            {user.name ?? user.email ?? "This person"} is on file here but hasn&apos;t been invited to
+            HOPE yet.{" "}
+            {user.email ? (
+              <>
+                Send an invite to <span className="font-medium">{user.email}</span> from the{" "}
+                <Link href="/dashboard/account" className="underline">
+                  Send Invites
+                </Link>{" "}
+                panel to give them portal access.
+              </>
+            ) : (
+              "No email is on file yet - add one before an invite can be sent."
+            )}
           </p>
         </div>
       )}
