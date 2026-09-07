@@ -6,7 +6,6 @@ import { Users } from "lucide-react"
 import { BankInfoCard } from "@/components/key-info/bank-info-card"
 import { KeyContactList } from "@/components/key-info/key-contact-list"
 import { KeyContactDialog } from "@/components/key-info/key-contact-dialog"
-import { PropertyAddressCard } from "@/components/key-info/property-address-card"
 import { BoardRosterCard } from "@/components/key-info/board-roster-card"
 import { KeyDatesCard } from "@/components/key-info/key-dates-card"
 import { getUpcomingKeyDates } from "@/lib/key-dates"
@@ -77,17 +76,6 @@ export default async function BoardKeyInfoPage() {
 
       <KeyDatesCard dates={keyDates} canManage />
 
-      <PropertyAddressCard
-        address={{
-          addressLine1: org?.addressLine1 ?? null,
-          addressLine2: org?.addressLine2 ?? null,
-          city: org?.city ?? null,
-          state: org?.state ?? null,
-          postalCode: org?.postalCode ?? null,
-          country: org?.country ?? null,
-        }}
-      />
-
       <BankInfoCard
         bank={{
           bankName: org?.bankName ?? null,
@@ -99,6 +87,14 @@ export default async function BoardKeyInfoPage() {
           bankContactName: org?.bankContactName ?? null,
           bankContactPhone: org?.bankContactPhone ?? null,
           bankContactEmail: org?.bankContactEmail ?? null,
+        }}
+        address={{
+          addressLine1: org?.addressLine1 ?? null,
+          addressLine2: org?.addressLine2 ?? null,
+          city: org?.city ?? null,
+          state: org?.state ?? null,
+          postalCode: org?.postalCode ?? null,
+          country: org?.country ?? null,
         }}
         canManage
         insuranceHref="/dashboard/board/contracts"
