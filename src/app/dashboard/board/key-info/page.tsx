@@ -21,7 +21,7 @@ export default async function BoardKeyInfoPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
-  const [org, contacts, boardPositions, activePMContract, ownMembership, pmStatus] = await Promise.all([
+  const [org, contacts, boardPositions, activePMContract, insuranceContract, ownMembership, pmStatus] = await Promise.all([
     db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     db.keyContact.findMany({
       where: { orgId: session.user.orgId ?? undefined },
@@ -35,6 +35,20 @@ export default async function BoardKeyInfoPage() {
     db.pMContract.findFirst({
       where: { orgId: session.user.orgId ?? undefined, status: "ACTIVE" },
       include: { company: true },
+      orderBy: { startDate: "desc" },
+    }),
+    // The active property-wide insurance contract - identified by its
+    // contractor being categorised INSURANCE (Contract itself has no
+    // category). Surfaced right in the bank block so "is coverage in
+    // place" is answered alongside the account details.
+    db.contract.findFirst({
+      where: {
+        orgId: session.user.orgId ?? undefined,
+        scope: "PROPERTY",
+        status: "ACTIVE",
+        contractor: { category: "INSURANCE" },
+      },
+      include: { contractor: true },
       orderBy: { startDate: "desc" },
     }),
     db.membership.findUnique({
@@ -86,6 +100,23 @@ export default async function BoardKeyInfoPage() {
           bankContactEmail: org?.bankContactEmail ?? null,
         }}
         canManage
+        insuranceHref="/dashboard/board/contracts"
+        insurance={
+          insuranceContract
+            ? {
+                insurerName:
+                  insuranceContract.contractor.company ??
+                  insuranceContract.contractor.name ??
+                  insuranceContract.contractor.email ??
+                  "Unknown insurer",
+                startDate: insuranceContract.startDate,
+                endDate: insuranceContract.endDate,
+                amount: insuranceContract.amount,
+                billingPeriod: insuranceContract.billingPeriod,
+                reminderDaysBefore: insuranceContract.reminderDaysBefore,
+              }
+            : null
+        }
       />
 
       <PMKeyContactCard company={activePMContract?.company ?? null} status={pmStatus} />
