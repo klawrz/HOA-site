@@ -112,6 +112,7 @@ const navByRole: Record<Role, NavEntry[]> = {
         { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt },
         { label: "Reserve Fund", href: "/dashboard/board/finances/reserve", icon: PiggyBank },
         { label: "Multi-Year Comparison", href: "/dashboard/board/finances/comparison", icon: TableProperties },
+        { label: "Banking & Insurance", href: "/dashboard/board/finances/banking", icon: Landmark },
       ],
     },
     { label: "Reports", href: "/dashboard/board/reports", icon: FileBarChart },
