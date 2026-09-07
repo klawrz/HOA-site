@@ -14,7 +14,10 @@ import { roleForPathname, ROLE_HOME } from "@/lib/role-access"
 import { Eye, X } from "lucide-react"
 
 type NavItem = { label: string; href: string; icon: React.ElementType; indent?: boolean }
-type NavGroup = { label: string; icon: React.ElementType; children: NavItem[] }
+// `href` optional: when set, the group header is a link to that page (its
+// own overview) as well as an expander, so there's no need for a
+// redundant "Overview" child.
+type NavGroup = { label: string; icon: React.ElementType; href?: string; children: NavItem[] }
 type NavEntry = NavItem | NavGroup
 
 function isGroup(entry: NavEntry): entry is NavGroup {
@@ -104,8 +107,8 @@ const navByRole: Record<Role, NavEntry[]> = {
     {
       label: "Finances",
       icon: DollarSign,
+      href: "/dashboard/board/finances",
       children: [
-        { label: "Overview", href: "/dashboard/board/finances", icon: DollarSign },
         { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt },
         { label: "Reserve Fund", href: "/dashboard/board/finances/reserve", icon: PiggyBank },
         { label: "Multi-Year Comparison", href: "/dashboard/board/finances/comparison", icon: TableProperties },
@@ -260,9 +263,14 @@ export function DashboardSidebar({
     return !!setupProgress?.[dependsOn]
   })
 
-  // Flatten to just the leaf (linkable) items for active-path matching -
-  // a group header itself has no href to match against.
-  const leafItems = visibleNavItems.flatMap((entry) => (isGroup(entry) ? entry.children : [entry]))
+  // Flatten to just the leaf (linkable) items for active-path matching.
+  // A group header with its own href counts as a leaf too, so landing on
+  // its overview page highlights it.
+  const leafItems = visibleNavItems.flatMap((entry) =>
+    isGroup(entry)
+      ? [...(entry.href ? [{ label: entry.label, href: entry.href, icon: entry.icon }] : []), ...entry.children]
+      : [entry]
+  )
   // The most specific href match wins - without this, a nested route like
   // /financial/contracts would highlight both "Financial" and "Contracts"
   // at once, since a plain prefix check matches both of their hrefs.
@@ -273,7 +281,11 @@ export function DashboardSidebar({
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>()
     for (const entry of visibleNavItems) {
-      if (isGroup(entry) && entry.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))) {
+      if (
+        isGroup(entry) &&
+        ((entry.href && (pathname === entry.href || pathname.startsWith(entry.href + "/"))) ||
+          entry.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/")))
+      ) {
         initial.add(entry.label)
       }
     }
@@ -285,7 +297,11 @@ export function DashboardSidebar({
   // page with its own sidebar entry hidden inside a closed group.
   useEffect(() => {
     for (const entry of visibleNavItems) {
-      if (isGroup(entry) && entry.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))) {
+      if (
+        isGroup(entry) &&
+        ((entry.href && (pathname === entry.href || pathname.startsWith(entry.href + "/"))) ||
+          entry.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/")))
+      ) {
         setExpanded((prev) => (prev.has(entry.label) ? prev : new Set(prev).add(entry.label)))
       }
     }
@@ -328,22 +344,45 @@ export function DashboardSidebar({
           if (isGroup(entry)) {
             const isOpen = expanded.has(entry.label)
             const groupActive = entry.children.some((c) => c === bestMatch)
+            const selfActive = !!entry.href && bestMatch?.href === entry.href
+            const headerClass = cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+              selfActive || (groupActive && !isOpen)
+                ? "bg-gray-900 text-white font-medium"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            )
             return (
               <div key={entry.label}>
-                <button
-                  type="button"
-                  onClick={() => toggle(entry.label)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer",
-                    groupActive && !isOpen
-                      ? "bg-gray-900 text-white font-medium"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  )}
-                >
-                  <entry.icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1 text-left">{entry.label}</span>
-                  {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                </button>
+                {entry.href ? (
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={entry.href}
+                      onClick={() => setExpanded((prev) => (prev.has(entry.label) ? prev : new Set(prev).add(entry.label)))}
+                      className={cn(headerClass, "flex-1")}
+                    >
+                      <entry.icon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1 text-left">{entry.label}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => toggle(entry.label)}
+                      aria-label={isOpen ? `Collapse ${entry.label}` : `Expand ${entry.label}`}
+                      className="p-2 rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors cursor-pointer"
+                    >
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggle(entry.label)}
+                    className={cn(headerClass, "w-full cursor-pointer")}
+                  >
+                    <entry.icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left">{entry.label}</span>
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  </button>
+                )}
                 {isOpen && (
                   <div className="mt-1 space-y-1">
                     {entry.children.map((item) => {
