@@ -83,14 +83,14 @@ export default async function BoardDashboard() {
           ) : (
             <div className="space-y-2">
               {boardPriorities.map((p, i) => (
-                <Link key={i} href={p.href} className="flex items-start gap-2.5 text-sm text-gray-700 hover:underline">
+                <Link key={`p-${i}`} href={p.href} className="flex items-start gap-2.5 text-sm text-gray-700 hover:underline">
                   <span className="mt-0.5 shrink-0">{p.icon}</span>
                   <span>{p.text}</span>
                 </Link>
               ))}
               {attentionItems.map((item, i) => (
                 <Link
-                  key={i}
+                  key={`a-${i}`}
                   href={item.href}
                   className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors"
                 >

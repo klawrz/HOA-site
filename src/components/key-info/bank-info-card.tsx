@@ -25,22 +25,24 @@ export function BankInfoCard({ bank, canManage }: { bank: BankInfo; canManage: b
         </CardTitle>
         {canManage && <BankInfoDialog bank={bank} />}
       </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <div>
-          <p className="text-xs text-gray-400">Bank</p>
-          <p>{bank.bankName || <span className="text-gray-400">Not on file</span>}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-400">Branch Address</p>
-          <p>{bank.bankAddress || <span className="text-gray-400">Not on file</span>}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-400">Branch Phone</p>
-          <p>{bank.bankPhone || <span className="text-gray-400">Not on file</span>}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-400">Account</p>
-          <p>{bank.bankAccountName || <span className="text-gray-400">Not on file</span>}</p>
+      <CardContent className="space-y-2 text-sm">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          <div>
+            <p className="text-xs text-gray-400">Bank</p>
+            <p className="truncate">{bank.bankName || <span className="text-gray-400">Not on file</span>}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400">Account</p>
+            <p className="truncate">{bank.bankAccountName || <span className="text-gray-400">Not on file</span>}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400">Branch Address</p>
+            <p className="truncate">{bank.bankAddress || <span className="text-gray-400">Not on file</span>}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400">Branch Phone</p>
+            <p className="truncate">{bank.bankPhone || <span className="text-gray-400">Not on file</span>}</p>
+          </div>
         </div>
         <div>
           <p className="text-xs text-gray-400">Signing Authority</p>
@@ -51,29 +53,27 @@ export function BankInfoCard({ bank, canManage }: { bank: BankInfo; canManage: b
           )}
         </div>
         <div>
-          <p className="text-xs text-gray-400 mb-1">Bank Key Contact</p>
+          <p className="text-xs text-gray-400">Bank Key Contact</p>
           {hasContact ? (
-            <div className="space-y-0.5">
-              {bank.bankContactName && <p className="text-gray-600">{bank.bankContactName}</p>}
-              <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                {bank.bankContactPhone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="h-3 w-3" /> {bank.bankContactPhone}
-                  </span>
-                )}
-                {bank.bankContactEmail && (
-                  <span className="flex items-center gap-1">
-                    <Mail className="h-3 w-3" /> {bank.bankContactEmail}
-                  </span>
-                )}
-              </div>
-            </div>
+            <p className="text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+              {bank.bankContactName && <span>{bank.bankContactName}</span>}
+              {bank.bankContactPhone && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Phone className="h-3 w-3" /> {bank.bankContactPhone}
+                </span>
+              )}
+              {bank.bankContactEmail && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Mail className="h-3 w-3" /> {bank.bankContactEmail}
+                </span>
+              )}
+            </p>
           ) : (
             <p className="text-gray-400">Not on file</p>
           )}
         </div>
-        <div className="bg-gray-50 rounded-lg px-3 py-2">
-          <p className="text-xs text-gray-400 mb-1">How to Pay Dues / Send Funds</p>
+        <div className="bg-gray-50 rounded-lg px-3 py-1.5">
+          <p className="text-xs text-gray-400">How to Pay Dues / Send Funds</p>
           {bank.bankPaymentInstructions ? (
             <p className="text-gray-600 whitespace-pre-line">{bank.bankPaymentInstructions}</p>
           ) : (

@@ -28,23 +28,23 @@ function Tile({
   return (
     <Link
       href={href}
-      className={`flex flex-col rounded-xl px-3 py-2.5 transition-colors ${c.bg} ${c.hoverBg}`}
+      className={`flex flex-col rounded-lg px-2.5 py-1.5 transition-colors ${c.bg} ${c.hoverBg}`}
     >
-      <div className="flex items-center gap-1.5">
-        <span className={`flex items-center justify-center h-6 w-6 rounded-full shrink-0 ${c.chip}`}>
-          <Icon className={`h-3.5 w-3.5 ${c.icon}`} />
-        </span>
-        <span className={`text-[11px] font-semibold leading-tight ${c.text}`}>{label}</span>
+      <div className="flex items-center gap-1">
+        <Icon className={`h-3 w-3 shrink-0 ${c.icon}`} />
+        <span className={`text-[10px] font-semibold uppercase tracking-wide truncate ${c.text}`}>{label}</span>
       </div>
-      <p className="text-sm font-bold mt-1.5 truncate text-gray-900">{value}</p>
-      {sub && <p className="text-[11px] text-gray-500 truncate">{sub}</p>}
+      <p className="text-xs font-bold leading-tight truncate text-gray-900">
+        {value}
+        {sub && <span className="font-normal text-gray-400"> · {sub}</span>}
+      </p>
     </Link>
   )
 }
 
 export function BoardPriorityTiles({ data }: { data: BoardPriorityTileData }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+    <div className="grid grid-cols-5 gap-1.5">
       <Tile
         href="/dashboard/board/finances"
         icon={DollarSign}
