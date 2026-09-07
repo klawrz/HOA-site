@@ -37,16 +37,17 @@ export default async function BoardKeyInfoPage() {
       include: { company: true },
       orderBy: { startDate: "desc" },
     }),
-    // The active property-wide insurance contract - identified by its
-    // contractor being categorised INSURANCE (Contract itself has no
-    // category). Surfaced right in the bank block so "is coverage in
-    // place" is answered alongside the account details.
+    // The active property-wide insurance contract - primarily identified by
+    // its contractor being categorised INSURANCE (Contract itself has no
+    // category), with a title fallback since the inline "add contractor"
+    // flow leaves category optional. Surfaced right in the bank block so
+    // "is coverage in place" is answered alongside the account details.
     db.contract.findFirst({
       where: {
         orgId: session.user.orgId ?? undefined,
         scope: "PROPERTY",
         status: "ACTIVE",
-        contractor: { category: "INSURANCE" },
+        OR: [{ contractor: { category: "INSURANCE" } }, { title: { contains: "insurance" } }],
       },
       include: { contractor: true },
       orderBy: { startDate: "desc" },

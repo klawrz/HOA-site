@@ -45,7 +45,7 @@ export default async function PropertyManagerKeyInfoPage() {
         orgId: session.user.orgId ?? undefined,
         scope: "PROPERTY",
         status: "ACTIVE",
-        contractor: { category: "INSURANCE" },
+        OR: [{ contractor: { category: "INSURANCE" } }, { title: { contains: "insurance" } }],
       },
       include: { contractor: true },
       orderBy: { startDate: "desc" },
