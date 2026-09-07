@@ -11,8 +11,10 @@ export interface QuickLinkTile {
 }
 
 // Written out as full literal class names (not template-built) so
-// Tailwind's content scanner actually picks them up.
-const quickLinkColors: Record<QuickLinkColor, { bg: string; hoverBg: string; chip: string; icon: string; text: string }> = {
+// Tailwind's content scanner actually picks them up. Exported so other
+// "priority tile" rows (e.g. the Board home page's Finances/PM/Units/
+// Employees/AGM tiles) render with the exact same colour system.
+export const quickLinkColors: Record<QuickLinkColor, { bg: string; hoverBg: string; chip: string; icon: string; text: string }> = {
   gray: { bg: "bg-gray-100", hoverBg: "hover:bg-gray-200", chip: "bg-gray-200", icon: "text-gray-600", text: "text-gray-700" },
   indigo: { bg: "bg-indigo-50", hoverBg: "hover:bg-indigo-100", chip: "bg-indigo-100", icon: "text-indigo-600", text: "text-indigo-800" },
   amber: { bg: "bg-amber-50", hoverBg: "hover:bg-amber-100", chip: "bg-amber-100", icon: "text-amber-600", text: "text-amber-800" },

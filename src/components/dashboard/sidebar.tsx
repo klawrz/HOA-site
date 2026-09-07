@@ -113,6 +113,7 @@ const navByRole: Record<Role, NavEntry[]> = {
     },
     { label: "Reports", href: "/dashboard/board/reports", icon: FileBarChart },
     { label: "Property Manager", href: "/dashboard/board/pm", icon: Wrench },
+    { label: "Employees", href: "/dashboard/board/employees", icon: Users },
     { label: "All Tickets", href: "/dashboard/board/tickets", icon: TicketIcon },
     {
       label: "Governance",
@@ -123,13 +124,13 @@ const navByRole: Record<Role, NavEntry[]> = {
         { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
         { label: "Announcements", href: "/dashboard/board/announcements", icon: Megaphone },
         { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
+        { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
       ],
     },
     { label: "Units", href: "/dashboard/board/units", icon: Building2 },
     { label: "Occupancy", href: "/dashboard/board/occupancy", icon: CalendarDays },
     { label: "Contracts", href: "/dashboard/board/contracts", icon: FileText },
     { label: "Contractors", href: "/dashboard/board/contractors", icon: Wrench, indent: true },
-    { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
   ],
   UNIT_MANAGER: [
     { label: "My Units", href: "/dashboard/unit-manager", icon: LayoutDashboard },

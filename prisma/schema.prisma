@@ -389,6 +389,7 @@ model Organization {
   reserveCapitalItems ReserveCapitalItem[]
   keyDates            KeyDate[]
   keyContacts         KeyContact[]
+  employees           Employee[]
   verificationRequests OrgVerificationRequest[]
 }
 
@@ -1643,4 +1644,69 @@ model ComplianceDocument {
   org        Organization?              @relation(fields: [orgId], references: [id], onDelete: Cascade)
   company    PropertyManagementCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   uploadedBy User                       @relation(fields: [uploadedById], references: [id])
+}
+
+// The HOA's own payroll staff (concierge, security, maintenance, building
+// manager, gardener). Distinct from KeyContact (external vendors /
+// professionals) and from any login Role - an Employee is a record the
+// Board keeps, not an account. Visible to every Board member; added or
+// removed by a Board Member or the Property Manager only.
+// NOTE: government program numbers below are sensitive PII - never
+// owner-facing, and a real deployment should treat this table accordingly
+// (encryption at rest / access audit), same standing flag as file storage.
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  FORMER
+}
+
+// The "government program numbers" pull-down. Mexico-first (IMSS social
+// security, CURP population registry, RFC tax id, INFONAVIT housing fund,
+// SAR/AFORE retirement, FONACOT credit) with OTHER + a free-text label for
+// anything not listed, same "preset list + Other" convention used for
+// capital items and contractor categories.
+enum EmployeeGovIdType {
+  IMSS
+  CURP
+  RFC
+  INFONAVIT
+  SAR_AFORE
+  FONACOT
+  OTHER
+}
+
+model Employee {
+  id             String         @id @default(cuid())
+  orgId          String
+  name           String
+  employeeNumber String?
+  position       String?
+  reportsTo      String? // manager's name / "Property Manager" / "Board President" - free text, the manager often isn't another listed employee
+  phone          String?
+  email          String?
+  homeAddress    String? // where they live - kept as one free-form block, same looseness as KeyContact
+  hireDate       DateTime?
+  endDate        DateTime? // set when they leave; null = still employed
+  status         EmployeeStatus @default(ACTIVE)
+  notes          String?
+  sortOrder      Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  org    Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  govIds EmployeeGovId[]
+
+  @@index([orgId])
+}
+
+model EmployeeGovId {
+  id         String           @id @default(cuid())
+  employeeId String
+  type       EmployeeGovIdType
+  label      String? // used when type is OTHER
+  value      String
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
 }

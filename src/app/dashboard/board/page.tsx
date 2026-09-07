@@ -1,127 +1,114 @@
+import type { ReactNode } from "react"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Calendar, DollarSign, Building2 } from "lucide-react"
+import { CalendarDays, ClipboardList, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { documentCategoryColor } from "@/lib/document-styles"
-import { getAttentionItems } from "@/lib/attention"
-import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel"
-import { BOARD_ONBOARDING_STEPS, BOARD_STEP_IDS, parseCompletedSteps, isOnboardingComplete } from "@/lib/onboarding-steps"
-import { OnboardingChecklistCard } from "@/components/onboarding/onboarding-checklist-card"
+import { getAttentionItems, attentionSeverityLabel } from "@/lib/attention"
+import { greeting } from "@/lib/greeting"
 import { BoardRosterPrompt } from "@/components/dashboard/board-roster-prompt"
 import { canPreviewRole } from "@/lib/role-access"
+
+const attentionSeverityColor: Record<string, string> = {
+  expired: "bg-red-100 text-red-800",
+  overdue: "bg-red-100 text-red-800",
+  over_budget: "bg-amber-100 text-amber-800",
+  expiring: "bg-amber-100 text-amber-800",
+}
 
 export default async function BoardDashboard() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
-  const [
-    meetingCount,
-    documentCount,
-    contractCount,
-    unitCount,
-    recentMeetings,
-    recentDocs,
-    attentionItems,
-    ownMembership,
-    ownBoardPosition,
-  ] = await Promise.all([
-    db.meeting.count({ where: { orgId: session.user.orgId ?? undefined } }),
-    db.document.count({ where: { orgId: session.user.orgId ?? undefined } }),
-    db.contract.count({ where: { orgId: session.user.orgId ?? undefined } }),
-    db.unit.count({ where: { orgId: session.user.orgId ?? undefined } }),
-    db.meeting.findMany({
-      where: { orgId: session.user.orgId ?? undefined },
-      orderBy: { date: "desc" },
-      take: 4,
-    }),
-    db.document.findMany({
-      where: { orgId: session.user.orgId ?? undefined },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
+  const now = new Date()
+  const orgId = session.user.orgId ?? undefined
+
+  // The priority-tile row (Finances / PM / Units / Employees / AGM) now
+  // lives in the Board layout so it sits on every Board page - this home
+  // page keeps just the "As a Board Member..." card (greeting + what needs
+  // attention right now) and the recent meetings/documents.
+  const [agm, minutesPending, attentionItems, recentMeetings, recentDocs, ownBoardPosition] = await Promise.all([
+    session.user.orgId
+      ? db.keyDate.findUnique({ where: { orgId_type: { orgId: session.user.orgId, type: "AGM" } } })
+      : Promise.resolve(null),
+    db.meeting.count({ where: { orgId, date: { lte: now }, minutes: null } }),
     session.user.orgId ? getAttentionItems(session.user.orgId, "/dashboard/board") : Promise.resolve([]),
-    db.membership.findUnique({
-      where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
-      select: { onboardingSteps: true },
-    }),
-    db.boardPosition.findFirst({
-      where: { orgId: session.user.orgId ?? undefined, userId: session.user.id },
-      select: { id: true },
-    }),
+    db.meeting.findMany({ where: { orgId }, orderBy: { date: "desc" }, take: 4 }),
+    db.document.findMany({ where: { orgId }, orderBy: { createdAt: "desc" }, take: 5 }),
+    db.boardPosition.findFirst({ where: { orgId, userId: session.user.id }, select: { id: true } }),
   ])
-  const completedSteps = parseCompletedSteps(ownMembership?.onboardingSteps ?? null)
-  const onboardingDone = isOnboardingComplete(ownMembership?.onboardingSteps ?? null, BOARD_STEP_IDS)
+
+  const agmDays = agm ? Math.ceil((agm.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null
+
+  // "As a Board Member..." priorities - meetings still missing minutes, an
+  // AGM coming up soon, plus everything getAttentionItems already flags
+  // (expiring contracts/compliance, overdue assessments, budget overage).
+  const boardPriorities: { icon: ReactNode; text: string; href: string }[] = []
+  if (minutesPending > 0) {
+    boardPriorities.push({
+      icon: <ClipboardList className="h-4 w-4 text-amber-600" />,
+      text: `${minutesPending} past meeting${minutesPending !== 1 ? "s" : ""} still ${minutesPending !== 1 ? "need" : "needs"} minutes filed.`,
+      href: "/dashboard/board/meetings",
+    })
+  }
+  if (agm && agmDays !== null && agmDays >= 0 && agmDays <= 30) {
+    boardPriorities.push({
+      icon: <CalendarDays className="h-4 w-4 text-purple-600" />,
+      text: `AGM on ${formatDate(agm.date)} — ${agmDays === 0 ? "today" : `${agmDays} day${agmDays !== 1 ? "s" : ""} away`}.`,
+      href: "/dashboard/board/key-info/agm",
+    })
+  }
+
+  const nothingPressing = boardPriorities.length === 0 && attentionItems.length === 0
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Board of Directors Dashboard</h1>
-        <p className="text-gray-500 mt-1">Community governance and institutional memory</p>
-      </div>
-
       {!ownBoardPosition && <BoardRosterPrompt href="/dashboard/board/board" />}
 
-      <OnboardingChecklistCard
-        steps={BOARD_ONBOARDING_STEPS}
-        completedIds={completedSteps}
-        allComplete={onboardingDone}
-        welcomeSeen={completedSteps.has("welcome_seen")}
-        completionTitle="You are ready to participate in governing your property."
-        completionMessage="You know the finances, the reserve fund, where meetings happen, and who to reach. Welcome to the Board."
-      />
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-8 w-8 text-blue-500" />
-              <div>
-                <p className="text-2xl font-bold">{meetingCount}</p>
-                <p className="text-xs text-gray-500">Meetings on Record</p>
-              </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">As a Board Member...</CardTitle>
+          <p className="text-xs text-gray-400">{greeting()}.</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {nothingPressing ? (
+            <p className="text-sm text-gray-500 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" /> Everything&apos;s quiet — minutes are up to
+              date, nothing expiring or overdue.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {boardPriorities.map((p, i) => (
+                <Link key={i} href={p.href} className="flex items-start gap-2.5 text-sm text-gray-700 hover:underline">
+                  <span className="mt-0.5 shrink-0">{p.icon}</span>
+                  <span>{p.text}</span>
+                </Link>
+              ))}
+              {attentionItems.map((item, i) => (
+                <Link
+                  key={i}
+                  href={item.href}
+                  className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{item.title}</p>
+                    <p className="text-xs text-gray-500">{item.detail}</p>
+                  </div>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-3 ${attentionSeverityColor[item.severity]}`}
+                  >
+                    {attentionSeverityLabel[item.severity]}
+                  </span>
+                </Link>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <FileText className="h-8 w-8 text-purple-500" />
-              <div>
-                <p className="text-2xl font-bold">{documentCount}</p>
-                <p className="text-xs text-gray-500">Documents</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <DollarSign className="h-8 w-8 text-green-500" />
-              <div>
-                <p className="text-2xl font-bold">{contractCount}</p>
-                <p className="text-xs text-gray-500">Contracts</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <Building2 className="h-8 w-8 text-orange-500" />
-              <div>
-                <p className="text-2xl font-bold">{unitCount}</p>
-                <p className="text-xs text-gray-500">Total Units</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <NeedsAttentionPanel items={attentionItems} />
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
@@ -142,7 +129,7 @@ export default async function BoardDashboard() {
                     <div>
                       <p className="text-sm font-medium">{m.title}</p>
                       <p className="text-xs text-gray-400">
-                        {new Date(m.date).toLocaleDateString()}
+                        {formatDate(m.date)}
                         {m.location && ` · ${m.location}`}
                       </p>
                     </div>
@@ -180,7 +167,7 @@ export default async function BoardDashboard() {
                     <div>
                       <p className="text-sm font-medium">{d.title}</p>
                       <p className="text-xs text-gray-400">
-                        {new Date(d.createdAt).toLocaleDateString()}
+                        {formatDate(d.createdAt)}
                       </p>
                     </div>
                     <span
