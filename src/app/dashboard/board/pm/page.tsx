@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { PMContractBoard } from "@/components/pm/pm-contract-board"
+import { PMSituationPanel } from "@/components/pm/pm-situation-panel"
 import { canPreviewRole } from "@/lib/role-access"
 
 export default async function BoardPMPage() {
@@ -32,12 +33,15 @@ export default async function BoardPMPage() {
   ])
 
   return (
-    <PMContractBoard
-      contracts={contracts}
-      companies={companies.map((c) => ({ id: c.id, legalName: c.legalName }))}
-      meetings={meetings.map((m) => ({ id: m.id, title: m.title, date: m.date }))}
-      canManage={canManage}
-      canApprove={isRealBoardMember}
-    />
+    <div className="space-y-6">
+      <PMSituationPanel />
+      <PMContractBoard
+        contracts={contracts}
+        companies={companies.map((c) => ({ id: c.id, legalName: c.legalName }))}
+        meetings={meetings.map((m) => ({ id: m.id, title: m.title, date: m.date }))}
+        canManage={canManage}
+        canApprove={isRealBoardMember}
+      />
+    </div>
   )
 }
