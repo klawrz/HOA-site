@@ -63,11 +63,12 @@ const navByRole: Record<Role, NavEntry[]> = {
     {
       label: "Finances",
       icon: DollarSign,
+      href: "/dashboard/property-manager/finances",
       children: [
-        { label: "Overview", href: "/dashboard/property-manager/finances", icon: DollarSign },
         { label: "Dues & Assessments", href: "/dashboard/property-manager/finances/assessments", icon: Receipt },
         { label: "Reserve Fund", href: "/dashboard/property-manager/finances/reserve", icon: PiggyBank },
         { label: "Multi-Year Comparison", href: "/dashboard/property-manager/finances/comparison", icon: TableProperties },
+        { label: "Banking & Insurance", href: "/dashboard/property-manager/finances/banking", icon: Landmark },
       ],
     },
     {

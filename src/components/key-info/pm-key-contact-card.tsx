@@ -49,7 +49,7 @@ export function PMKeyContactCard({
     <Card className={highlighted ? "ring-2 ring-amber-300 bg-amber-50/40" : undefined}>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Wrench className={`h-4 w-4 ${highlighted ? "text-amber-600" : ""}`} /> Property Manager
+          <Wrench className={`h-4 w-4 ${highlighted ? "text-amber-600" : ""}`} /> Property Management
           {highlighted && (
             <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
               Key Contact
