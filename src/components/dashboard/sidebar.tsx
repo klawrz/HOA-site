@@ -58,8 +58,15 @@ const navByRole: Record<Role, NavEntry[]> = {
   // landing pages) becomes that group's first child rather than trying to
   // make the group header double as both a link and a toggle.
   PROPERTY_MANAGER: [
-    { label: "Reports", href: "/dashboard/property-manager/reports", icon: FileBarChart },
-    { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
+    {
+      label: "Key Information",
+      icon: Landmark,
+      href: "/dashboard/property-manager/key-info",
+      children: [
+        { label: "PM Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
+        { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
+      ],
+    },
     {
       label: "Finances",
       icon: DollarSign,
@@ -71,6 +78,8 @@ const navByRole: Record<Role, NavEntry[]> = {
         { label: "Banking & Insurance", href: "/dashboard/property-manager/finances/banking", icon: Landmark },
       ],
     },
+    { label: "Reports", href: "/dashboard/property-manager/reports", icon: FileBarChart },
+    { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     {
       label: "Units",
       icon: Building2,
@@ -78,15 +87,6 @@ const navByRole: Record<Role, NavEntry[]> = {
         { label: "Owner Directory", href: "/dashboard/property-manager/owners", icon: Users },
         { label: "Unit Availability", href: "/dashboard/property-manager/units", icon: Building2 },
         { label: "Occupancy", href: "/dashboard/property-manager/occupancy", icon: CalendarDays },
-      ],
-    },
-    {
-      label: "Key Information",
-      icon: Landmark,
-      children: [
-        { label: "Overview", href: "/dashboard/property-manager/key-info", icon: Landmark },
-        { label: "PM Company Profile", href: "/dashboard/property-manager/company", icon: Settings },
-        { label: "Staff", href: "/dashboard/property-manager/staff", icon: Users },
       ],
     },
     { label: "Announcements", href: "/dashboard/property-manager/announcements", icon: Megaphone },
