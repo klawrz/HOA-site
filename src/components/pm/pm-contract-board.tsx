@@ -86,7 +86,7 @@ export function PMContractBoard({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Property Manager</h1>
+          <h1 className="text-2xl font-bold">Property Management</h1>
           <p className="text-gray-500 mt-1">
             The property management company (or individual) contracted by this association
           </p>
