@@ -172,6 +172,17 @@ export const RESPOND_TO_USER_SCHEMA: JsonSchema = {
   required: ["answer"],
 }
 
+// By-name lookup so the skill modules (src/lib/skills/) can compose their
+// tool lists from the single master registry above.
+const TOOLS_BY_NAME = new Map(ASK_HOPE_TOOLS.map((t) => [t.name, t]))
+export function pickTools(...names: string[]): AskHopeTool[] {
+  return names.map((n) => {
+    const t = TOOLS_BY_NAME.get(n)
+    if (!t) throw new Error(`Unknown Ask HOPE tool: ${n}`)
+    return t
+  })
+}
+
 export function getToolsForSession(session: AskHopeSession): AskHopeTool[] {
   return ASK_HOPE_TOOLS.filter((tool) => tool.isAvailable(session))
 }

@@ -4,7 +4,8 @@ import Anthropic from "@anthropic-ai/sdk"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { buildSystemPrompt } from "@/lib/ask-hope-prompt"
-import { getToolsForSession, findTool, RESPOND_TO_USER_TOOL_NAME, RESPOND_TO_USER_SCHEMA } from "@/lib/ask-hope-tools"
+import { findTool, RESPOND_TO_USER_TOOL_NAME, RESPOND_TO_USER_SCHEMA } from "@/lib/ask-hope-tools"
+import { getSkillToolsForSession, getSkillSystemFragments } from "@/lib/skills"
 
 export type ChatTurn = { role: "user" | "assistant"; content: string }
 
@@ -72,14 +73,16 @@ export async function askHope(turns: ChatTurn[]): Promise<AskHopeResponse> {
   }
 
   const org = await db.organization.findUnique({ where: { id: session.user.orgId } })
-  const tools = getToolsForSession(session)
+  const tools = getSkillToolsForSession(session)
   const toolDefinitions = [
     ...tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
     { name: RESPOND_TO_USER_TOOL_NAME, description: "End your turn with the final answer for the user.", input_schema: RESPOND_TO_USER_SCHEMA },
   ]
 
   const anthropic = new Anthropic({ apiKey, timeout: REQUEST_TIMEOUT_MS })
-  const systemPrompt = buildSystemPrompt(session, org?.name ?? "your HOA")
+  const skillFragments = getSkillSystemFragments(session)
+  const systemPrompt =
+    buildSystemPrompt(session, org?.name ?? "your HOA") + (skillFragments ? `\n\n${skillFragments}` : "")
 
   const messages: Anthropic.MessageParam[] = turns.map((t) => ({ role: t.role, content: t.content }))
 
