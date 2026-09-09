@@ -204,14 +204,6 @@ export function BudgetEditor({
   // Group line items by category, order groups by total budgeted spend
   // (biggest first), order lines within a group the same way, and number
   // the whole thing continuously so "line 14" in a meeting is unambiguous.
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
-  const toggleGroup = (key: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      return next
-    })
-
   const colCount = (canManage ? 7 : 6) + (showSecondary ? 2 : 0)
 
   const groupMap = new Map<string, { items: LineItem[]; total: number; priorTotal: number; hasPrior: boolean }>()
@@ -239,6 +231,16 @@ export function BudgetEditor({
     .map((g) => ({ ...g, items: g.items.map((item) => ({ item, number: ++counter })) }))
   // Only show group headers when there's a real category in play.
   const showGroups = groups.length > 1 || (groups.length === 1 && groups[0].key !== GROUP_NONE)
+
+  // Landing view starts fully collapsed - the Board wants the category
+  // picture (each category's share of the budget) before drilling in.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(groups.map((g) => g.key)))
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
 
   return (
     <div className="space-y-4">
@@ -349,6 +351,7 @@ export function BudgetEditor({
             <tbody className="divide-y">
               {groups.map((g) => {
                 const open = !collapsed.has(g.key)
+                const pct = totals.budgeted > 0 ? Math.round((g.total / totals.budgeted) * 100) : 0
                 return (
                   <Fragment key={g.key}>
                     {showGroups && (
@@ -364,6 +367,9 @@ export function BudgetEditor({
                             {g.label}
                             <span className="text-gray-400 font-normal">
                               · {g.items.length} line{g.items.length !== 1 ? "s" : ""}
+                            </span>
+                            <span className="ml-1 rounded bg-gray-200 px-1.5 py-0.5 text-[11px] font-medium text-gray-600 tabular-nums">
+                              {pct}% of budget
                             </span>
                           </button>
                         </td>
