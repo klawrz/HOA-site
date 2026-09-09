@@ -56,7 +56,6 @@ export function ReserveFundSummary({
         <div>
           <p className="text-xs text-gray-400">Signing Authority</p>
           <p className="whitespace-pre-line">{signingAuthority || <span className="text-gray-400">Not on file</span>}</p>
-          <p className="text-xs text-gray-400 mt-0.5">(edit from Key Information)</p>
         </div>
       </div>
 

@@ -19,10 +19,12 @@ export function ReserveDetailsDialog({
   currentTarget,
   currentPolicy,
   currentHeldAt,
+  currentSigningAuthority,
 }: {
   currentTarget: number | null
   currentPolicy: string | null
   currentHeldAt: string | null
+  currentSigningAuthority?: string | null
 }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -38,6 +40,7 @@ export function ReserveDetailsDialog({
       target: rawTarget.trim() === "" ? null : Number(rawTarget),
       policy: (form.get("policy") as string) ?? "",
       heldAt: (form.get("heldAt") as string) ?? "",
+      signingAuthority: (form.get("signingAuthority") as string) ?? "",
     })
     setSaving(false)
     if (result.success) {
@@ -76,6 +79,19 @@ export function ReserveDetailsDialog({
               placeholder="e.g. Bank of America - Reserve Acct #1234"
               defaultValue={currentHeldAt ?? undefined}
             />
+          </div>
+          <div className="space-y-1">
+            <Label>Signing authority</Label>
+            <Textarea
+              key={currentSigningAuthority}
+              name="signingAuthority"
+              placeholder="Who can authorise reserve withdrawals - e.g. two of: President, Treasurer, Secretary"
+              className="h-16 resize-none"
+              defaultValue={currentSigningAuthority ?? undefined}
+            />
+            <p className="text-xs text-gray-400">
+              Shared with the Banking &amp; Key Information pages.
+            </p>
           </div>
           <div className="space-y-1">
             <Label>Reserve fund policy</Label>

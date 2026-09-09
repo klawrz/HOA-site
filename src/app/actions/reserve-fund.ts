@@ -14,7 +14,12 @@ function revalidateReservePaths() {
   revalidatePath("/dashboard/property-manager/finances/reserve")
 }
 
-export async function setReserveDetails(data: { target: number | null; policy: string; heldAt: string }) {
+export async function setReserveDetails(data: {
+  target: number | null
+  policy: string
+  heldAt: string
+  signingAuthority: string
+}) {
   const session = await auth()
   if (!session?.user.orgId || !canManageReserveFund(session.user.role, session.user.isBoardMember)) {
     return { success: false }
@@ -27,10 +32,18 @@ export async function setReserveDetails(data: { target: number | null; policy: s
       reserveTarget: data.target,
       reservePolicy: data.policy.trim() || null,
       reserveHeldAt: data.heldAt.trim() || null,
+      // Same org field the Banking / Key Information pages edit - keep those
+      // in sync (revalidated below).
+      bankSigningAuthority: data.signingAuthority.trim() || null,
     },
   })
 
   revalidateReservePaths()
+  revalidatePath("/dashboard/board/key-info")
+  revalidatePath("/dashboard/property-manager/key-info")
+  revalidatePath("/dashboard/owner/governance/board/key-info")
+  revalidatePath("/dashboard/board/finances/banking")
+  revalidatePath("/dashboard/property-manager/finances/banking")
   return { success: true }
 }
 

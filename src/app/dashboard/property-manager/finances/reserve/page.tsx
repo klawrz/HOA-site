@@ -55,6 +55,7 @@ export default async function PropertyManagerReservePage() {
               currentTarget={org?.reserveTarget ?? null}
               currentPolicy={org?.reservePolicy ?? null}
               currentHeldAt={org?.reserveHeldAt ?? null}
+              currentSigningAuthority={org?.bankSigningAuthority ?? null}
             />
             <ReserveTransactionDialog />
           </div>
