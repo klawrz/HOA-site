@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
-import { Receipt, ChevronRight, PiggyBank, TableProperties, Calculator } from "lucide-react"
+import { Receipt, ChevronRight, PiggyBank, TableProperties, Calculator, Landmark, Coins } from "lucide-react"
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { BudgetFromDocumentDialog } from "@/components/budgets/budget-from-document-dialog"
@@ -69,12 +69,32 @@ export default async function BoardFinancesPage() {
           <ChevronRight className="h-4 w-4 text-gray-400" />
         </Link>
         <Link
-          href="/dashboard/board/finances/assessments"
+          href="/dashboard/board/finances/dues"
           className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
         >
           <div className="flex items-center gap-2">
             <Receipt className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium">Dues & Assessments</span>
+            <span className="text-sm font-medium">Dues</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </Link>
+        <Link
+          href="/dashboard/board/finances/assessments"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Landmark className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Assessments</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </Link>
+        <Link
+          href="/dashboard/board/finances/charges"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Coins className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Charges</span>
           </div>
           <ChevronRight className="h-4 w-4 text-gray-400" />
         </Link>

@@ -408,6 +408,7 @@ model Organization {
   customKeyDates      CustomKeyDate[]
   budgets             Budget[]
   assessments         Assessment[]
+  unitCharges         UnitCharge[]
   reserveTransactions ReserveTransaction[]
   reserveYearNotes    ReserveYearNote[]
   reserveCapitalItems ReserveCapitalItem[]
@@ -902,6 +903,7 @@ model User {
   createdBudgets              Budget[]
   passwordResetTokens         PasswordResetToken[]
   createdAssessments          Assessment[]
+  createdUnitCharges          UnitCharge[]
   reserveTransactions         ReserveTransaction[]
   reserveCapitalItems         ReserveCapitalItem[]
   keyDates                    KeyDate[]
@@ -954,6 +956,7 @@ model Unit {
   occupancyEntries    OccupancyEntry[]
   occupancyShareLinks OccupancyShareLink[]
   assessmentCharges   AssessmentCharge[]
+  unitCharges         UnitCharge[]
   ownerExpenses       OwnerExpense[]
 
   @@unique([orgId, number])
@@ -1327,6 +1330,14 @@ enum AssessmentStatus {
   ISSUED
 }
 
+// How an assessment's total is divided among units. Dues follow each unit's
+// allocation percentage; special assessments at this HOA have historically
+// been split evenly, so EVEN is the default.
+enum AssessmentSplit {
+  EVEN
+  PERCENT
+}
+
 enum PaymentMethod {
   BANK_TRANSFER
   CHEQUE
@@ -1341,6 +1352,7 @@ model Assessment {
   title       String
   type        AssessmentType   @default(REGULAR_DUES)
   status      AssessmentStatus @default(DRAFT)
+  split       AssessmentSplit  @default(EVEN)
   totalAmount Float
   dueDate     DateTime
   budgetId    String?
@@ -1369,6 +1381,40 @@ model AssessmentCharge {
 
   assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   unit       Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+}
+
+// Ad-hoc charges billed to a single unit outside of dues and assessments -
+// metered water, one-off fees, or anything else. Distinct from
+// AssessmentCharge (a unit's share of a whole-community assessment).
+enum UnitChargeType {
+  WATER
+  FEE
+  OTHER
+}
+
+model UnitCharge {
+  id          String         @id @default(cuid())
+  orgId       String
+  unitId      String
+  type        UnitChargeType @default(OTHER)
+  label       String? // free text, mainly for OTHER - e.g. "Q1 sub-meter reading"
+  amount      Float
+  amountPaid  Float          @default(0)
+  chargedOn   DateTime // the date the charge applies to / was raised
+  dueDate     DateTime?
+  paymentMethod PaymentMethod?
+  paidAt      DateTime?
+  notes       String?
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  unit      Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdBy User         @relation(fields: [createdById], references: [id])
+
+  @@index([orgId])
+  @@index([unitId])
 }
 
 // ------------------------------------------------------------

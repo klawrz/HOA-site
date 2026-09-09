@@ -6,7 +6,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2, Calculator,
+  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2, Calculator, Coins,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -72,7 +72,9 @@ const navByRole: Record<Role, NavEntry[]> = {
       icon: DollarSign,
       href: "/dashboard/property-manager/finances",
       children: [
-        { label: "Dues & Assessments", href: "/dashboard/property-manager/finances/assessments", icon: Receipt },
+        { label: "Dues", href: "/dashboard/property-manager/finances/dues", icon: Receipt },
+        { label: "Assessments", href: "/dashboard/property-manager/finances/assessments", icon: Landmark },
+        { label: "Charges", href: "/dashboard/property-manager/finances/charges", icon: Coins },
         { label: "Reserve Fund", href: "/dashboard/property-manager/finances/reserve", icon: PiggyBank },
         { label: "Multi-Year Comparison", href: "/dashboard/property-manager/finances/comparison", icon: TableProperties },
         { label: "Banking & Insurance", href: "/dashboard/property-manager/finances/banking", icon: Landmark },
@@ -110,7 +112,9 @@ const navByRole: Record<Role, NavEntry[]> = {
       icon: DollarSign,
       children: [
         { label: "Budget", href: "/dashboard/board/finances", icon: Calculator },
-        { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt },
+        { label: "Dues", href: "/dashboard/board/finances/dues", icon: Receipt },
+        { label: "Assessments", href: "/dashboard/board/finances/assessments", icon: Landmark },
+        { label: "Charges", href: "/dashboard/board/finances/charges", icon: Coins },
         { label: "Reserve Fund", href: "/dashboard/board/finances/reserve", icon: PiggyBank },
         { label: "Multi-Year Comparison", href: "/dashboard/board/finances/comparison", icon: TableProperties },
         { label: "Banking & Insurance", href: "/dashboard/board/finances/banking", icon: Landmark },

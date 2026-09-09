@@ -16,7 +16,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createAssessment } from "@/app/actions/assessments"
-import { AssessmentType } from "@/generated/prisma"
+import { AssessmentType, AssessmentSplit } from "@/generated/prisma"
+import { ASSESSMENT_SPLITS, ASSESSMENT_SPLIT_LABEL } from "@/lib/charges"
 
 export function NewAssessmentDialog({
   detailBasePath,
@@ -28,7 +29,8 @@ export function NewAssessmentDialog({
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [type, setType] = useState<AssessmentType>("REGULAR_DUES")
+  const [type, setType] = useState<AssessmentType>("SPECIAL")
+  const [split, setSplit] = useState<AssessmentSplit>("EVEN")
   const [budgetId, setBudgetId] = useState("")
   const router = useRouter()
 
@@ -40,6 +42,7 @@ export function NewAssessmentDialog({
     const result = await createAssessment({
       title: form.get("title") as string,
       type,
+      split,
       totalAmount: Number(form.get("totalAmount")),
       dueDate: form.get("dueDate") as string,
       budgetId: budgetId || undefined,
@@ -90,8 +93,23 @@ export function NewAssessmentDialog({
           <div className="space-y-1">
             <Label>Total amount</Label>
             <Input name="totalAmount" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+          </div>
+          <div className="space-y-1">
+            <Label>Split among units</Label>
+            <Select
+              value={split}
+              onValueChange={(v) => setSplit((v as AssessmentSplit) ?? "EVEN")}
+              items={Object.fromEntries(ASSESSMENT_SPLITS.map((s) => [s, ASSESSMENT_SPLIT_LABEL[s]]))}
+            >
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ASSESSMENT_SPLITS.map((s) => (
+                  <SelectItem key={s} value={s}>{ASSESSMENT_SPLIT_LABEL[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-gray-400">
-              Split across units by each unit&apos;s allocation percentage.
+              Special assessments here have historically been split evenly across all units.
             </p>
           </div>
           {budgets.length > 0 && (

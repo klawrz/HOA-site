@@ -119,6 +119,20 @@ const RESERVE_TX = [
   { type: ReserveTransactionType.WITHDRAWAL, amount: 90000, date: "2025-09-30T00:00:00.000Z", description: "2025 capital: pool furniture 20k, beach concession 20k, villa exterior painting 50k" },
 ]
 
+// The only assessment on file: the 2027 portion of the villa roof, split
+// evenly across all 14 units. USD 75,000 = MXN 1,312,500 at 17.5. See
+// Reserve Fund Policy Rev 2, section 0.9.
+const ROOF_ASSESSMENT = {
+  title: "2027 Villa Roof Replacement",
+  type: "SPECIAL" as const,
+  status: "DRAFT" as const,
+  split: "EVEN" as const,
+  totalAmount: 1312500,
+  dueDate: "2027-06-01T00:00:00.000Z",
+  notes:
+    "2027 portion of the USD 150,000 villa roof replacement (USD 75,000 in 2027, USD 75,000 in 2028) per Reserve Fund Policy Rev 2, section 0.9. USD 75,000 = MXN 1,312,500 at 17.5. Split evenly across all 14 units.",
+}
+
 const EMPLOYEES = [
   {
     name: "Rosa Delgado",
@@ -205,6 +219,34 @@ async function main() {
     await db.employeeGovId.createMany({ data: govIds.map((g) => ({ ...g, employeeId: emp.id })) })
   }
   console.log(`  ${EMPLOYEES.length} employee record(s)`)
+
+  // 6. The roof assessment (only if it isn't already there and we have units + a member)
+  const existingAssessment = await db.assessment.findFirst({
+    where: { orgId: org.id, title: ROOF_ASSESSMENT.title },
+  })
+  if (!existingAssessment && seedUserId) {
+    const allUnits = await db.unit.findMany({ where: { orgId: org.id }, select: { id: true } })
+    if (allUnits.length > 0) {
+      const per = Math.round((ROOF_ASSESSMENT.totalAmount / allUnits.length) * 100) / 100
+      await db.assessment.create({
+        data: {
+          orgId: org.id,
+          createdById: seedUserId,
+          title: ROOF_ASSESSMENT.title,
+          type: ROOF_ASSESSMENT.type,
+          status: ROOF_ASSESSMENT.status,
+          split: ROOF_ASSESSMENT.split,
+          totalAmount: ROOF_ASSESSMENT.totalAmount,
+          dueDate: new Date(ROOF_ASSESSMENT.dueDate),
+          notes: ROOF_ASSESSMENT.notes,
+          charges: { create: allUnits.map((u) => ({ unitId: u.id, amountDue: per })) },
+        },
+      })
+      console.log(`  roof assessment (${allUnits.length} charges of ${per})`)
+    }
+  } else {
+    console.log("  roof assessment left as-is")
+  }
 
   console.log("Done. Sampaguita financial + roster data restored.")
 }

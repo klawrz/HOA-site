@@ -3,7 +3,7 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { AssessmentType, PaymentMethod } from "@/generated/prisma"
+import { AssessmentType, AssessmentSplit, PaymentMethod } from "@/generated/prisma"
 import { parseDateOnly } from "@/lib/occupancy"
 import { effectiveAllocations } from "@/lib/unit-allocation"
 
@@ -29,6 +29,7 @@ function revalidateAssessmentPaths() {
 export async function createAssessment(data: {
   title: string
   type?: AssessmentType
+  split?: AssessmentSplit
   totalAmount: number
   dueDate: string
   budgetId?: string
@@ -53,31 +54,37 @@ export async function createAssessment(data: {
   const units = await db.unit.findMany({ where: { orgId: session.user.orgId } })
   if (units.length === 0) return { success: false, error: "No units on file" }
 
-  const customTotal = units.reduce((s, u) => s + (u.allocationPercent ?? 0), 0)
-  if (customTotal > 100.5) {
-    return {
-      success: false,
-      error: `Custom unit allocations exceed 100% (currently ${customTotal.toFixed(2)}%) - adjust them in Unit Allocations first`,
+  const split = data.split ?? "EVEN"
+
+  if (split === "PERCENT") {
+    const customTotal = units.reduce((s, u) => s + (u.allocationPercent ?? 0), 0)
+    if (customTotal > 100.5) {
+      return {
+        success: false,
+        error: `Custom unit allocations exceed 100% (currently ${customTotal.toFixed(2)}%) - adjust them in Unit Allocations first`,
+      }
     }
   }
 
   const percents = effectiveAllocations(units)
+  const round2 = (n: number) => Math.round(n * 100) / 100
+  const evenShare = data.totalAmount / units.length
+  const amountFor = (unitId: string) =>
+    split === "EVEN" ? round2(evenShare) : round2(data.totalAmount * ((percents.get(unitId) ?? 0) / 100))
 
   const assessment = await db.assessment.create({
     data: {
       orgId: session.user.orgId,
       title,
       type: data.type ?? "REGULAR_DUES",
+      split,
       totalAmount: data.totalAmount,
       dueDate: parseDateOnly(data.dueDate),
       budgetId: data.budgetId || null,
       notes: data.notes || null,
       createdById: session.user.id,
       charges: {
-        create: units.map((u) => ({
-          unitId: u.id,
-          amountDue: Math.round(data.totalAmount * ((percents.get(u.id) ?? 0) / 100) * 100) / 100,
-        })),
+        create: units.map((u) => ({ unitId: u.id, amountDue: amountFor(u.id) })),
       },
     },
   })

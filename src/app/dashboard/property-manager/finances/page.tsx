@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
-import { Receipt, ChevronRight, PiggyBank, TableProperties } from "lucide-react"
+import { Receipt, ChevronRight, PiggyBank, TableProperties, Landmark, Coins } from "lucide-react"
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
@@ -53,14 +53,34 @@ export default async function PropertyManagerFinancesPage() {
         <p className="text-gray-500 mt-1">Annual budgets - drafted, revised, and approved</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Link
+          href="/dashboard/property-manager/finances/dues"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Dues</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </Link>
         <Link
           href="/dashboard/property-manager/finances/assessments"
           className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium">Dues & Assessments</span>
+            <Landmark className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Assessments</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </Link>
+        <Link
+          href="/dashboard/property-manager/finances/charges"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Coins className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Charges</span>
           </div>
           <ChevronRight className="h-4 w-4 text-gray-400" />
         </Link>
@@ -76,7 +96,7 @@ export default async function PropertyManagerFinancesPage() {
         </Link>
         <Link
           href="/dashboard/property-manager/finances/comparison"
-          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors sm:col-span-2"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors sm:col-span-3"
         >
           <div className="flex items-center gap-2">
             <TableProperties className="h-4 w-4 text-gray-500" />
