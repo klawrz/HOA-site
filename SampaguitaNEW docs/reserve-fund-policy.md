@@ -71,11 +71,12 @@ Planning context for owners:
 - Avoids sudden special assessments.
 - Targets 70–80% funding within 3–4 years.
 
-### 0.5 Anticipated reserve expenditures — 2026
+### 0.5 Anticipated reserve expenditures — 2026–2027
 
-- Potential initiation or preparatory phase of villa roof replacement.
-- Estimated total exposure: up to **USD 100,000** (may span more than one year).
-- No painting or pool furniture anticipated in 2026.
+- **2026:** preparatory / planning phase of villa roof replacement. No painting or
+  pool furniture anticipated.
+- **2027:** villa roof replacement — anticipated reserve drawdown of
+  **USD 150,000**.
 
 ### 0.6 Reserve funding shortfall alert — 2026 outlook
 
@@ -84,8 +85,8 @@ Planning context for owners:
 | Current reserve balance (start 2026) | 60,000 | Per section 0.1 |
 | Target reserve level | 100,000 | Placeholder pending AGM motion (section 0.3) |
 | Current funding gap | 40,000 | To reach the placeholder target |
-| Roof project exposure | up to 100,000 | May span years |
-| Roof cost not covered by current reserves | up to 40,000 | If incurred before replenishment |
+| Roof project exposure (2027) | 150,000 | Anticipated drawdown, section 0.5 |
+| Roof cost not covered by current reserves | 90,000 | 150,000 exposure − 60,000 balance |
 
 **Shortfall commentary.** This alert is provided for planning transparency only.
 It does not signal an emergency. It highlights the importance of phased
@@ -117,26 +118,30 @@ into the proposed operations budget.
 | Opening balance | 60,000 | Start of 2026 (section 0.1) |
 | Target reserve level | 100,000 | Placeholder — AGM motion required (section 0.3) |
 | Surplus / (shortfall) vs target | (40,000) | Opening balance − target |
-| Anticipated drawdowns (plan period) | 0 confirmed | Roof project excluded — see Notes and section 0.6 |
-| Projected closing balance before top-up | 60,000 | Opening balance − anticipated drawdowns |
-| Shortfall to close | 40,000 | Target − projected closing balance |
+| Anticipated drawdowns (plan period) | 150,000 | Villa roof replacement, 2027 (section 0.5) |
+| Projected closing balance before top-up | (90,000) | Opening balance − anticipated drawdowns |
+| Shortfall to close (to target) | 190,000 | Target − projected closing balance |
 | Years to top up | 3 | Fixed planning horizon |
-| **Budgeted top-up per year** | **≈ 13,333** | Shortfall to close ÷ years to top up |
+| **Budgeted top-up per year** | **≈ 63,333** | Shortfall to close ÷ years to top up |
 
-**Translation to the operating budget.** The proposed FY2027 operations budget
-reserve line item is **USD 13,333** (≈ MXN 233,000 at 17.5). This figure replaces
-any prior placeholder on that line.
+**Translation to the operating budget.** Carrying the full shortfall through the
+operating budget would put the reserve line at **≈ USD 63,333/year**
+(≈ MXN 1,108,000 at 17.5) — roughly a quarter of annual dues income and, on its
+own, the largest line in the budget. That is not fundable from operations alone.
 
 **Notes.**
 
-- The villa roof project (up to USD 100,000, section 0.5) is **not** amortized
-  into this three-year plan — its timing and scope are unconfirmed. It is tracked
-  separately in the shortfall alert (section 0.6).
-- If a roof drawdown or other major expenditure occurs, the plan is re-worked
-  from the new opening balance at the next budget cycle.
-- USD 13,333/year is the minimum contribution that reaches the target in three
-  years assuming no drawdowns. The USD 18,000–22,500 range in section 0.4 is the
-  faster-rebuild option and carries a buffer against the roof exposure.
+- A USD 150,000 roof drawdown against a USD 60,000 opening balance **cannot be met
+  from reserves**. The fund is projected at **−90,000** before any top-up.
+- The realistic structure is a split: the annual operating-budget reserve line
+  funds only the **target gap** — USD 40,000 ÷ 3 ≈ **USD 13,333/year**
+  (≈ MXN 233,000) — while the **roof is funded by its own special assessment**
+  (and insurance recovery where applicable), not amortized into operations.
+- This is the trigger the shortfall alert (section 0.6) anticipates: phased
+  execution, insurance recovery, a dedicated special assessment, and continued
+  reserve rebuilding.
+- If the roof is deferred, descoped, or the top-up horizon is extended beyond
+  three years, the plan is re-worked and the per-year figure recalculated.
 - The target of USD 100,000 is a placeholder. Once the owners approve a target by
   AGM motion, the shortfall and the per-year top-up are recalculated.
 
