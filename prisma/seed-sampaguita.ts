@@ -133,6 +133,29 @@ const ROOF_ASSESSMENT = {
     "2027 portion of the USD 150,000 villa roof replacement (USD 75,000 in 2027, USD 75,000 in 2028) per Reserve Fund Policy Rev 2, section 0.9. USD 75,000 = MXN 1,312,500 at 17.5. Split evenly across all 14 units.",
 }
 
+// The property manager: Sara Gabriela Alfaro Chavero (individual), per her
+// signed agreement (SampaguitaNEW docs/Gabriela Alfaro signed contract.pdf).
+const PM = {
+  legalName: "Sara Gabriela Alfaro Chavero",
+  email: "gabriela@test.local",
+  addressLine1: "Bahia de las Palmas 8",
+  city: "San Jose del Cabo",
+  state: "Baja California Sur",
+  postalCode: "23405",
+  country: "Mexico",
+  contract: {
+    startDate: "2026-05-01T00:00:00.000Z",
+    endDate: "2027-04-30T00:00:00.000Z",
+    approvedAt: "2026-04-01T00:00:00.000Z",
+    responsibilities:
+      "Manages the Sampaguita HOA property, facilities and community per the civil corporation, Condominium Regime and Board direction. Hires/releases and supervises HOA employees and sub-contractors; pool/grounds/fumigation/irrigation, propane, water system, and front security gates. Monthly water-meter reading per villa, reported to accounting for quarterly billing with a report to Owners. Day-to-day banking, accounts payable and payroll (salaries, IMSS, bonuses); annual Beach Concession payment and renewal. Assists the Board/Treasurer with the annual Operating and Capital budgets at the AGM; proactively warns of unbudgeted or overrun expense. Organizes and secures Facturas in numerical sequence for Board / accountant / Hacienda review. Represents the HOA in legal matters within the granted power of attorney, under Board direction. Reports to the Board via the President.",
+    terminationTerms:
+      "Term May 1, 2026 to April 30, 2027, extendable by mutual agreement after Owner approval at the November 2026 AGM.",
+    terms:
+      "Compensation: MXN 35,600 / month (May-Oct 2026), then the MXN equivalent of USD 2,500 / month from Nov 1, 2026 after a Board performance review. Excluded duties (2013 By-Law Art. VIII): levying fines / holding hearings / imposing discipline; making Capital Expenditures; filing suit or recording a lien for unpaid Assessments. At least three competitive bids required for outside contracts over USD 2,500.",
+  },
+}
+
 const EMPLOYEES = [
   {
     name: "Rosa Delgado",
@@ -246,6 +269,72 @@ async function main() {
     }
   } else {
     console.log("  roof assessment left as-is")
+  }
+
+  // 7. Property manager - Gabriela's individual PM company + active contract,
+  //    with any Sunrise PM contract ended.
+  if (seedUserId) {
+    let company = await db.propertyManagementCompany.findFirst({
+      where: { OR: [{ legalName: PM.legalName }, { legalName: "Gabriela Torres" }] },
+    })
+    if (company) {
+      company = await db.propertyManagementCompany.update({
+        where: { id: company.id },
+        data: {
+          legalName: PM.legalName,
+          entityType: "INDIVIDUAL",
+          email: PM.email,
+          addressLine1: PM.addressLine1,
+          city: PM.city,
+          state: PM.state,
+          postalCode: PM.postalCode,
+          country: PM.country,
+          primaryContactName: PM.legalName,
+        },
+      })
+    } else {
+      company = await db.propertyManagementCompany.create({
+        data: {
+          legalName: PM.legalName,
+          entityType: "INDIVIDUAL",
+          email: PM.email,
+          addressLine1: PM.addressLine1,
+          city: PM.city,
+          state: PM.state,
+          postalCode: PM.postalCode,
+          country: PM.country,
+          primaryContactName: PM.legalName,
+          createdById: seedUserId,
+        },
+      })
+    }
+
+    await db.pMContract.updateMany({
+      where: { orgId: org.id, company: { legalName: "Sunrise Property Management LLC" } },
+      data: { status: "ENDED" },
+    })
+
+    const existingPM = await db.pMContract.findFirst({ where: { orgId: org.id, companyId: company.id } })
+    if (!existingPM) {
+      await db.pMContract.create({
+        data: {
+          orgId: org.id,
+          companyId: company.id,
+          status: "ACTIVE",
+          startDate: new Date(PM.contract.startDate),
+          endDate: new Date(PM.contract.endDate),
+          responsibilities: PM.contract.responsibilities,
+          terminationTerms: PM.contract.terminationTerms,
+          terms: PM.contract.terms,
+          createdById: seedUserId,
+          approvedById: seedUserId,
+          approvedAt: new Date(PM.contract.approvedAt),
+        },
+      })
+      console.log(`  PM: ${PM.legalName} (active contract)`)
+    } else {
+      console.log("  PM contract left as-is")
+    }
   }
 
   console.log("Done. Sampaguita financial + roster data restored.")
