@@ -10,6 +10,7 @@ export const budgetCategoryLabel: Record<BudgetCategory, string> = {
   ADMIN: "Administration",
   TAXES_AND_FEES: "Taxes & Government Fees",
   RESERVE_CONTRIBUTION: "Reserve Contribution",
+  CAPITAL_EXPENSE: "Capital Expense",
   OTHER: "Other",
 }
 
@@ -24,6 +25,7 @@ export const BUDGET_CATEGORIES: BudgetCategory[] = [
   "ADMIN",
   "TAXES_AND_FEES",
   "RESERVE_CONTRIBUTION",
+  "CAPITAL_EXPENSE",
   "OTHER",
 ]
 
@@ -43,6 +45,7 @@ const CATEGORY_KEYWORDS: [BudgetCategory, RegExp][] = [
   ["ADMIN", /manag[e]?ment fee|\badmin|bank com+is+ion|bank com+is+ión|bank fee|legal|lawyer|account|audit|office|postage|software|contingenc/i],
   ["TAXES_AND_FEES", /\btax|government fee|permit|licen[cs]e|concession|fine|registration/i],
   ["RESERVE_CONTRIBUTION", /reserve|capital contribution|sinking fund/i],
+  ["CAPITAL_EXPENSE", /capital ?ex(p|penditure)|capex|capital project|capital improvement/i],
 ]
 
 export function guessBudgetCategory(text: string | null | undefined): BudgetCategory | null {
