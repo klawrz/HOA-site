@@ -272,3 +272,81 @@ export async function getOrgTicketStatus(session: AskHopeSession, args: { status
     createdAt: t.createdAt.toISOString().slice(0, 10),
   }))
 }
+
+// Unit-level status for a Board member / PM / Account Owner asking about a
+// specific unit ("status of Villa 1"). Org-scoped: only ever looks inside
+// the caller's own org. Resolves a loose label ("Villa 1", "unit 1", "1")
+// to a Unit.number match.
+export async function getUnitStatus(session: AskHopeSession, args: { unit?: unknown } = {}) {
+  if (!session.user.orgId) return { error: "No organization context." }
+  const raw = typeof args.unit === "string" ? args.unit.trim() : ""
+  if (!raw) return { error: "Ask which unit - a number or label like 'Villa 1'." }
+
+  // Strip common words/punctuation so "Villa #1" / "unit 1" / "#1" all
+  // resolve to the number "1".
+  const normalized = raw.replace(/villa|unit|apt|apartment|#|no\.?/gi, "").trim().toLowerCase()
+
+  const units = await db.unit.findMany({
+    where: { orgId: session.user.orgId },
+    include: {
+      ownerships: { where: { isCurrent: true }, include: { owner: true } },
+      managers: { include: { user: true } },
+      leases: { where: { isActive: true }, include: { renter: true } },
+      occupancyEntries: { orderBy: { startDate: "desc" } },
+      tickets: { where: { status: { in: ["OPEN", "IN_PROGRESS"] } }, orderBy: { priority: "desc" } },
+      contracts: { where: { scope: "UNIT", status: "ACTIVE" } },
+      contacts: true,
+    },
+  })
+
+  const match =
+    units.find((u) => u.number.toLowerCase() === normalized) ??
+    units.find((u) => `${u.building ?? ""} ${u.number}`.trim().toLowerCase() === normalized) ??
+    units.find((u) => u.number.toLowerCase().includes(normalized) && normalized.length > 0)
+
+  if (!match) {
+    return {
+      notFound: true,
+      askedFor: raw,
+      unitsOnFile: units.map((u) => (u.building ? `${u.building} ${u.number}` : u.number)),
+    }
+  }
+
+  const now = new Date()
+  const activeLease = match.leases[0]
+  const todaysEntry = match.occupancyEntries.find((e) => e.startDate <= now && e.endDate >= now)
+  const occupancy = activeLease
+    ? { state: "Rented", occupant: activeLease.renter.name ?? activeLease.renter.email, monthlyRent: activeLease.monthlyRent }
+    : todaysEntry
+      ? { state: todaysEntry.type, occupant: todaysEntry.occupantName }
+      : { state: match.status, occupant: null }
+
+  return {
+    unit: match.building ? `${match.building} ${match.number}` : match.number,
+    status: match.status,
+    floor: match.floor,
+    owners: match.ownerships.map((o) => ({
+      name: o.owner.name ?? o.owner.email,
+      email: o.owner.email,
+      phone: o.owner.phone,
+      rentalPolicy: o.rentalPolicy,
+    })),
+    unitManagers: match.selfManaged && match.managers.length === 0
+      ? "Owner-managed (no delegated Unit Manager)"
+      : match.managers.map((m) => ({
+          name: m.user?.name ?? m.name ?? m.user?.email,
+          email: m.user?.email ?? m.email,
+          phone: m.phone,
+        })),
+    occupancy,
+    openTickets: match.tickets.map((t) => ({
+      title: t.title,
+      priority: t.priority,
+      status: t.status,
+      openedDaysAgo: Math.round((now.getTime() - t.createdAt.getTime()) / 86_400_000),
+    })),
+    unitContracts: match.contracts.map((c) => ({ title: c.title, amount: c.amount, billingPeriod: c.billingPeriod })),
+    contacts: match.contacts.map((c) => ({ kind: c.kind, name: c.name, phone: c.phone, email: c.email })),
+    accessCodeOnFile: !!match.accessCode,
+  }
+}

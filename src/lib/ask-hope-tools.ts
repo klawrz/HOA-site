@@ -8,6 +8,7 @@ import {
   getOrgFinancialSummary,
   getOrgDuesStatus,
   getOrgTicketStatus,
+  getUnitStatus,
 } from "./ask-hope-queries"
 
 // Index signature matches Anthropic.Tool's `input_schema` type - it's
@@ -135,6 +136,20 @@ export const ASK_HOPE_TOOLS: AskHopeTool[] = [
     input_schema: STATUS_FILTER_SCHEMA,
     isAvailable: isBoardOrPm,
     execute: async (session, args) => getOrgTicketStatus(session, args),
+  },
+  {
+    name: "get_unit_status",
+    description:
+      "Full status of ONE unit for a Board member / PM / Account Owner: current owner(s) and contact, delegated Unit Manager(s) and contact, current occupancy (owner-occupied / rented / guest), open tickets for that unit, unit-level service contracts, and unit contacts. Use this for any 'status of unit X' / 'who owns X' / 'who manages X' question. Accepts a loose label like 'Villa 1', 'unit 1', or '1'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        unit: { type: "string", description: 'The unit to look up - a number or label, e.g. "Villa 1", "1", "Block A 3".' },
+      },
+      required: ["unit"],
+    },
+    isAvailable: (session) => isBoardOrPm(session) || session.user.role === "ACCOUNT_OWNER",
+    execute: async (session, args) => getUnitStatus(session, args),
   },
 ]
 
