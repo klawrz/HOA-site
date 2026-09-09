@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { TodayOccupancy } from "@/components/occupancy/today-occupancy"
+import { OccupancyList } from "@/components/occupancy/occupancy-list"
 import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
 import { canPreviewRole } from "@/lib/role-access"
 
@@ -9,12 +9,18 @@ export default async function BoardOccupancyPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
+  // Only load the last year of history plus everything current/upcoming -
+  // enough for a "who's here" view without pulling an old property's entire
+  // occupancy archive on every page load.
+  const historyFrom = new Date()
+  historyFrom.setFullYear(historyFrom.getFullYear() - 1)
+
   const [units, unitLabel] = await Promise.all([
     db.unit.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: {
         ownerships: { where: { isCurrent: true }, take: 1 },
-        occupancyEntries: { orderBy: { startDate: "asc" } },
+        occupancyEntries: { where: { endDate: { gte: historyFrom } }, orderBy: { startDate: "asc" } },
         leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
       },
     }),
@@ -32,7 +38,7 @@ export default async function BoardOccupancyPage() {
           to tell the difference, by design.
         </p>
       </div>
-      <TodayOccupancy
+      <OccupancyList
         unitLabel={unitLabel}
         units={units.map((u) => {
           const visible = u.ownerships[0]?.occupancyVisibleToBoard ?? false
@@ -45,7 +51,6 @@ export default async function BoardOccupancyPage() {
             activeLease: visible && lease ? { renterName: lease.renter.name, startDate: lease.startDate } : null,
           }
         })}
-        canManage={false}
       />
     </div>
   )
