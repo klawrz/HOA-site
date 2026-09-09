@@ -79,6 +79,8 @@ Planning context for owners:
   pool furniture anticipated.
 - **2027:** villa roof replacement — anticipated reserve drawdown of
   **USD 150,000**.
+- **Funding:** raised by special assessment across 2027 and 2028, not from the
+  reserve top-up or the operating budget — see section 0.9.
 
 ### 0.6 Reserve funding shortfall alert — 2026 outlook
 
@@ -88,11 +90,14 @@ Planning context for owners:
 | Target reserve level | 100,000 | Placeholder pending AGM motion (section 0.3) |
 | Current funding gap | 40,000 | To reach the placeholder target |
 | Roof project exposure (2027) | 150,000 | Anticipated drawdown, section 0.5 |
-| Roof cost not covered by current reserves | 90,000 | 150,000 exposure − 60,000 balance |
+| Roof funding secured | (150,000) | Special assessments 2027 & 2028, section 0.9 |
+| Roof cost not covered by a funding source | 0 | Exposure − secured funding |
 
 **Shortfall commentary.** This alert is provided for planning transparency only.
-It does not signal an emergency. It highlights the importance of phased
-execution, insurance recovery where applicable, and continued reserve rebuilding.
+It does not signal an emergency. With the roof covered by dedicated special
+assessments (section 0.9), the residual exposure is the USD 40,000 target gap,
+closed by the annual top-up in section 0.8. Insurance recovery is pursued where
+applicable, and reserve rebuilding continues in parallel.
 
 ### 0.7 Permitted use of reserve funds
 
@@ -115,42 +120,63 @@ reserve fund position**, not set independently. Each budget cycle the plan is
 re-worked from the figures below, and the resulting per-year top-up is carried
 into the proposed operations budget.
 
+The roof project is funded by dedicated special assessments (section 0.9), so it
+is **net-zero to the reserve fund** and does not drive the annual top-up. The
+top-up closes only the gap between the current balance and the target.
+
 | Line | Amount (USD) | Basis |
 |---|---:|---|
 | Opening balance | 60,000 | Start of 2026 (section 0.1) |
 | Target reserve level | 100,000 | Placeholder — AGM motion required (section 0.3) |
 | Surplus / (shortfall) vs target | (40,000) | Opening balance − target |
 | Anticipated drawdowns (plan period) | 150,000 | Villa roof replacement, 2027 (section 0.5) |
-| Projected closing balance before top-up | (90,000) | Opening balance − anticipated drawdowns |
-| Shortfall to close (to target) | 190,000 | Target − projected closing balance |
+| Less: matching special-assessment funding | (150,000) | Special assessments 2027 & 2028 (section 0.9) |
+| Net drawdowns on the reserve fund | 0 | Roof is assessment-funded |
+| Projected closing balance before top-up | 60,000 | Opening balance − net drawdowns |
+| Shortfall to close (to target) | 40,000 | Target − projected closing balance |
 | Years to top up | 5 | Planning default — amendable by owner motion at the AGM |
-| **Budgeted top-up per year** | **≈ 38,000** | Shortfall to close ÷ years to top up |
+| **Budgeted top-up per year** | **≈ 8,000** | Shortfall to close ÷ years to top up |
 
-**Translation to the operating budget.** Carrying the full shortfall through the
-operating budget puts the reserve line at **≈ USD 38,000/year**
-(≈ MXN 665,000 at 17.5) — a large line, comparable to the landscaping contract,
-but within reach over five years. This is the awareness the plan exists to give
-the Board and owners early, before a project forces a crisis assessment.
+**Translation to the operating budget.** The proposed FY2027 operations budget
+reserve line item is **≈ USD 8,000/year** (≈ MXN 140,000 at 17.5). This is lower
+than the MXN 175,000 currently in the draft budget — the target gap is small and
+spread over five years, and the roof does not load onto this line.
 
 **Notes.**
 
-- A USD 150,000 roof drawdown against a USD 60,000 opening balance **cannot be met
-  from reserves**. The fund is projected at **−90,000** before any top-up, so the
-  roof still needs a dedicated special assessment and/or phasing regardless of the
-  annual top-up.
-- Alternative structure — split funding: the annual operating-budget reserve line
-  funds only the **target gap**, USD 40,000 ÷ 5 ≈ **USD 8,000/year**
-  (≈ MXN 140,000), while the **roof is funded by its own special assessment** (and
-  insurance recovery where applicable), not amortized into operations.
-- This is the trigger the shortfall alert (section 0.6) anticipates: phased
-  execution, insurance recovery, a dedicated special assessment, and continued
-  reserve rebuilding.
+- The plan holds **only while the roof stays fully assessment-funded**. If a
+  special assessment is not passed, is underfunded, or the roof overruns, the
+  uncovered amount becomes a reserve draw (requiring full Board agreement,
+  section 0.7) and the top-up is re-worked at the next budget cycle.
 - The **five-year horizon is a planning default**. Owners may lengthen or shorten
   it by motion at the AGM, which recalculates the per-year figure.
 - If the roof is deferred or descoped, the plan is re-worked and the per-year
   figure recalculated.
 - The target of USD 100,000 is a placeholder. Once the owners approve a target by
   AGM motion, the shortfall and the per-year top-up are recalculated.
+- This early visibility — target, drawdowns, funding source, and the per-year
+  number in one place — is what lets the Board and owners act before a project
+  forces a crisis assessment.
+
+### 0.9 Roof project funding — special assessments 2027–2028
+
+The 2027 villa roof replacement (USD 150,000, section 0.5) is funded by **special
+assessment**, raised across two years so no single year carries the whole cost:
+
+| Year | Special assessment (USD) | Notes |
+|---|---:|---|
+| 2027 | 75,000 | Indicative split — final amounts set by owner motion |
+| 2028 | 75,000 | Indicative split — final amounts set by owner motion |
+| **Total** | **150,000** | Matches the anticipated roof drawdown |
+
+- Each assessment is approved by **owner motion** at or before the relevant AGM.
+- Assessment funds are **ring-fenced** for the roof project. Any surplus returns
+  to the reserve fund; any shortfall or cost overrun is a reserve draw requiring
+  full Board agreement (section 0.7).
+- Assessments may be collected ahead of or behind the actual spend; the reserve
+  fund or a dedicated project account bridges the timing difference.
+- Because the project is assessment-funded, it does **not** change the annual
+  operating-budget reserve top-up (section 0.8).
 
 ---
 
