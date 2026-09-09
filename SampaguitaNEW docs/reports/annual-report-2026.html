@@ -1,0 +1,868 @@
+<title>Sampaguita Villas Annual Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #f6f3ec;
+    --surface: #fffdf7;
+    --ink: #1c2b2a;
+    --ink-soft: #55635f;
+    --rule: #ddd6c6;
+    --rule-strong: #b7ad98;
+    --accent: #0f5f5c;      /* teal ink */
+    --accent-soft: #e3ece9;
+    --clay: #b3541e;        /* this report's own marker colour */
+    --clay-soft: #f3e6db;
+    --alert: #9c6414;
+    --alert-soft: #f5ead6;
+    --alert-rule: #d8b483;
+    --negative: #9c3a2c;
+    --shadow: 0 1px 2px rgba(28,43,42,.05), 0 10px 30px -20px rgba(28,43,42,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14201f; --surface: #1c2827; --ink: #e9e4d7; --ink-soft: #a0aca8;
+      --rule: #33403d; --rule-strong: #55645f; --accent: #75bdb5; --accent-soft: #1d2e2c;
+      --clay: #e08a55; --clay-soft: #2c2218; --alert: #dca35b; --alert-soft: #2a2318; --alert-rule: #5c4a2c;
+      --negative: #df9080; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 34px -20px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14201f; --surface: #1c2827; --ink: #e9e4d7; --ink-soft: #a0aca8;
+    --rule: #33403d; --rule-strong: #55645f; --accent: #75bdb5; --accent-soft: #1d2e2c;
+    --clay: #e08a55; --clay-soft: #2c2218; --alert: #dca35b; --alert-soft: #2a2318; --alert-rule: #5c4a2c;
+    --negative: #df9080; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 34px -20px rgba(0,0,0,.6);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 17px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Spectral", Georgia, "Times New Roman", serif;
+    line-height: 1.62; letter-spacing: .003em;
+  }
+  .wrap { max-width: 49rem; margin: 0 auto; padding: clamp(1.4rem,4vw,3.5rem) clamp(1.1rem,4vw,2rem) 5rem; }
+
+  .eyebrow {
+    font-family: "Spectral", serif; font-weight: 500; font-size: .72rem;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--clay); margin: 0 0 1rem;
+  }
+  header.doc-head { border-bottom: 3px double var(--rule-strong); padding-bottom: 1.7rem; margin-bottom: 1.8rem; }
+  h1 {
+    font-family: "Fraunces", Georgia, serif; font-optical-sizing: auto; font-weight: 600;
+    font-size: clamp(2.1rem, 6.5vw, 3.2rem); line-height: 1.04; letter-spacing: -.012em;
+    text-wrap: balance; margin: 0 0 .6rem;
+  }
+  .subhead { font-family: "Fraunces", serif; font-weight: 400; font-size: 1.15rem; color: var(--ink-soft); margin: 0 0 1.2rem; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; font-size: .82rem; color: var(--ink-soft); }
+  .pill {
+    font-family: "Spectral", serif; font-weight: 500; text-transform: uppercase; letter-spacing: .12em;
+    font-size: .66rem; color: var(--alert); border: 1px solid var(--alert-rule); background: var(--alert-soft);
+    padding: .28rem .6rem; border-radius: 2px;
+  }
+  .meta-sep { color: var(--rule-strong); }
+
+  /* Contents */
+  nav.toc {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 3px;
+    box-shadow: var(--shadow); padding: 1.1rem 1.3rem; margin: 0 0 2.6rem;
+  }
+  nav.toc p { margin: 0 0 .6rem; font-family: "Spectral", serif; font-weight: 500; font-size: .66rem;
+    text-transform: uppercase; letter-spacing: .13em; color: var(--ink-soft); }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; columns: 2; column-gap: 2rem; font-size: .92rem; }
+  nav.toc li { margin: 0 0 .3rem; break-inside: avoid; }
+  nav.toc a { color: var(--ink); text-decoration: none; display: flex; gap: .5rem; }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc .n { font-family: "IBM Plex Mono", monospace; color: var(--clay); font-size: .82rem; }
+  @media (max-width: 560px) { nav.toc ol { columns: 1; } }
+
+  /* At a glance */
+  .glance {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 3px;
+    box-shadow: var(--shadow); margin: 0 0 2.8rem; overflow: hidden;
+  }
+  .glance > div { padding: 1rem 1.05rem 1.1rem; border-left: 1px solid var(--rule); }
+  .glance > div:first-child { border-left: 0; }
+  .glance dt { font-family: "Spectral", serif; font-weight: 500; font-size: .64rem; text-transform: uppercase;
+    letter-spacing: .11em; color: var(--ink-soft); margin: 0 0 .5rem; }
+  .glance dd { margin: 0; font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 1.24rem;
+    font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .glance .qual { display: block; margin-top: .3rem; font-family: "Spectral", serif; font-size: .72rem;
+    font-weight: 400; color: var(--ink-soft); letter-spacing: 0; }
+  @media (max-width: 640px) { .glance { grid-template-columns: repeat(2,1fr); }
+    .glance > div:nth-child(3) { border-left: 0; } .glance > div:nth-child(n+3) { border-top: 1px solid var(--rule); } }
+  @media (max-width: 380px) { .glance { grid-template-columns: 1fr; }
+    .glance > div { border-left: 0; border-top: 1px solid var(--rule); } .glance > div:first-child { border-top: 0; } }
+
+  section.sec { display: grid; grid-template-columns: 2.6rem 1fr; column-gap: 1.1rem; margin-bottom: 2.8rem; scroll-margin-top: 1.5rem; }
+  .sec-num { font-family: "Fraunces", serif; font-weight: 500; font-size: 1.3rem; color: var(--clay);
+    line-height: 1.35; font-variant-numeric: tabular-nums; }
+  .sec-body { min-width: 0; }
+  .sec-body > :first-child { margin-top: 0; }
+  .sec-body > :last-child { margin-bottom: 0; }
+  h2 { font-family: "Fraunces", serif; font-weight: 600; font-size: 1.5rem; line-height: 1.18;
+    letter-spacing: -.006em; text-wrap: balance; margin: 0 0 .9rem; }
+  h3 { font-family: "Fraunces", serif; font-weight: 600; font-size: 1.06rem; margin: 1.6rem 0 .6rem; }
+  @media (max-width: 560px) { section.sec { grid-template-columns: 1fr; row-gap: .15rem; }
+    .sec-num { font-size: 1rem; letter-spacing: .06em; } }
+
+  p { margin: 0 0 1rem; max-width: 42rem; }
+  strong { font-weight: 600; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  ul, ol.body { margin: 0 0 1rem; padding-left: 1.15rem; max-width: 42rem; }
+  li { margin: 0 0 .5rem; padding-left: .15rem; }
+  li::marker { color: var(--clay); }
+
+  .tbl-scroll { overflow-x: auto; margin: 0 0 1.15rem; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: .89rem; background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 3px; }
+  caption { caption-side: top; text-align: left; font-family: "Spectral", serif; font-weight: 500;
+    font-size: .66rem; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-soft); padding: 0 0 .5rem; }
+  th, td { padding: .5rem .75rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--rule); }
+  thead th { font-family: "Spectral", serif; font-weight: 500; font-size: .66rem; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--ink-soft); border-bottom: 1px solid var(--rule-strong); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .num { text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  th.num { text-align: right; }
+  .neg { color: var(--negative); }
+  .rowhead { color: var(--ink); }
+  tr.total td { border-top: 2px solid var(--ink); border-bottom: 0; font-weight: 600; }
+  tr.total .num { font-weight: 600; }
+  tr.sub td { background: var(--accent-soft); font-weight: 600; }
+  .kv td:first-child { width: 38%; color: var(--ink-soft); }
+
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .9rem 1.1rem;
+    margin: 0 0 1.15rem; border-radius: 0 3px 3px 0; }
+  .callout > :first-child { margin-top: 0; } .callout > :last-child { margin-bottom: 0; }
+  .callout--alert { border-left-color: var(--alert); background: var(--alert-soft); }
+  .callout .lbl { display: block; font-family: "Spectral", serif; font-weight: 500; font-size: .64rem;
+    text-transform: uppercase; letter-spacing: .13em; color: var(--accent); margin-bottom: .4rem; }
+  .callout--alert .lbl { color: var(--alert); }
+  .figure-lead { font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 1.4rem;
+    font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+  .decision { display: grid; grid-template-columns: 1.6rem 1fr; gap: .7rem; margin: 0 0 1rem; }
+  .decision .mk { font-family: "IBM Plex Mono", monospace; color: var(--clay); font-weight: 500; }
+  .decision p { margin: 0; }
+  .decision .d-title { font-weight: 600; }
+
+  footer.doc-foot { margin-top: 3.5rem; border-top: 1px solid var(--rule-strong); padding-top: 1.2rem;
+    font-size: .78rem; color: var(--ink-soft); line-height: 1.55; }
+  footer.doc-foot p { max-width: none; margin: 0 0 .4rem; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .glance, nav.toc, section.sec { animation: rise .5s cubic-bezier(.2,.7,.3,1) both; }
+    section.sec:nth-of-type(n+2) { animation-delay: .03s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  }
+  @media print {
+    :root { --paper:#fff; --surface:#fff; --shadow:none; }
+    .wrap { max-width: none; padding: 0; } nav.toc { display: none; }
+    section.sec, .glance, table { break-inside: avoid; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="doc-head">
+    <p class="eyebrow">Asociación de Condominios de Sampaguita Villas A.C.</p>
+    <h1>Sampaguita Villas &mdash; Annual Report</h1>
+    <p class="subhead">Prepared for the Owners ahead of the November&nbsp;7,&nbsp;2026 Annual General Meeting</p>
+    <div class="meta-row">
+      <span class="pill">Draft for owner review</span>
+      <span>14 beachfront villas &middot; San Jos&eacute; del Cabo, Baja California Sur, Mexico</span>
+      <span class="meta-sep">&bull;</span>
+      <span>Figures as of 2026-09-09</span>
+      <span class="meta-sep">&bull;</span>
+      <span>1&nbsp;USD = 17.5&nbsp;MXN</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#s1"><span class="n">1</span><span>The Association</span></a></li>
+      <li><a href="#s2"><span class="n">2</span><span>The year in brief</span></a></li>
+      <li><a href="#s3"><span class="n">3</span><span>Governance &amp; the Board</span></a></li>
+      <li><a href="#s4"><span class="n">4</span><span>Property management</span></a></li>
+      <li><a href="#s5"><span class="n">5</span><span>The property &amp; the villas</span></a></li>
+      <li><a href="#s6"><span class="n">6</span><span>Operating finances &mdash; FY2027 budget</span></a></li>
+      <li><a href="#s7"><span class="n">7</span><span>Dues by villa</span></a></li>
+      <li><a href="#s8"><span class="n">8</span><span>Reserve fund</span></a></li>
+      <li><a href="#s9"><span class="n">9</span><span>Special assessments</span></a></li>
+      <li><a href="#s10"><span class="n">10</span><span>Other charges</span></a></li>
+      <li><a href="#s11"><span class="n">11</span><span>Insurance &amp; banking</span></a></li>
+      <li><a href="#s12"><span class="n">12</span><span>Employees</span></a></li>
+      <li><a href="#s13"><span class="n">13</span><span>Decisions for owners at the AGM</span></a></li>
+      <li><a href="#s14"><span class="n">14</span><span>Basis of this report</span></a></li>
+      <li><a href="#sA"><span class="n">A</span><span>Appendix &mdash; full budget breakout</span></a></li>
+      <li><a href="#sB"><span class="n">B</span><span>Appendix &mdash; previous AGM minutes</span></a></li>
+      <li><a href="#sC"><span class="n">C</span><span>Appendix &mdash; the 2026 AGM: call, agenda, proxies, quorum</span></a></li>
+    </ol>
+  </nav>
+
+  <dl class="glance">
+    <div><dt>Villas</dt><dd>14<span class="qual">All owner-occupied</span></dd></div>
+    <div><dt>FY2027 operating budget</dt><dd>$265,270<span class="qual">MXN 4,642,223</span></dd></div>
+    <div><dt>Reserve fund</dt><dd>$60,000<span class="qual">60% of the $100,000 target</span></dd></div>
+    <div><dt>2027 roof assessment</dt><dd>$75,000<span class="qual">MXN 1,312,500 &middot; split evenly</span></dd></div>
+  </dl>
+
+  <section class="sec" id="s1">
+    <div class="sec-num">1</div>
+    <div class="sec-body">
+      <h2>The Association</h2>
+      <p>Sampaguita Villas is a 14-villa beachfront community in San Jos&eacute; del Cabo, Baja California
+      Sur, governed by <em>Asociaci&oacute;n de Condominios de Sampaguita Villas A.C.</em> ("the HOA")
+      under the Sampaguita Condominium Regime and Bylaws (2013 revision) and the HOA Operations Manual.</p>
+      <p>This report brings together, in one place, everything an owner would expect to review before the
+      Annual General Meeting: how the community is governed, who manages it, the state of each villa, and
+      the full financial picture &mdash; the proposed operating budget, dues, the reserve fund, and the
+      assessments planned for the roof project. All monetary figures are shown in Mexican pesos (MXN) with
+      a US-dollar equivalent at <strong>1 USD = 17.5 MXN</strong>.</p>
+      <div class="callout">
+        <span class="lbl">Status of the numbers</span>
+        <p>The FY2027 operating budget is a <strong>proposed</strong> budget for owner approval &mdash; not
+        yet adopted. The reserve fund policy referenced throughout is <strong>Revision 2, a circulation
+        draft</strong>. The reserve target and the 2027&ndash;2028 roof assessments are figures to be
+        confirmed or amended by owner motion at the AGM.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="s2">
+    <div class="sec-num">2</div>
+    <div class="sec-body">
+      <h2>The year in brief</h2>
+      <ul>
+        <li><strong>A new property manager.</strong> Sara Gabriela Alfaro Chavero took over property
+        management and administration on a contract running to April&nbsp;30,&nbsp;2027, replacing the
+        prior arrangement with Sunrise Property Management LLC (contract ended).</li>
+        <li><strong>Catch-up on utilities.</strong> Electricity, water and propane payments held back in
+        2025 for cash reasons were brought current in early 2026, so the utilities lines carry a step-up
+        into FY2027 (see &sect;6).</li>
+        <li><strong>Reserve fund rebuilt to $60,000</strong> after $90,000 of deliberate 2025 capital
+        spend (pool furniture, beach concession, villa exterior painting), against a proposed target of
+        $100,000 &mdash; 60% funded (see &sect;8).</li>
+        <li><strong>Villa roof replacement scheduled for 2027</strong>, estimated at $150,000, to be
+        funded by special assessment across 2027 and 2028 rather than from the reserve (see &sect;9).</li>
+        <li><strong>Dues allocation confirmed</strong> &mdash; each villa's approved percentage share of
+        the common budget is on record and drives the dues figures in &sect;7.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec" id="s3">
+    <div class="sec-num">3</div>
+    <div class="sec-body">
+      <h2>Governance &amp; the Board</h2>
+      <p>The HOA is directed by a volunteer Board of owners. Recorded Board positions:</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Position</th><th>Holder</th><th>Term</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">President</td><td>Paul Dame (Villa&nbsp;9)</td><td>2027&ndash;2028</td></tr>
+            <tr><td class="rowhead">Treasurer</td><td>Jane Ellmann (Villa&nbsp;11)</td><td>2026</td></tr>
+            <tr><td class="rowhead">Secretary</td><td>Peter &amp; Jane Ellmann (Villa&nbsp;11)</td><td>2026&ndash;2027</td></tr>
+            <tr><td class="rowhead">Ex-oficio (observer)</td><td>Dara &Oacute; hUiginn (Villa&nbsp;1)</td><td>through Jan 2027</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The recorded President term for Paul Dame begins in 2027. The 2026 President and current bank
+      signing authority is Wendell&nbsp;("Wendy")&nbsp;Shomion (Villa&nbsp;10), who countersigned the
+      current property-management agreement on behalf of the Association.</p>
+      <h3>Annual General Meeting</h3>
+      <div class="tbl-scroll">
+        <table class="kv"><tbody>
+          <tr><td>Date</td><td><strong>November 7, 2026</strong></td></tr>
+          <tr><td>Location</td><td>Offices of Troncoso <span style="color:var(--ink-soft)">(to be confirmed)</span></td></tr>
+          <tr><td>Chair</td><td>Jane Ellmann</td></tr>
+          <tr><td>Meetings on record this cycle</td><td>1 &mdash; the Annual General Meeting</td></tr>
+        </tbody></table>
+      </div>
+      <p>A roof inspection at Villa&nbsp;7 was logged for August&nbsp;29,&nbsp;2026 as part of preparation
+      for the 2027 roof project.</p>
+
+      <h3>Required statutory filings &amp; registrations</h3>
+      <p>The HOA is a Mexican <em>Asociaci&oacute;n Civil</em> (&ldquo;A.C.&rdquo;) that owns common
+      property, employs staff and holds a federal beach-zone concession. It therefore carries a set of
+      recurring federal, state and municipal obligations. <strong>No consolidated list of these filings
+      has been maintained &mdash; a gap that has caused real problems (late payments, penalties, and
+      audit exposure).</strong> The list below is the starting register the Board and accountant must
+      now keep current; the specific due dates and current standing must be confirmed by a Mexican tax
+      professional.</p>
+      <div class="callout callout--alert">
+        <span class="lbl">Action &mdash; owns this list</span>
+        <p>The Board (Treasurer) and the HOA accountant are jointly responsible for maintaining this
+        register, confirming that every filing below is current, and reporting status at each AGM.</p>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <caption>Recurring statutory filings &middot; authority &middot; frequency &middot; status to confirm</caption>
+          <thead><tr><th>Filing / obligation</th><th>Authority</th><th>Frequency</th><th>Typical due</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">Annual informative return &mdash; non-profit legal person (Title III LISR, art. 86)</td><td>SAT</td><td>Annual</td><td>By Feb 15</td></tr>
+            <tr><td class="rowhead">Electronic accounting &mdash; trial balance + chart of accounts (contabilidad electr&oacute;nica)</td><td>SAT</td><td>Monthly</td><td>Following month</td></tr>
+            <tr><td class="rowhead">Payroll ISR withholding (retenciones por sueldos y salarios) + payroll CFDI</td><td>SAT</td><td>Monthly / each pay run</td><td>17th of following month</td></tr>
+            <tr><td class="rowhead">ISR / IVA withholding on professional fees &amp; lease payments (if paid to individuals)</td><td>SAT</td><td>Monthly</td><td>17th of following month</td></tr>
+            <tr><td class="rowhead">DIOT &mdash; informative return on operations with third parties</td><td>SAT</td><td>Monthly</td><td>Following month</td></tr>
+            <tr><td class="rowhead">CFDI issuance for dues / quotas; cancellation control</td><td>SAT</td><td>Ongoing</td><td>At time of charge</td></tr>
+            <tr><td class="rowhead">e.firma (FIEL) and Certificado de Sello Digital (CSD) &mdash; keep valid / renew</td><td>SAT</td><td>Renewal</td><td>Before expiry</td></tr>
+            <tr><td class="rowhead">Update of associates / controlling beneficiary records (aviso de socios / beneficiario controlador)</td><td>SAT</td><td>On change</td><td>Within 30 days of a villa transfer</td></tr>
+            <tr><td class="rowhead">IMSS employer contributions (cuotas obrero-patronales)</td><td>IMSS</td><td>Monthly</td><td>17th of following month</td></tr>
+            <tr><td class="rowhead">RCV + INFONAVIT contributions (via SUA / SIPARE)</td><td>IMSS / INFONAVIT</td><td>Bimonthly</td><td>17th, odd months</td></tr>
+            <tr><td class="rowhead">Determination of the work-risk premium (prima de riesgo de trabajo)</td><td>IMSS</td><td>Annual</td><td>February</td></tr>
+            <tr><td class="rowhead">State payroll tax &mdash; Impuesto sobre N&oacute;minas (ISN)</td><td>Gobierno de BCS</td><td>Monthly</td><td>Following month</td></tr>
+            <tr><td class="rowhead">Property tax on common-area property &mdash; Predial</td><td>Municipio de Los Cabos</td><td>Annual</td><td>Jan&ndash;Mar (discount window)</td></tr>
+            <tr><td class="rowhead">Federal maritime-zone concession &mdash; annual <em>derechos</em> payment (the &ldquo;Beach Concession&rdquo;)</td><td>SHCP / SEMARNAT (ZOFEMAT)</td><td>Annual</td><td>Per concession title</td></tr>
+            <tr><td class="rowhead">Concession title &mdash; renewal / compliance reporting; outstanding certificate payment (&asymp; USD 16,000)</td><td>SEMARNAT (ZOFEMAT)</td><td>Per title</td><td>On issuance of the official certificate</td></tr>
+            <tr><td class="rowhead">AGM minutes &mdash; translated and filed with the appropriate authorities</td><td>Notary / Registro P&uacute;blico</td><td>Annual</td><td>After each AGM</td></tr>
+            <tr><td class="rowhead">Book of minutes (libro de actas) &mdash; kept current</td><td>Internal / Registro P&uacute;blico</td><td>Ongoing</td><td>&mdash;</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--ink-soft)">REPSE / specialised-subcontracting registration
+      is generally not applicable to a self-managed HOA but should be confirmed if any labour is
+      supplied through a third-party company. CLUNI / donataria registration does not apply &mdash; the
+      HOA is not a public-benefit organisation.</p>
+      <h3>Registrations &amp; identifiers to confirm or obtain</h3>
+      <p>None of the following are recorded in the HOA's files. Each must be located, verified as valid,
+      and kept with the corporate records.</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Identifier</th><th>Held with</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">RFC of the Association (federal taxpayer registry)</td><td>SAT</td><td>To confirm</td></tr>
+            <tr><td class="rowhead">Registro Patronal (employer registration number)</td><td>IMSS</td><td>To confirm</td></tr>
+            <tr><td class="rowhead">ZOFEMAT concession number / expediente</td><td>SEMARNAT</td><td>To confirm</td></tr>
+            <tr><td class="rowhead">Predial account number(s) for common-area property</td><td>Municipio de Los Cabos</td><td>To confirm</td></tr>
+            <tr><td class="rowhead">Folio real / inscription of the escritura constitutiva and the condominium regime</td><td>Registro P&uacute;blico de la Propiedad, BCS</td><td>To confirm</td></tr>
+            <tr><td class="rowhead">Escritura number &amp; notary of record</td><td>Notar&iacute;a</td><td>To confirm</td></tr>
+            <tr><td class="rowhead">e.firma (FIEL) &mdash; validity date; CSD serial &amp; validity</td><td>SAT</td><td>To confirm</td></tr>
+            <tr><td class="rowhead">State registration of the condominium (if required in BCS)</td><td>Gobierno de BCS</td><td>To confirm</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Accountant</h3>
+      <p>The FY2027 budget carries an <strong>Accountant</strong> line of MXN 34,800 (&asymp; USD 1,989),
+      and the property-management agreement refers to work performed by &ldquo;the PMA and/or their
+      accountant.&rdquo; <strong>No directly contracted accountant is identified in the HOA's records.</strong>
+      The Board should confirm whether accounting is currently provided through the property manager or
+      by a firm engaged directly by the Association, name that party in the records, and ensure they hold
+      responsibility for the filing register above.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s4">
+    <div class="sec-num">4</div>
+    <div class="sec-body">
+      <h2>Property management</h2>
+      <div class="tbl-scroll">
+        <table class="kv"><tbody>
+          <tr><td>Property manager</td><td><strong>Sara Gabriela Alfaro Chavero</strong> (individual)</td></tr>
+          <tr><td>Address</td><td>Bahia de las Palmas 8, San Jos&eacute; del Cabo, BCS 23405</td></tr>
+          <tr><td>Contract term</td><td>May 1, 2026 &ndash; April 30, 2027</td></tr>
+          <tr><td>Extension</td><td>By mutual agreement after owner approval at the November 2026 AGM</td></tr>
+          <tr><td>Compensation</td><td>MXN 35,600 / month (May&ndash;Oct 2026), then the MXN equivalent of <strong>USD 2,500 / month</strong> from Nov 1, 2026 after a Board performance review</td></tr>
+        </tbody></table>
+      </div>
+      <h3>Scope</h3>
+      <p>Day-to-day management of the property, facilities and community; hiring and supervision of HOA
+      employees and sub-contractors (pool, grounds, fumigation, irrigation, propane, water system, front
+      security gates); <strong>monthly water-meter readings per villa, billed quarterly</strong> with a
+      report to owners; banking, accounts payable and payroll (salaries, IMSS, bonuses); the annual Beach
+      Concession payment and renewal; assistance to the Board and Treasurer with the annual Operating and
+      Capital budgets; organising and securing <em>Facturas</em> for Board, accountant and Hacienda
+      review; and legal representation of the HOA within the granted power of attorney. The PM reports to
+      the Board through the President.</p>
+      <div class="callout callout--alert">
+        <span class="lbl">Powers the PM does not hold</span>
+        <p>Per 2013 By-Law Article&nbsp;VIII, the PM may <strong>not</strong> levy fines, hold hearings or
+        impose discipline; make capital expenditures; or file suit or record a lien for unpaid
+        assessments. Outside contracts over USD&nbsp;2,500 require at least three competitive bids.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="s5">
+    <div class="sec-num">5</div>
+    <div class="sec-body">
+      <h2>The property &amp; the villas</h2>
+      <p>Fourteen villas, all currently owner-occupied. Each villa's <strong>allocation percentage</strong>
+      is its approved fixed share of the common budget and drives its dues (&sect;7). The percentages sum
+      to 100%.</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Villa</th><th>Owner(s) of record</th><th class="num">Allocation</th><th>Dues schedule</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">1</td><td>Dara &amp; Andrea &Oacute; hUiginn</td><td class="num">7.89%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">2</td><td>Janice &amp; Greg Smith</td><td class="num">7.38%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">3</td><td>Rob &amp; Jennifer Mackie</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">4</td><td>Steve &amp; Faye Cropper; Danny Dalla-Longa</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">5</td><td>Ron, Jas &amp; Maya Sangara</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">6</td><td>Mike &amp; Catherine Kraft</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">7</td><td>Charmaine &amp; Larry Dekker</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">8</td><td>Anne Jackson; Andrea Phillips</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">9</td><td>Paul &amp; Diane Dame</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">10</td><td>Wendy &amp; Mike Shomion</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">11</td><td>Peter &amp; Jane Ellmann</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">12</td><td>Tony &amp; Heather Kenihan</td><td class="num">6.81%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">13</td><td>Anne Fishbein</td><td class="num">7.38%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr><td class="rowhead">14</td><td>Dave &amp; Cathy Vanderwerf</td><td class="num">9.25%</td><td>Quarterly</td><td>Owner-occupied</td></tr>
+            <tr class="total"><td>Total</td><td>14 villas</td><td class="num">100.00%</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--ink-soft)">Every villa's owner has, for now, chosen the
+      quarterly dues schedule. Owners may elect semi-annual or annual payment on their unit profile.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s6">
+    <div class="sec-num">6</div>
+    <div class="sec-body">
+      <h2>Operating finances &mdash; the FY2027 proposed budget</h2>
+      <p>The proposed operating budget for fiscal 2027 totals <strong>MXN 4,642,223</strong>
+      (&asymp; USD&nbsp;265,270), up from MXN&nbsp;2,547,557 of prior-year actuals &mdash; the increase
+      driven mainly by utilities catch-up, a larger landscaping contract, payroll taxes and social
+      security sized for all three employees, and the beach concession now funded.</p>
+      <div class="tbl-scroll">
+        <table>
+          <caption>By category, largest first &middot; MXN with USD equivalent</caption>
+          <thead><tr><th>Category</th><th class="num">Lines</th><th class="num">Budget (MXN)</th><th class="num">Budget (US$)</th><th class="num">Prior-year actual (MXN)</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">Utilities</td><td class="num">5</td><td class="num">1,281,585</td><td class="num">$73,233</td><td class="num">545,568</td></tr>
+            <tr><td class="rowhead">Grounds &amp; Landscaping</td><td class="num">7</td><td class="num">782,341</td><td class="num">$44,705</td><td class="num">371,175</td></tr>
+            <tr><td class="rowhead">Payroll</td><td class="num">4</td><td class="num">596,002</td><td class="num">$34,057</td><td class="num">386,054</td></tr>
+            <tr><td class="rowhead">Administration</td><td class="num">4</td><td class="num">582,638</td><td class="num">$33,294</td><td class="num">309,858</td></tr>
+            <tr><td class="rowhead">Security</td><td class="num">1</td><td class="num">428,750</td><td class="num">$24,500</td><td class="num">220,000</td></tr>
+            <tr><td class="rowhead">Maintenance &amp; Repairs</td><td class="num">8</td><td class="num">381,500</td><td class="num">$21,800</td><td class="num">249,886</td></tr>
+            <tr><td class="rowhead">Insurance</td><td class="num">1</td><td class="num">254,895</td><td class="num">$14,565</td><td class="num">259,000</td></tr>
+            <tr><td class="rowhead">Reserve contribution</td><td class="num">1</td><td class="num">175,000</td><td class="num">$10,000</td><td class="num">82,464</td></tr>
+            <tr><td class="rowhead">Taxes &amp; government fees</td><td class="num">2</td><td class="num">92,750</td><td class="num">$5,300</td><td class="num">56,790</td></tr>
+            <tr><td class="rowhead">Capital expense</td><td class="num">1</td><td class="num">66,763</td><td class="num">$3,815</td><td class="num">66,762</td></tr>
+            <tr class="total"><td>Total &mdash; FY2027 operating budget</td><td class="num">34</td><td class="num">4,642,223</td><td class="num">$265,270</td><td class="num">2,547,557</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Notable lines</h3>
+      <ul>
+        <li><strong>Water</strong> MXN 665,000 &mdash; the single largest line, up from 255,000 as 2025's held-back invoices are cleared.</li>
+        <li><strong>Landscaping contract</strong> MXN 562,716 and <strong>Management fee</strong> MXN 486,500 are the next two largest.</li>
+        <li><strong>Beach concession</strong> MXN 87,500 (&asymp; USD&nbsp;5,000/yr) &mdash; funded for the first time; it was a known shortfall in 2026.</li>
+        <li><strong>Reserve contribution</strong> MXN 175,000 (USD&nbsp;10,000). The reserve policy's own funding plan derives a lower figure of USD&nbsp;8,000/yr (see &sect;8) &mdash; the Board should reconcile these before approval.</li>
+        <li><strong>Payroll taxes &amp; SAT ISR</strong> are now sized for all three employees; in 2026 they were budgeted for one.</li>
+      </ul>
+      <p style="font-size:.85rem;color:var(--ink-soft)">Reader's note from the budget draft: figures were
+      taken from the peso columns of the 2026 expense report; a one-off "Peter reimburse" line was
+      excluded as non-operating; small differences arise from rounding and blank cells in the source.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s7">
+    <div class="sec-num">7</div>
+    <div class="sec-body">
+      <h2>Dues by villa</h2>
+      <p>Each villa's dues are its <strong>allocation percentage &times; the operating-budget total</strong>.
+      Against the proposed FY2027 budget of MXN 4,642,223, the annual and quarterly dues are:</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Villa</th><th class="num">Alloc.</th><th class="num">Annual (MXN)</th><th class="num">Annual (US$)</th><th class="num">Quarterly (MXN)</th><th class="num">Quarterly (US$)</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">1</td><td class="num">7.89%</td><td class="num">366,271</td><td class="num">$20,930</td><td class="num">91,568</td><td class="num">$5,232</td></tr>
+            <tr><td class="rowhead">2</td><td class="num">7.38%</td><td class="num">342,596</td><td class="num">$19,577</td><td class="num">85,649</td><td class="num">$4,894</td></tr>
+            <tr><td class="rowhead">3&ndash;12 <span style="color:var(--ink-soft)">(each)</span></td><td class="num">6.81%</td><td class="num">316,135</td><td class="num">$18,065</td><td class="num">79,034</td><td class="num">$4,516</td></tr>
+            <tr><td class="rowhead">13</td><td class="num">7.38%</td><td class="num">342,596</td><td class="num">$19,577</td><td class="num">85,649</td><td class="num">$4,894</td></tr>
+            <tr><td class="rowhead">14</td><td class="num">9.25%</td><td class="num">429,406</td><td class="num">$24,537</td><td class="num">107,351</td><td class="num">$6,134</td></tr>
+            <tr class="total"><td>Total</td><td class="num">100.00%</td><td class="num">4,642,223</td><td class="num">$265,270</td><td class="num">1,160,556</td><td class="num">$66,318</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Villas 3 through 12 each carry the same 6.81% share. Dues are set from the <em>approved</em>
+      operating budget; the figures above will be final once owners adopt the FY2027 budget.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s8">
+    <div class="sec-num">8</div>
+    <div class="sec-body">
+      <h2>Reserve fund</h2>
+      <p>The reserve fund is held in USD in a Canadian bank, segregated from operating funds, and
+      restricted to reserve-eligible capital work plus defined contingencies (unforeseen repairs over
+      USD&nbsp;20,000, hurricane damage, other major situations). Any drawdown requires full Board
+      agreement.</p>
+      <div class="tbl-scroll">
+        <table class="kv"><tbody>
+          <tr><td>Current balance</td><td><strong>USD 60,000</strong> (start of 2026)</td></tr>
+          <tr><td>Target level</td><td>USD 100,000 &mdash; placeholder, <strong>AGM motion required</strong></td></tr>
+          <tr><td>Coverage</td><td>60% of target</td></tr>
+          <tr><td>Minimum floor</td><td>USD 30,000 (30% of target) &mdash; breaching it triggers a special assessment</td></tr>
+          <tr><td>Signing authority</td><td>Wendell ("Wendy") Shomion</td></tr>
+        </tbody></table>
+      </div>
+      <h3>History</h3>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Year</th><th class="num">Opening</th><th class="num">Contributions</th><th class="num">Expenditures</th><th class="num">Closing</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">2024</td><td class="num">&mdash;</td><td class="num">90,000</td><td class="num">&mdash;</td><td class="num">90,000</td></tr>
+            <tr><td class="rowhead">2025</td><td class="num">90,000</td><td class="num">60,000</td><td class="num">90,000</td><td class="num">60,000</td></tr>
+            <tr><td class="rowhead">2026 <span style="color:var(--ink-soft)">(to date)</span></td><td class="num">60,000</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">60,000</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>All amounts USD. The 2025 expenditure of $90,000 was deliberate capital investment &mdash; pool
+      furniture ($20,000), beach concession ($20,000) and full villa exterior painting ($50,000) &mdash;
+      not erosion of the fund.</p>
+      <h3>Funding plan (Reserve Fund Policy, Revision 2)</h3>
+      <p>The annual reserve top-up is derived from the fund position and carried into the operating
+      budget. With the roof project funded separately by assessment (&sect;9), the top-up closes only the
+      gap to target:</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Line</th><th class="num">USD</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">Opening balance</td><td class="num">60,000</td></tr>
+            <tr><td class="rowhead">Target</td><td class="num">100,000</td></tr>
+            <tr><td class="rowhead">Shortfall to close</td><td class="num">40,000</td></tr>
+            <tr><td class="rowhead">Years to top up (planning default)</td><td class="num">5</td></tr>
+            <tr class="sub"><td class="rowhead">Budgeted top-up per year</td><td class="num">&asymp; 8,000</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout callout--alert">
+        <span class="lbl">To reconcile before budget approval</span>
+        <p>The policy's derived reserve line is <strong>USD 8,000 / year (&asymp; MXN 140,000)</strong>.
+        The FY2027 operating budget currently carries <strong>MXN 175,000 (USD 10,000)</strong> on the
+        reserve line. The Board should settle on one figure at the AGM.</p>
+      </div>
+      <p>The 2027 villa roof (USD&nbsp;150,000) is <strong>not</strong> drawn from the reserve &mdash; it
+      is funded by the special assessments in &sect;9.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s9">
+    <div class="sec-num">9</div>
+    <div class="sec-body">
+      <h2>Special assessments</h2>
+      <p>Special assessments at Sampaguita are <strong>split evenly across all 14 villas</strong>, not by
+      allocation percentage. One assessment is on the books:</p>
+      <div class="tbl-scroll">
+        <table class="kv"><tbody>
+          <tr><td>Assessment</td><td><strong>2027 Villa Roof Replacement</strong></td></tr>
+          <tr><td>Purpose</td><td>2027 portion of the villa roof replacement (total project USD 150,000, planned USD 75,000 in 2027 and USD 75,000 in 2028)</td></tr>
+          <tr><td>Total this assessment</td><td><span class="figure-lead">MXN 1,312,500</span> &nbsp;&asymp; USD 75,000</td></tr>
+          <tr><td>Split</td><td>Evenly &mdash; <strong>MXN 93,750 per villa</strong> (&asymp; USD 5,357)</td></tr>
+          <tr><td>Due</td><td>June 1, 2027</td></tr>
+          <tr><td>Status</td><td>Draft &mdash; not yet issued to owners</td></tr>
+        </tbody></table>
+      </div>
+      <p>A matching <strong>2028 assessment of USD 75,000</strong> is anticipated to complete the roof
+      funding. Both amounts, and the even-split method, are subject to owner motion.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s10">
+    <div class="sec-num">10</div>
+    <div class="sec-body">
+      <h2>Other charges</h2>
+      <p>Beyond dues and assessments, the HOA can raise <strong>per-villa charges</strong> for metered
+      water, fees or other one-off items &mdash; entered by a Board member or the PM, for a single villa
+      or all villas. Under the PM agreement, water meters are read monthly and billed quarterly.</p>
+      <p><strong>No such charges are currently outstanding.</strong> The first quarterly water billing
+      under the new PM will appear here once meter readings are in.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s11">
+    <div class="sec-num">11</div>
+    <div class="sec-body">
+      <h2>Insurance &amp; banking</h2>
+      <div class="tbl-scroll">
+        <table class="kv"><tbody>
+          <tr><td>Property insurance</td><td>Active policy, budgeted at MXN 254,895 (&asymp; USD 14,565) for FY2027; a supporting contract is on file with a current term into late 2026 &mdash; renewal is due.</td></tr>
+          <tr><td>Operating bank</td><td>BBVA &mdash; account details on file with the Board</td></tr>
+          <tr><td>Signing authority</td><td>Wendell ("Wendy") Shomion</td></tr>
+          <tr><td>Reserve account</td><td>Held in USD at a Canadian bank, segregated (see &sect;8)</td></tr>
+          <tr><td>Payment instructions</td><td>Issued to owners separately by the PM / Treasurer</td></tr>
+        </tbody></table>
+      </div>
+      <div class="callout callout--alert">
+        <span class="lbl">Action</span>
+        <p>The property insurance contract on file runs only to <strong>December 30, 2026</strong>.
+        Renewal should be confirmed before year-end.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="s12">
+    <div class="sec-num">12</div>
+    <div class="sec-body">
+      <h2>Employees</h2>
+      <p>The HOA directly employs grounds and maintenance staff, managed by the PM. On record:</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Name</th><th>Role</th><th>Reports to</th><th>Since</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">Rosa Delgado <span style="color:var(--ink-soft)">(SAMP-007)</span></td><td>Head Groundskeeper</td><td>Property Manager</td><td>June 2024</td><td>On leave</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Government registration numbers (IMSS, CURP) and contact and residence details are held on file
+      by the PM and are not reproduced in this owner report. The FY2027 payroll budget provides for
+      <strong>three employees</strong>, including social security and taxes for all three; the roster
+      above reflects only what is currently entered in the system.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="s13">
+    <div class="sec-num">13</div>
+    <div class="sec-body">
+      <h2>Decisions for owners at the November 2026 AGM</h2>
+      <div class="decision"><div class="mk">A</div><div>
+        <p class="d-title">Adopt the FY2027 operating budget</p>
+        <p>MXN 4,642,223 (&asymp; USD 265,270), which sets each villa's dues per &sect;7. Reconcile the
+        reserve line first &mdash; USD 10,000 as budgeted, or USD 8,000 per the reserve policy.</p>
+      </div></div>
+      <div class="decision"><div class="mk">B</div><div>
+        <p class="d-title">Set the reserve fund target by motion</p>
+        <p>USD 100,000 is a working placeholder. The target, and 30% of it as the minimum floor, become
+        binding once owners vote.</p>
+      </div></div>
+      <div class="decision"><div class="mk">C</div><div>
+        <p class="d-title">Approve the 2027 roof special assessment</p>
+        <p>USD 75,000 (MXN 1,312,500), split evenly at MXN 93,750 per villa, due June 1, 2027 &mdash; with
+        a matching USD 75,000 assessment to follow in 2028.</p>
+      </div></div>
+      <div class="decision"><div class="mk">D</div><div>
+        <p class="d-title">Adopt the Reserve Fund Policy, Revision 2</p>
+        <p>Currently a circulation draft. Adoption fixes the funding-plan method, the 30%-of-target floor,
+        and the special-assessment trigger.</p>
+      </div></div>
+      <div class="decision"><div class="mk">E</div><div>
+        <p class="d-title">Confirm the property-management contract extension</p>
+        <p>Sara Gabriela Alfaro Chavero's contract runs to April 30, 2027 and is extendable by mutual
+        agreement following owner approval at this AGM and a Board performance review.</p>
+      </div></div>
+      <div class="decision"><div class="mk">F</div><div>
+        <p class="d-title">Note the property insurance renewal</p>
+        <p>The contract on file expires December 30, 2026 and must be renewed.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="s14">
+    <div class="sec-num">14</div>
+    <div class="sec-body">
+      <h2>Basis of this report</h2>
+      <ul>
+        <li>Figures are drawn from the HOA's records as of <strong>September 9, 2026</strong>.</li>
+        <li>Peso&ndash;dollar conversions use <strong>1 USD = 17.5 MXN</strong>, the rate carried on the FY2027 budget.</li>
+        <li>The FY2027 operating budget is a <strong>proposed</strong> budget (Revision 1, not yet approved).</li>
+        <li>The Reserve Fund Policy referenced is <strong>Revision 2, a circulation draft</strong> pending owner adoption.</li>
+        <li>The 2027 roof assessment is recorded as a <strong>draft</strong> and has not been issued to owners.</li>
+        <li>Prior-year figures are 2025 actuals where the budget records them; some lines have no prior-year comparison on file.</li>
+        <li>Owner names are as recorded in the ownership register and may abbreviate multiple co-owners.</li>
+        <li>The statutory-filing register (&sect;3) and the AGM mechanics (Appendix&nbsp;C) are
+        <strong>indicative</strong>: due dates, thresholds and notice periods must be confirmed with the
+        HOA's accountant and against the 2013 Bylaws and Condominium Regime.</li>
+      </ul>
+    </div>
+  </section>
+
+  <p class="eyebrow" style="border-top:3px double var(--rule-strong);padding-top:1.6rem;margin-top:.5rem">Appendices</p>
+
+  <section class="sec" id="sA">
+    <div class="sec-num">A</div>
+    <div class="sec-body">
+      <h2>Appendix A &mdash; full FY2027 budget breakout</h2>
+      <p>Every line of the proposed operating budget, grouped by category (largest first), with the
+      US-dollar equivalent at 1&nbsp;USD&nbsp;=&nbsp;17.5&nbsp;MXN and the prior-year (2025) actual where
+      recorded. Category order and subtotals match &sect;6.</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Line item</th><th class="num">Budget (MXN)</th><th class="num">Budget (US$)</th><th class="num">Prior-year actual (MXN)</th></tr></thead>
+          <tbody>
+            <tr class="sub"><td>Utilities</td><td class="num">1,281,585</td><td class="num">$73,233</td><td class="num">545,568</td></tr>
+            <tr><td class="rowhead">Water</td><td class="num">665,000</td><td class="num">$38,000</td><td class="num">255,000</td></tr>
+            <tr><td class="rowhead">Propane</td><td class="num">245,000</td><td class="num">$14,000</td><td class="num">156,000</td></tr>
+            <tr><td class="rowhead">Electricity</td><td class="num">208,828</td><td class="num">$11,933</td><td class="num">85,500</td></tr>
+            <tr><td class="rowhead">Waste service</td><td class="num">96,466</td><td class="num">$5,512</td><td class="num">45,936</td></tr>
+            <tr><td class="rowhead">Recycle</td><td class="num">66,292</td><td class="num">$3,788</td><td class="num">3,132</td></tr>
+
+            <tr class="sub"><td>Grounds &amp; Landscaping</td><td class="num">782,341</td><td class="num">$44,705</td><td class="num">371,175</td></tr>
+            <tr><td class="rowhead">Landscaping contract</td><td class="num">562,716</td><td class="num">$32,155</td><td class="num">244,400</td></tr>
+            <tr><td class="rowhead">Pool supplies</td><td class="num">87,500</td><td class="num">$5,000</td><td class="num">4,275</td></tr>
+            <tr><td class="rowhead">Palm trimming</td><td class="num">61,250</td><td class="num">$3,500</td><td class="num">0</td></tr>
+            <tr><td class="rowhead">Irrigation system</td><td class="num">43,750</td><td class="num">$2,500</td><td class="num">20,000</td></tr>
+            <tr><td class="rowhead">Landscaping lights</td><td class="num">17,500</td><td class="num">$1,000</td><td class="num">17,500</td></tr>
+            <tr><td class="rowhead">Landscaping supplies</td><td class="num">5,250</td><td class="num">$300</td><td class="num">5,000</td></tr>
+            <tr><td class="rowhead">Pool maintenance</td><td class="num">4,375</td><td class="num">$250</td><td class="num">80,000</td></tr>
+
+            <tr class="sub"><td>Payroll</td><td class="num">596,002</td><td class="num">$34,057</td><td class="num">386,054</td></tr>
+            <tr><td class="rowhead">Payroll</td><td class="num">255,500</td><td class="num">$14,600</td><td class="num">184,834</td></tr>
+            <tr><td class="rowhead">SAT ISR</td><td class="num">180,000</td><td class="num">$10,286</td><td class="num">180,000</td></tr>
+            <tr><td class="rowhead">Payroll tax</td><td class="num">150,502</td><td class="num">$8,600</td><td class="num">11,220</td></tr>
+            <tr><td class="rowhead">Employees uniforms</td><td class="num">10,000</td><td class="num">$571</td><td class="num">10,000</td></tr>
+
+            <tr class="sub"><td>Administration</td><td class="num">582,638</td><td class="num">$33,294</td><td class="num">309,858</td></tr>
+            <tr><td class="rowhead">Management fee</td><td class="num">486,500</td><td class="num">$27,800</td><td class="num">247,776</td></tr>
+            <tr><td class="rowhead">Legal fees</td><td class="num">35,000</td><td class="num">$2,000</td><td class="num">21,000</td></tr>
+            <tr><td class="rowhead">Accountant</td><td class="num">34,800</td><td class="num">$1,989</td><td class="num">34,800</td></tr>
+            <tr><td class="rowhead">Bank commission</td><td class="num">26,338</td><td class="num">$1,505</td><td class="num">6,282</td></tr>
+
+            <tr class="sub"><td>Security</td><td class="num">428,750</td><td class="num">$24,500</td><td class="num">220,000</td></tr>
+            <tr><td class="rowhead">Security Services</td><td class="num">428,750</td><td class="num">$24,500</td><td class="num">220,000</td></tr>
+
+            <tr class="sub"><td>Maintenance &amp; Repairs</td><td class="num">381,500</td><td class="num">$21,800</td><td class="num">249,886</td></tr>
+            <tr><td class="rowhead">General repairs</td><td class="num">175,000</td><td class="num">$10,000</td><td class="num">90,000</td></tr>
+            <tr><td class="rowhead">Pest control</td><td class="num">52,500</td><td class="num">$3,000</td><td class="num">32,886</td></tr>
+            <tr><td class="rowhead">Roof maintenance</td><td class="num">47,250</td><td class="num">$2,700</td><td class="num">47,000</td></tr>
+            <tr><td class="rowhead">Main entrance iron door paint</td><td class="num">35,000</td><td class="num">$2,000</td><td class="num">35,000</td></tr>
+            <tr><td class="rowhead">Garage doors painting</td><td class="num">35,000</td><td class="num">$2,000</td><td class="num">35,000</td></tr>
+            <tr><td class="rowhead">Villas minor painting</td><td class="num">17,500</td><td class="num">$1,000</td><td class="num">10,000</td></tr>
+            <tr><td class="rowhead">Fire protection</td><td class="num">10,500</td><td class="num">$600</td><td class="num">&mdash;</td></tr>
+            <tr><td class="rowhead">Equipment &amp; tools</td><td class="num">8,750</td><td class="num">$500</td><td class="num">0</td></tr>
+
+            <tr class="sub"><td>Insurance</td><td class="num">254,895</td><td class="num">$14,565</td><td class="num">259,000</td></tr>
+            <tr><td class="rowhead">Property insurance</td><td class="num">254,895</td><td class="num">$14,565</td><td class="num">259,000</td></tr>
+
+            <tr class="sub"><td>Reserve contribution</td><td class="num">175,000</td><td class="num">$10,000</td><td class="num">82,464</td></tr>
+            <tr><td class="rowhead">Reserve</td><td class="num">175,000</td><td class="num">$10,000</td><td class="num">82,464</td></tr>
+
+            <tr class="sub"><td>Taxes &amp; government fees</td><td class="num">92,750</td><td class="num">$5,300</td><td class="num">56,790</td></tr>
+            <tr><td class="rowhead">Beach concession</td><td class="num">87,500</td><td class="num">$5,000</td><td class="num">0</td></tr>
+            <tr><td class="rowhead">Property taxes</td><td class="num">5,250</td><td class="num">$300</td><td class="num">56,790</td></tr>
+
+            <tr class="sub"><td>Capital expense</td><td class="num">66,763</td><td class="num">$3,815</td><td class="num">66,762</td></tr>
+            <tr><td class="rowhead">Capital exp project</td><td class="num">66,763</td><td class="num">$3,815</td><td class="num">66,762</td></tr>
+
+            <tr class="total"><td>Grand total &mdash; 34 lines</td><td class="num">4,642,223</td><td class="num">$265,270</td><td class="num">2,547,557</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="sB">
+    <div class="sec-num">B</div>
+    <div class="sec-body">
+      <h2>Appendix B &mdash; minutes of the previous Annual General Meeting</h2>
+      <div class="callout callout--alert">
+        <span class="lbl">Records gap</span>
+        <p><strong>No minutes of a prior Annual General Meeting are on file with the Association.</strong>
+        The Secretary must locate the last set of adopted minutes (and any interim resolutions), have
+        them translated where needed, protocolised before a notary and filed with the Registro
+        P&uacute;blico, and attached here. Until then, this appendix records only the required structure.</p>
+      </div>
+      <p>Minutes of each Annual General Meeting must record, at minimum:</p>
+      <ol class="body">
+        <li>Date, time, place, and whether held on first or second call.</li>
+        <li>Name of the Chair and the Secretary; confirmation that notice was given as required.</li>
+        <li><strong>Attendance and quorum</strong> &mdash; villas present in person and by proxy, and the
+        aggregate ownership percentage represented; confirmation that quorum was met.</li>
+        <li>Approval of the previous AGM's minutes.</li>
+        <li>Reports received &mdash; President, Treasurer (accounts and audit), Property Manager.</li>
+        <li>Each motion put to the meeting, its proposer, the vote (for / against / abstain, by
+        ownership percentage), and the result.</li>
+        <li>Budget adopted and the resulting dues; any special assessment approved (amount, split, due
+        dates).</li>
+        <li>Elections / confirmations to the Board and their terms.</li>
+        <li>Any powers of attorney granted or revoked.</li>
+        <li>Actions carried forward and the responsible party.</li>
+        <li>Time of adjournment; date the minutes were signed and by whom.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec" id="sC">
+    <div class="sec-num">C</div>
+    <div class="sec-body">
+      <h2>Appendix C &mdash; the 2026 Annual General Meeting</h2>
+      <p>This section sets out how the meeting is called and conducted. The specific notice periods and
+      voting thresholds must be confirmed against the Sampaguita Condominium Regime and 2013 Bylaws;
+      where this report states a figure it is the common practice and is marked for confirmation.</p>
+
+      <h3>Call &amp; notice</h3>
+      <div class="tbl-scroll">
+        <table class="kv"><tbody>
+          <tr><td>Meeting</td><td>Ordinary Annual General Meeting of owners</td></tr>
+          <tr><td>Date &amp; time</td><td><strong>November 7, 2026</strong> &mdash; start time to be set in the formal notice</td></tr>
+          <tr><td>Location</td><td>Offices of Troncoso, San Jos&eacute; del Cabo <span style="color:var(--ink-soft)">(to be confirmed)</span>, with a remote-participation option to be offered</td></tr>
+          <tr><td>Chair</td><td>Jane Ellmann</td></tr>
+          <tr><td>Notice</td><td>Written notice to every owner of record, <strong>bilingual (English / Spanish)</strong>, sent at least <em>[15]</em> days before the meeting &mdash; period to be confirmed against the Bylaws. Notice includes the agenda, this report, the proxy form, and the budget.</td></tr>
+        </tbody></table>
+      </div>
+
+      <h3>Quorum</h3>
+      <ul>
+        <li><strong>First call</strong> &mdash; a majority of the total ownership interest
+        (&gt;&nbsp;50% of the <em>indiviso</em>) present in person or by proxy. <span style="color:var(--ink-soft)">Threshold to confirm.</span></li>
+        <li><strong>Second call</strong> &mdash; if the first call fails, the meeting reconvenes (commonly
+        30&ndash;60 minutes later) and is valid for <em>ordinary</em> business with the owners then
+        present, whatever percentage they represent.</li>
+        <li><strong>Reinforced majorities</strong> &mdash; certain resolutions require more than a simple
+        majority of those present: adopting or amending the budget where it materially changes dues,
+        <strong>special assessments and capital expenditures</strong> (which also require prior written
+        notice and an owners' hearing), amendments to the Bylaws or the Condominium Regime, and granting
+        or revoking powers of attorney. The exact percentages (commonly two-thirds or higher) must be
+        confirmed against the governing documents and stated in the notice for each such motion.</li>
+      </ul>
+
+      <h3>Proxies</h3>
+      <ul>
+        <li>An owner who cannot attend may appoint a proxy in writing (<em>carta poder</em>) using the
+        form circulated with the notice.</li>
+        <li>The proxy must be another owner or a person named by the owner; one person may hold a limited
+        number of proxies <span style="color:var(--ink-soft)">(limit to confirm)</span>.</li>
+        <li>Signed proxy forms must reach the Secretary before the meeting opens &mdash; by email to the
+        HOA address or in person at registration. Proxies are logged in the attendance record and count
+        toward quorum.</li>
+        <li>An owner who later attends in person revokes their proxy automatically.</li>
+      </ul>
+
+      <h3>Agenda</h3>
+      <ol class="body">
+        <li>Call to order; confirmation of notice; establishment of quorum (first or second call).</li>
+        <li>Appointment of the Secretary for the meeting and of scrutineers for the vote.</li>
+        <li>Approval of the minutes of the previous Annual General Meeting.</li>
+        <li>President's report.</li>
+        <li>Treasurer's report &mdash; prior-year accounts, audit, and the current cash and reserve
+        position.</li>
+        <li>Property Manager's report.</li>
+        <li><strong>Motion &mdash; adopt the FY2027 operating budget</strong> and the resulting dues
+        (&sect;6&ndash;7), with the reserve line reconciled.</li>
+        <li><strong>Motion &mdash; set the reserve fund target</strong> and adopt the Reserve Fund
+        Policy, Revision 2 (&sect;8).</li>
+        <li><strong>Motion &mdash; approve the 2027 roof special assessment</strong> (&sect;9), and note
+        the intended 2028 assessment.</li>
+        <li><strong>Motion &mdash; confirm the property-management contract extension</strong> (&sect;4).</li>
+        <li>Statutory filings and registrations &mdash; status report and assignment of ownership
+        (&sect;3).</li>
+        <li>Property insurance renewal (&sect;11).</li>
+        <li>Election / confirmation of Board positions and terms.</li>
+        <li>Owner motions and agenda items received under the deadline below.</li>
+        <li>Any other business; date of the next meeting; adjournment.</li>
+      </ol>
+
+      <h3>Invitation &mdash; owner motions and agenda items</h3>
+      <div class="callout">
+        <span class="lbl">Owners: your input is invited</span>
+        <p>Any owner may propose a motion or add an item to the agenda. Send the proposed wording &mdash;
+        and, for a motion, the name of a seconder &mdash; in writing to the Secretary at the HOA email
+        address <strong>no later than [15] days before the meeting</strong> (deadline to be set in the
+        notice). Items received after the deadline may be raised under &ldquo;any other business&rdquo;
+        for discussion but not for a binding vote. Owners are also encouraged to submit written
+        questions for the Treasurer or Property Manager in advance so they can be answered fully at the
+        meeting.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="doc-foot">
+    <p>Asociaci&oacute;n de Condominios de Sampaguita Villas A.C. &mdash; Annual Report, draft for owner
+    review ahead of the November 7, 2026 Annual General Meeting. Not yet adopted.</p>
+    <p>Companion document: <em>Sampaguita HOA Reserve Fund Policy, Revision 2</em>.</p>
+  </footer>
+</div>
