@@ -1,5 +1,6 @@
 "use server"
 
+import Anthropic from "@anthropic-ai/sdk"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
@@ -394,4 +395,155 @@ export async function saveBudgetAsTemplate(budgetId: string) {
   revalidatePath("/dashboard/owner/governance/board")
   revalidatePath("/dashboard/property-manager/documents")
   return { success: true }
+}
+
+// --- Draft a budget from an uploaded financial document -------------------
+// Read a prior-year budget / financial statement PDF (or image) and create
+// a DRAFT "Proposed" operating budget from it, for the Board/PM to review
+// and adjust. Same AI-extraction shape as extractContractFromFile in
+// contracts.ts. Nothing is approved - a DRAFT budget has no authority.
+
+const BUDGET_EXTRACT_WINDOW_MS = 10 * 60 * 1000
+const BUDGET_EXTRACT_MAX = 10
+const budgetExtractLog = new Map<string, number[]>()
+function checkBudgetExtractRateLimit(userId: string): boolean {
+  const now = Date.now()
+  const recent = (budgetExtractLog.get(userId) ?? []).filter((t) => now - t < BUDGET_EXTRACT_WINDOW_MS)
+  if (recent.length >= BUDGET_EXTRACT_MAX) {
+    budgetExtractLog.set(userId, recent)
+    return false
+  }
+  recent.push(now)
+  budgetExtractLog.set(userId, recent)
+  return true
+}
+
+const BUDGET_DRAFT_TOOL = {
+  name: "provide_budget_draft",
+  description: "Record the operating-budget line items read from the document, as a proposed budget to review.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      fiscalYear: { type: "number", description: "The year the NEW proposed budget is for. If the document is last year's, this is the following year." },
+      lineItems: {
+        type: "array",
+        description: "One entry per operating expense/revenue line in the document. Skip subtotal and grand-total rows.",
+        items: {
+          type: "object",
+          properties: {
+            label: { type: "string", description: "The line item name exactly as written." },
+            budgetedAmount: { type: "number", description: "Proposed amount for the new year. Use the document's stated proposed/next-year figure if it has one; otherwise carry the prior-year actual forward unchanged." },
+            priorYearAmount: { type: ["number", "null"], description: "The prior year's actual (or budgeted, if no actual) for this line, else null." },
+          },
+          required: ["label", "budgetedAmount"],
+        },
+      },
+      assumptions: { type: "string", description: "1-3 sentences: what you carried forward, any line you couldn't read a number for, and any total that didn't reconcile." },
+    },
+    required: ["fiscalYear", "lineItems", "assumptions"],
+  },
+}
+
+interface BudgetDraftExtract {
+  fiscalYear: number
+  lineItems: { label: string; budgetedAmount: number; priorYearAmount?: number | null }[]
+  assumptions: string
+}
+
+export async function draftBudgetFromFile(
+  formData: FormData
+): Promise<{ success: true; id: string; count: number; assumptions: string } | { success: false; error: string }> {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageBudget(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "You don't have permission to draft budgets." }
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return { success: false, error: "Document reading isn't set up yet - create the budget and paste a CSV instead." }
+  if (!checkBudgetExtractRateLimit(session.user.id)) {
+    return { success: false, error: "Too many uploads in a short time - please wait a few minutes." }
+  }
+
+  const uploaded = formData.get("file")
+  if (!(uploaded instanceof File) || uploaded.size === 0) return { success: false, error: "Choose a file first." }
+  const mimeType = uploaded.type
+  const supportedType =
+    mimeType === "application/pdf" ? "document" : mimeType === "image/png" || mimeType === "image/jpeg" ? "image" : null
+  if (!supportedType) return { success: false, error: "Only PDF, PNG, or JPG files can be read automatically." }
+
+  const yearOverride = formData.get("year") ? Number(formData.get("year")) : null
+
+  const base64 = Buffer.from(await uploaded.arrayBuffer()).toString("base64")
+  const anthropic = new Anthropic({ apiKey, timeout: 60_000 })
+
+  let extract: BudgetDraftExtract
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 4096,
+      system:
+        "You read an HOA/condo operating budget or annual financial statement and turn it into a proposed operating budget for the next fiscal year, to be reviewed by the Board. Extract every operating line item. For each, set budgetedAmount to the document's proposed/next-year figure if it states one, otherwise carry the prior-year actual forward unchanged - do not invent increases. Record the prior-year amount in priorYearAmount. Skip subtotals and totals. Call provide_budget_draft once with your best reading. Amounts are plain numbers, no currency symbols.",
+      tools: [BUDGET_DRAFT_TOOL],
+      tool_choice: { type: "tool", name: "provide_budget_draft" },
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: supportedType, source: { type: "base64", media_type: mimeType, data: base64 } } as
+              | Anthropic.DocumentBlockParam
+              | Anthropic.ImageBlockParam,
+            { type: "text", text: "Draft next year's operating budget from this document." },
+          ],
+        },
+      ],
+    })
+    const toolUse = response.content.find(
+      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === "provide_budget_draft"
+    )
+    if (!toolUse) return { success: false, error: "Couldn't read a budget from that document - try a clearer file or paste a CSV." }
+    extract = toolUse.input as BudgetDraftExtract
+  } catch (err) {
+    console.error("[draftBudgetFromFile] extraction failed:", err instanceof Error ? err.message : err)
+    return { success: false, error: "The document reader hit a problem - try again, or create the budget and paste a CSV." }
+  }
+
+  const items = (Array.isArray(extract.lineItems) ? extract.lineItems : [])
+    .map((i, idx) => ({
+      label: String(i.label ?? "").trim(),
+      budgetedAmount: typeof i.budgetedAmount === "number" ? i.budgetedAmount : NaN,
+      previousYearActual: typeof i.priorYearAmount === "number" ? i.priorYearAmount : null,
+      sortOrder: idx,
+    }))
+    .filter((i) => i.label && i.label.toLowerCase() !== "total" && Number.isFinite(i.budgetedAmount))
+    .slice(0, 50)
+
+  if (items.length === 0) {
+    return { success: false, error: "No usable line items were found in that document." }
+  }
+
+  const year = Number.isFinite(yearOverride) && yearOverride ? yearOverride : Math.round(extract.fiscalYear) || new Date().getFullYear() + 1
+  const assumptions = String(extract.assumptions ?? "").trim()
+
+  const budget = await db.budget.create({
+    data: {
+      orgId: session.user.orgId,
+      year,
+      version: "Proposed",
+      type: "OPERATING",
+      status: "DRAFT",
+      notes: `Drafted by HOPE from an uploaded document (${uploaded.name}) on ${new Date().toISOString().slice(0, 10)}. Review every line before approving.${assumptions ? `\n\nReader's notes: ${assumptions}` : ""}`,
+      createdById: session.user.id,
+      lineItems: {
+        create: items.map((i) => ({
+          label: i.label,
+          budgetedAmount: i.budgetedAmount,
+          previousYearActual: i.previousYearActual,
+          sortOrder: i.sortOrder,
+        })),
+      },
+    },
+  })
+
+  revalidateBudgetPaths()
+  return { success: true, id: budget.id, count: items.length, assumptions }
 }

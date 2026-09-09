@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { Receipt, ChevronRight, PiggyBank, TableProperties } from "lucide-react"
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
+import { BudgetFromDocumentDialog } from "@/components/budgets/budget-from-document-dialog"
 import { UnitAllocationTable } from "@/components/budgets/unit-allocation-table"
 import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
@@ -88,14 +89,17 @@ export default async function BoardFinancesPage() {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h2 className="text-sm font-medium text-gray-500">Operating Budgets</h2>
-          <NewBudgetDialog
-            detailBasePath="/dashboard/board/finances"
-            type="OPERATING"
-            triggerLabel="+ New Operating Budget"
-            previousBudget={operating[0] ? { id: operating[0].id, year: operating[0].year, version: operating[0].version, lineItemCount: operating[0].lineItems.length } : null}
-          />
+          <div className="flex items-center gap-2">
+            <BudgetFromDocumentDialog detailBasePath="/dashboard/board/finances" />
+            <NewBudgetDialog
+              detailBasePath="/dashboard/board/finances"
+              type="OPERATING"
+              triggerLabel="+ New Operating Budget"
+              previousBudget={operating[0] ? { id: operating[0].id, year: operating[0].year, version: operating[0].version, lineItemCount: operating[0].lineItems.length } : null}
+            />
+          </div>
         </div>
         <BudgetList budgets={operating.map(toBudgetRow)} detailBasePath="/dashboard/board/finances" />
       </div>
