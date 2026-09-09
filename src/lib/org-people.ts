@@ -13,7 +13,7 @@ export interface OrgPerson {
 
 // "Members" means everyone with a real stake in the HOA - not just accounts
 // that have logged into HOPE. A unit owner or Board seat holder recorded
-// directly (see assignUnitOwner in actions/org.ts and resolveHolder in
+// directly (see addUnitCoOwner in actions/unit-ownership.ts and resolveHolder in
 // actions/board-positions.ts) is a member of the community whether or not
 // they've accepted a portal invite yet. Dedups by user - the same person
 // can be a unit owner, hold a Board seat, and have portal access all at

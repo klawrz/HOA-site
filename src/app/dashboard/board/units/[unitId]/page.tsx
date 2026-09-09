@@ -14,6 +14,7 @@ import {
   CalendarDays,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { UnitOwnersEditor } from "@/components/units/unit-owners-editor"
 import { canPreviewRole } from "@/lib/role-access"
 import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
 import { effectiveAllocations } from "@/lib/unit-allocation"
@@ -265,6 +266,17 @@ export default async function BoardUnitDetailPage({
               </p>
             </div>
           ))}
+          <div className="border-t pt-3">
+            <UnitOwnersEditor
+              unitId={unit.id}
+              owners={unit.ownerships.map((o) => ({
+                ownershipId: o.id,
+                name: o.owner.name,
+                email: o.owner.email,
+              }))}
+              heading="Manage owners"
+            />
+          </div>
         </CardContent>
       </Card>
 

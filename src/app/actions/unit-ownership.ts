@@ -151,3 +151,120 @@ export async function cancelOwnershipTransferRequest(requestId: string) {
   revalidateUnitPaths()
   return { success: true }
 }
+
+// --- Co-owner record management ---------------------------------------------
+// Distinct from the transfer flow above. A transfer changes WHO owns a unit
+// (governance fact, Board-only, needs seller + buyer confirmation). This is
+// administrative correction of the co-owner records themselves - fixing a
+// combined "Jane & John Smith" placeholder into two people, adding a spouse
+// or a co-owning friend, dropping one - which per Dara the custodian OR the
+// Board can do directly. A unit can have any number of current owners
+// (UnitOwnership allows multiple isCurrent rows); nothing here goes through
+// an invite.
+function canManageOwnerRecords(role: string, isBoardMember: boolean) {
+  return role === "ACCOUNT_OWNER" || role === "BOARD_MEMBER" || isBoardMember
+}
+
+export async function addUnitCoOwner(unitId: string, data: { name: string; email?: string }) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageOwnerRecords(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Not allowed" }
+  }
+  const orgId = session.user.orgId
+
+  const unit = await db.unit.findFirst({ where: { id: unitId, orgId } })
+  if (!unit) return { success: false, error: "Unit not found" }
+
+  const name = data.name.trim()
+  const email = data.email?.trim().toLowerCase() || null
+  if (!name && !email) return { success: false, error: "A name or an email is required" }
+
+  try {
+    await db.$transaction(async (tx) => {
+      // With an email we can find-or-create; with none, always a fresh
+      // placeholder User (nothing to dedupe on). Email nullable per schema.
+      let owner = email ? await tx.user.findUnique({ where: { email } }) : null
+      if (!owner) {
+        owner = await tx.user.create({ data: { name: name || null, email } })
+      } else if (name && name !== owner.name) {
+        owner = await tx.user.update({ where: { id: owner.id }, data: { name } })
+      }
+
+      const already = await tx.unitOwnership.findFirst({
+        where: { unitId, ownerId: owner.id, isCurrent: true },
+      })
+      if (already) throw new Error("That person is already a current owner of this unit")
+
+      await tx.unitOwnership.create({ data: { unitId, ownerId: owner.id } })
+      if (unit.status !== "OWNER_OCCUPIED" && unit.status !== "RENTED") {
+        await tx.unit.update({ where: { id: unitId }, data: { status: "OWNER_OCCUPIED" } })
+      }
+    })
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Failed to add owner" }
+  }
+
+  revalidateUnitPaths()
+  revalidatePath("/dashboard/board/units", "layout")
+  return { success: true }
+}
+
+export async function editUnitCoOwner(ownershipId: string, data: { name: string; email?: string }) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageOwnerRecords(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Not allowed" }
+  }
+  const orgId = session.user.orgId
+
+  const ownership = await db.unitOwnership.findFirst({
+    where: { id: ownershipId, isCurrent: true, unit: { orgId } },
+  })
+  if (!ownership) return { success: false, error: "Ownership record not found" }
+
+  const name = data.name.trim()
+  const email = data.email?.trim().toLowerCase() || null
+
+  // Guard against silently merging into someone else's account.
+  if (email) {
+    const clash = await db.user.findFirst({ where: { email, id: { not: ownership.ownerId } } })
+    if (clash) return { success: false, error: "Another person already uses that email" }
+  }
+
+  await db.user.update({
+    where: { id: ownership.ownerId },
+    data: { name: name || null, email },
+  })
+
+  revalidateUnitPaths()
+  revalidatePath("/dashboard/board/units", "layout")
+  return { success: true }
+}
+
+export async function removeUnitCoOwner(ownershipId: string) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageOwnerRecords(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Not allowed" }
+  }
+  const orgId = session.user.orgId
+
+  const ownership = await db.unitOwnership.findFirst({
+    where: { id: ownershipId, isCurrent: true, unit: { orgId } },
+    include: { unit: true },
+  })
+  if (!ownership) return { success: false, error: "Ownership record not found" }
+
+  await db.$transaction(async (tx) => {
+    await tx.unitOwnership.update({
+      where: { id: ownershipId },
+      data: { isCurrent: false, divestedAt: new Date() },
+    })
+    const remaining = await tx.unitOwnership.count({ where: { unitId: ownership.unitId, isCurrent: true } })
+    if (remaining === 0 && ownership.unit.status === "OWNER_OCCUPIED") {
+      await tx.unit.update({ where: { id: ownership.unitId }, data: { status: "AVAILABLE" } })
+    }
+  })
+
+  revalidateUnitPaths()
+  revalidatePath("/dashboard/board/units", "layout")
+  return { success: true }
+}

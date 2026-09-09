@@ -72,8 +72,10 @@ export default async function AccountUnitsPage() {
                 {u.status.replace(/_/g, " ")}
               </span>
               <div className="text-right text-xs">
-                {u.ownerships[0]?.owner && (
-                  <p className="text-gray-600">{u.ownerships[0].owner.name ?? u.ownerships[0].owner.email}</p>
+                {u.ownerships.length > 0 && (
+                  <p className="text-gray-600">
+                    {u.ownerships.map((o) => o.owner.name ?? o.owner.email ?? "Unnamed").join(" & ")}
+                  </p>
                 )}
                 {u.managers[0] && (
                   <p className="text-gray-400">
@@ -83,10 +85,20 @@ export default async function AccountUnitsPage() {
               </div>
               <EditUnitDialog
                 unit={{
-                  ...u,
-                  owner: u.ownerships[0]?.owner
-                    ? { name: u.ownerships[0].owner.name, email: u.ownerships[0].owner.email }
-                    : null,
+                  id: u.id,
+                  number: u.number,
+                  building: u.building,
+                  floor: u.floor,
+                  bedrooms: u.bedrooms,
+                  bathrooms: u.bathrooms,
+                  sqft: u.sqft,
+                  description: u.description,
+                  civicRoll: u.civicRoll,
+                  owners: u.ownerships.map((o) => ({
+                    ownershipId: o.id,
+                    name: o.owner.name,
+                    email: o.owner.email,
+                  })),
                 }}
                 unitLabel={unitLabel}
               />

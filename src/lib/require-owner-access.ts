@@ -3,7 +3,7 @@ import { db } from "@/lib/db"
 
 // Owner-scoped pages are reachable by a plain OWNER-role session, or by an
 // ACCOUNT_OWNER (custodian) who has also personally claimed a unit via
-// UnitOwnership - see claimOwnUnit / assignUnitOwner. isBoardMember does the
+// UnitOwnership - see claimOwnUnit / addUnitCoOwner. isBoardMember does the
 // same additive-signal trick in the other direction (src/components/
 // dashboard/sidebar.tsx); this is the mirror image for unit ownership.
 export async function requireOwnerAccess() {

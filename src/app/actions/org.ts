@@ -230,70 +230,10 @@ export async function deleteUnit(unitId: string) {
   revalidatePath("/dashboard/account/units")
 }
 
-// Records a unit's owner of record directly, without waiting for an invite
-// to be sent and accepted - useful for entering known owners upfront (e.g.
-// importing an existing roster). If the email doesn't match an existing
-// User, a passwordless placeholder account is created; they get real portal
-// access later via a normal invite (accepting it just adds their
-// Membership - the ownership record here is reused rather than duplicated).
-export async function assignUnitOwner(unitId: string, data: { name: string; email: string }) {
-  const session = await auth()
-  if (!session?.user.orgId) throw new Error("Unauthorized")
-
-  const unit = await db.unit.findUnique({ where: { id: unitId } })
-  if (!unit || unit.orgId !== session.user.orgId) throw new Error("Unauthorized")
-
-  const email = data.email.trim().toLowerCase()
-  const name = data.name.trim()
-  if (!email) throw new Error("Email required")
-
-  await db.$transaction(async (tx) => {
-    let owner = await tx.user.findUnique({ where: { email } })
-    if (!owner) {
-      owner = await tx.user.create({ data: { name: name || null, email } })
-    } else if (name && name !== owner.name) {
-      // A name typed into this form is a deliberate edit (fixing a typo,
-      // filling in a placeholder) - always apply it, not just when the
-      // record had no name yet. Blank input leaves whatever name is on
-      // file untouched rather than clobbering it.
-      owner = await tx.user.update({ where: { id: owner.id }, data: { name } })
-    }
-
-    const currentOwnership = await tx.unitOwnership.findFirst({ where: { unitId, isCurrent: true } })
-    if (currentOwnership?.ownerId === owner.id) {
-      // Same owner already on this unit (just correcting their name/email
-      // record) - nothing to transfer, avoid piling up a fresh ownership
-      // row for every edit.
-      return
-    }
-
-    await tx.unitOwnership.updateMany({
-      where: { unitId, isCurrent: true },
-      data: { isCurrent: false, divestedAt: new Date() },
-    })
-    await tx.unitOwnership.create({ data: { unitId, ownerId: owner.id } })
-    await tx.unit.update({ where: { id: unitId }, data: { status: "OWNER_OCCUPIED" } })
-  })
-
-  revalidatePath("/dashboard/account/units")
-}
-
-export async function clearUnitOwner(unitId: string) {
-  const session = await auth()
-  if (!session?.user.orgId) throw new Error("Unauthorized")
-
-  const unit = await db.unit.findUnique({ where: { id: unitId } })
-  if (!unit || unit.orgId !== session.user.orgId) throw new Error("Unauthorized")
-
-  await db.unitOwnership.updateMany({
-    where: { unitId, isCurrent: true },
-    data: { isCurrent: false, divestedAt: new Date() },
-  })
-  if (unit.status === "OWNER_OCCUPIED") {
-    await db.unit.update({ where: { id: unitId }, data: { status: "AVAILABLE" } })
-  }
-  revalidatePath("/dashboard/account/units")
-}
+// Direct owner-of-record management (add / edit / remove co-owners) lives in
+// src/app/actions/unit-ownership.ts (addUnitCoOwner / editUnitCoOwner /
+// removeUnitCoOwner) - the old single-owner assignUnitOwner / clearUnitOwner
+// were replaced by it once units could have multiple current owners.
 
 export async function updateOrgAddress(formData: FormData) {
   const session = await auth()
