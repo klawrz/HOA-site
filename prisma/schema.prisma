@@ -51,6 +51,13 @@ enum UnitStatus {
   UNAVAILABLE
 }
 
+// How a unit's owner has chosen to pay their dues. Defaults to quarterly.
+enum DuesFrequency {
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+}
+
 enum TicketStatus {
   OPEN
   IN_PROGRESS
@@ -929,6 +936,8 @@ model Unit {
   // documents - HOAs rarely split costs evenly across units. Null until
   // the Board/PM sets it; dues can't be estimated for a unit without one.
   allocationPercent Float?
+  // Payment cadence the owner has chosen for their dues.
+  duesFrequency     DuesFrequency @default(QUARTERLY)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 

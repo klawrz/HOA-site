@@ -15,6 +15,8 @@ import { parseSpecialties } from "@/lib/unit-manager-specialties"
 import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
 import { effectiveAllocations } from "@/lib/unit-allocation"
 import { convertToSecondary, formatMoney } from "@/lib/currency"
+import { perPaymentDues, DUES_FREQUENCY_PER_YEAR } from "@/lib/dues"
+import { DuesFrequencySelect } from "./dues-frequency-select"
 import { Currency } from "@/generated/prisma"
 import { Receipt } from "lucide-react"
 import Link from "next/link"
@@ -114,6 +116,8 @@ export default async function UnitDetailPage({
         : null
   const fmtPeso = (n: number | null) => (n != null ? formatMoney(n, "MXN") : "—")
   const fmtUsd = (n: number | null) => (n != null ? formatMoney(n, "USD") : "—")
+  const perPayment = annualDues != null ? perPaymentDues(annualDues, unit.duesFrequency) : null
+  const paymentsPerYear = DUES_FREQUENCY_PER_YEAR[unit.duesFrequency]
 
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
@@ -233,6 +237,14 @@ export default async function UnitDetailPage({
           </div>
           <p className="text-xs text-gray-400 mt-0.5">Owner-approved share of the common budget</p>
 
+          <div className="flex items-center justify-between gap-3 mt-3 border-t pt-3">
+            <div>
+              <p className="text-gray-500">Payment schedule</p>
+              <p className="text-xs text-gray-400">How you pay your dues — {paymentsPerYear} payment{paymentsPerYear !== 1 ? "s" : ""} a year</p>
+            </div>
+            <DuesFrequencySelect unitId={unit.id} current={unit.duesFrequency} />
+          </div>
+
           <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1.5">
             <div />
             <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">Pesos (MXN)</p>
@@ -248,9 +260,9 @@ export default async function UnitDetailPage({
                 <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtPeso(pesoAmount(annualDues))}</p>
                 <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtUsd(usdAmount(annualDues))}</p>
 
-                <p className="text-gray-500">This unit&apos;s dues — monthly</p>
-                <p className="text-right font-semibold tabular-nums">{fmtPeso(pesoAmount(annualDues / 12))}</p>
-                <p className="text-right font-semibold tabular-nums">{fmtUsd(usdAmount(annualDues / 12))}</p>
+                <p className="text-gray-500">Each payment ({paymentsPerYear}&times;/yr)</p>
+                <p className="text-right font-semibold tabular-nums">{fmtPeso(pesoAmount(perPayment!))}</p>
+                <p className="text-right font-semibold tabular-nums">{fmtUsd(usdAmount(perPayment!))}</p>
               </>
             )}
           </div>

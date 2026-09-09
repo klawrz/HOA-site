@@ -5,13 +5,15 @@ import { db } from "@/lib/db"
 import { ArrowLeft } from "lucide-react"
 import { AssessmentList } from "@/components/assessments/assessment-list"
 import { NewAssessmentDialog } from "@/components/assessments/new-assessment-dialog"
+import { DuesRoster } from "@/components/assessments/dues-roster"
+import { getUnitLabel } from "@/lib/unit-label"
 import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PropertyManagerAssessmentsPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
-  const [assessments, budgets, approvedBudget] = await Promise.all([
+  const [assessments, budgets, approvedBudget, proposedBudget, units, org, unitLabel] = await Promise.all([
     db.assessment.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { charges: true },
@@ -26,8 +28,27 @@ export default async function PropertyManagerAssessmentsPage() {
       include: { lineItems: true },
       orderBy: { year: "desc" },
     }),
+    db.budget.findFirst({
+      where: { orgId: session.user.orgId ?? undefined, status: "DRAFT", type: "OPERATING" },
+      include: { lineItems: true },
+      orderBy: [{ year: "desc" }, { updatedAt: "desc" }],
+    }),
+    db.unit.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      select: { id: true, number: true, building: true, allocationPercent: true, duesFrequency: true },
+    }),
+    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
+    getUnitLabel(session.user.orgId),
   ])
   const approvedBudgetTotal = approvedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
+
+  const duesBudget = approvedBudget ?? proposedBudget
+  const duesBudgetTotal = duesBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
+  const duesBudgetLabel = duesBudget
+    ? approvedBudget
+      ? `the ${duesBudget.year} approved operating budget`
+      : `the proposed ${duesBudget.periodLabel || duesBudget.year} operating budget (not yet approved)`
+    : "the operating budget"
 
   return (
     <div className="space-y-6">
@@ -55,18 +76,30 @@ export default async function PropertyManagerAssessmentsPage() {
         </div>
       </div>
 
-      <AssessmentList
-        assessments={assessments.map((a) => ({
-          id: a.id,
-          title: a.title,
-          type: a.type,
-          status: a.status,
-          totalAmount: a.totalAmount,
-          totalCollected: a.charges.reduce((s, c) => s + c.amountPaid, 0),
-          dueDate: a.dueDate,
-        }))}
-        detailBasePath="/dashboard/property-manager/finances/assessments"
+      <DuesRoster
+        unitLabel={unitLabel}
+        units={units}
+        budgetTotal={duesBudgetTotal}
+        budgetCurrency={duesBudget?.currency ?? org?.baseCurrency ?? "USD"}
+        exchangeRate={duesBudget?.exchangeRate ?? org?.currentExchangeRate ?? null}
+        budgetLabel={duesBudgetLabel}
       />
+
+      <div>
+        <h2 className="text-sm font-medium text-gray-500 mb-3">Special Assessments</h2>
+        <AssessmentList
+          assessments={assessments.map((a) => ({
+            id: a.id,
+            title: a.title,
+            type: a.type,
+            status: a.status,
+            totalAmount: a.totalAmount,
+            totalCollected: a.charges.reduce((s, c) => s + c.amountPaid, 0),
+            dueDate: a.dueDate,
+          }))}
+          detailBasePath="/dashboard/property-manager/finances/assessments"
+        />
+      </div>
     </div>
   )
 }

@@ -2,7 +2,8 @@
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
-import { UnitContactKind, UnitManagerArea, UnitManagerLevel } from "@/generated/prisma"
+import { UnitContactKind, UnitManagerArea, UnitManagerLevel, DuesFrequency } from "@/generated/prisma"
+import { DUES_FREQUENCIES } from "@/lib/dues"
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 
@@ -160,6 +161,33 @@ export async function setSelfManaged(unitId: string, selfManaged: boolean) {
   await db.unit.update({ where: { id: unitId }, data: { selfManaged } })
 
   revalidateUnitPaths(unitId)
+  return { success: true }
+}
+
+// The unit owner picks how they pay dues (quarterly / semi-annually /
+// annually). The Board / PM can also set it, and the Account Owner within
+// their own org.
+export async function setUnitDuesFrequency(unitId: string, frequency: DuesFrequency) {
+  const session = await auth()
+  if (!session?.user?.id) return { success: false }
+  if (!DUES_FREQUENCIES.includes(frequency)) return { success: false, error: "Invalid frequency" }
+
+  const unit = await db.unit.findUnique({ where: { id: unitId }, select: { orgId: true } })
+  if (!unit || unit.orgId !== session.user.orgId) return { success: false }
+
+  const isOwner = !!(await requireCurrentOwner(unitId, session.user.id))
+  const isBoardOrPm =
+    session.user.role === "BOARD_MEMBER" ||
+    session.user.role === "PROPERTY_MANAGER" ||
+    session.user.isBoardMember ||
+    session.user.role === "ACCOUNT_OWNER"
+  if (!isOwner && !isBoardOrPm) return { success: false }
+
+  await db.unit.update({ where: { id: unitId }, data: { duesFrequency: frequency } })
+
+  revalidateUnitPaths(unitId)
+  revalidatePath("/dashboard/board/finances/assessments")
+  revalidatePath("/dashboard/property-manager/finances/assessments")
   return { success: true }
 }
 
