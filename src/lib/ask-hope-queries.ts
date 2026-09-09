@@ -286,8 +286,29 @@ export async function getUnitStatus(session: AskHopeSession, args: { unit?: unkn
   // resolve to the number "1".
   const normalized = raw.replace(/villa|unit|apt|apartment|#|no\.?/gi, "").trim().toLowerCase()
 
-  const units = await db.unit.findMany({
+  // Resolve the loose label against a cheap id/number/building list first,
+  // then pull the full detail for just the one matched unit - rather than
+  // deep-loading every unit in the org on every question.
+  const unitList = await db.unit.findMany({
     where: { orgId: session.user.orgId },
+    select: { id: true, number: true, building: true },
+  })
+
+  const matchRow =
+    unitList.find((u) => u.number.toLowerCase() === normalized) ??
+    unitList.find((u) => `${u.building ?? ""} ${u.number}`.trim().toLowerCase() === normalized) ??
+    unitList.find((u) => u.number.toLowerCase().includes(normalized) && normalized.length > 0)
+
+  if (!matchRow) {
+    return {
+      notFound: true,
+      askedFor: raw,
+      unitsOnFile: unitList.map((u) => (u.building ? `${u.building} ${u.number}` : u.number)),
+    }
+  }
+
+  const match = await db.unit.findUnique({
+    where: { id: matchRow.id },
     include: {
       ownerships: { where: { isCurrent: true }, include: { owner: true } },
       managers: { include: { user: true } },
@@ -298,18 +319,8 @@ export async function getUnitStatus(session: AskHopeSession, args: { unit?: unkn
       contacts: true,
     },
   })
-
-  const match =
-    units.find((u) => u.number.toLowerCase() === normalized) ??
-    units.find((u) => `${u.building ?? ""} ${u.number}`.trim().toLowerCase() === normalized) ??
-    units.find((u) => u.number.toLowerCase().includes(normalized) && normalized.length > 0)
-
   if (!match) {
-    return {
-      notFound: true,
-      askedFor: raw,
-      unitsOnFile: units.map((u) => (u.building ? `${u.building} ${u.number}` : u.number)),
-    }
+    return { notFound: true, askedFor: raw, unitsOnFile: unitList.map((u) => (u.building ? `${u.building} ${u.number}` : u.number)) }
   }
 
   const now = new Date()

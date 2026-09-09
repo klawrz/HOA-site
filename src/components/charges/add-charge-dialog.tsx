@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { createUnitCharge } from "@/app/actions/charges"
 import { UnitChargeType } from "@/generated/prisma"
 import { UNIT_CHARGE_TYPES, UNIT_CHARGE_TYPE_LABEL } from "@/lib/charges"
@@ -79,17 +80,31 @@ export function AddChargeDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Applies to</Label>
-              <Select value={scope} onValueChange={(v) => setScope(v ?? ALL)} items={scopeItems}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>All units</SelectItem>
-                  {units.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {unitDisplayName(unitLabel, u.number, u.building)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {units.length > 10 ? (
+                <SearchableSelect
+                  options={[
+                    { value: ALL, label: "All units" },
+                    ...units.map((u) => ({
+                      value: u.id,
+                      label: unitDisplayName(unitLabel, u.number, u.building),
+                    })),
+                  ]}
+                  value={scope}
+                  onChange={setScope}
+                />
+              ) : (
+                <Select value={scope} onValueChange={(v) => setScope(v ?? ALL)} items={scopeItems}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL}>All units</SelectItem>
+                    {units.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {unitDisplayName(unitLabel, u.number, u.building)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Type</Label>

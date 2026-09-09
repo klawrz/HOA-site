@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { submitTicket } from "@/app/actions/tickets"
 import { TicketPriority, TicketScope } from "@/generated/prisma"
 
@@ -85,22 +86,31 @@ export function TicketRequestForm({
       {scope === "UNIT" && (
         <div className="space-y-1">
           <Label>Unit</Label>
-          <Select
-            value={unitId}
-            onValueChange={(v) => setUnitId(v ?? "")}
-            items={Object.fromEntries(units.map((u) => [u.id, u.label]))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a unit" />
-            </SelectTrigger>
-            <SelectContent>
-              {units.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {units.length > 10 ? (
+            <SearchableSelect
+              options={units.map((u) => ({ value: u.id, label: u.label }))}
+              value={unitId}
+              onChange={setUnitId}
+              placeholder="Select a unit"
+            />
+          ) : (
+            <Select
+              value={unitId}
+              onValueChange={(v) => setUnitId(v ?? "")}
+              items={Object.fromEntries(units.map((u) => [u.id, u.label]))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a unit" />
+              </SelectTrigger>
+              <SelectContent>
+                {units.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       )}
 
