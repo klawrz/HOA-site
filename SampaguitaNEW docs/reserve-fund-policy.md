@@ -65,6 +65,11 @@ special assessments, except where the Board and owners specifically approve one.
 The figure for each budget year is **derived from the reserve fund position** in
 section 0.8; the range above is advisory context, not the binding number.
 
+**Owner dues are set from the total approved operating budget, which includes
+this reserve top-up line.** Funding the reserve therefore happens through regular
+dues — not through separate billing. Special assessments are used only for major
+projects (section 0.9) and for the minimum-floor trigger (section 0.10).
+
 Planning context for owners:
 
 - Gradual rebuilding after the major 2025 capital spend.
@@ -92,6 +97,7 @@ Planning context for owners:
 | Roof project exposure (2027) | 150,000 | Anticipated drawdown, section 0.5 |
 | Roof funding secured | (150,000) | Special assessments 2027 & 2028, section 0.9 |
 | Roof cost not covered by a funding source | 0 | Exposure − secured funding |
+| Minimum reserve floor (30% of target) | 30,000 | Special-assessment trigger, section 0.10 |
 
 **Shortfall commentary.** This alert is provided for planning transparency only.
 It does not signal an emergency. With the roof covered by dedicated special
@@ -177,6 +183,21 @@ assessment**, raised across two years so no single year carries the whole cost:
   fund or a dedicated project account bridges the timing difference.
 - Because the project is assessment-funded, it does **not** change the annual
   operating-budget reserve top-up (section 0.8).
+
+### 0.10 Minimum reserve floor — special assessment trigger
+
+The reserve fund must not be drawn below **30% of the target reserve level**. At
+the current placeholder target of USD 100,000, the floor is **USD 30,000**.
+
+- If an approved or anticipated drawdown would take the reserve balance below the
+  floor, the Board **triggers a special assessment** sufficient to keep the
+  balance at or above 30% of target.
+- The trigger is mandatory and does not wait for the annual budget cycle or the
+  AGM. Owners still approve the assessment amount by motion.
+- The floor moves with the target: when the owners set a target by AGM motion
+  (section 0.3), 30% of that figure becomes the new floor.
+- This is separate from the routine annual top-up (section 0.8), which funds the
+  fund toward target through dues, and from project assessments (section 0.9).
 
 ---
 
