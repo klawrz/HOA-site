@@ -50,10 +50,6 @@ interface BudgetData {
   lineItems: LineItem[]
 }
 
-function money(n: number) {
-  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
-}
-
 export function BudgetEditor({
   budget,
   contracts,
@@ -86,14 +82,18 @@ export function BudgetEditor({
   // rate, regardless of approval status - that's the whole point.
   const budgetedRate = budget.status === "APPROVED" ? budget.approvalExchangeRate : currentExchangeRate
   const actualRate = currentExchangeRate
+  // When a rate is set, the converted amount gets its own column (per
+  // Dara: "two columns... the pesos and a USD column") rather than a
+  // sub-line under each figure.
+  const showSecondary = !!(budgetedRate || actualRate)
 
-  function secondaryLine(amount: number, rate: number | null) {
-    if (!rate) return null
-    return (
-      <span className="block text-xs text-gray-400 font-normal">
-        {formatMoney(convertToSecondary(amount, rate, baseCurrency), secondary)}
-      </span>
-    )
+  // Primary column figures in the workspace's base currency (MXN for a
+  // Mexican condo). Previously hardcoded "$" - wrong for a peso budget.
+  const money = (n: number) => formatMoney(n, baseCurrency)
+
+  function secondaryCell(amount: number | null, rate: number | null) {
+    if (amount == null || !rate) return "—"
+    return formatMoney(convertToSecondary(amount, rate, baseCurrency), secondary)
   }
 
   async function handleRemoveItem(id: string) {
@@ -243,8 +243,10 @@ export function BudgetEditor({
             <thead>
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
                 <th className="text-left font-medium px-3 py-2">Line Item</th>
-                <th className="text-right font-medium px-3 py-2">Budgeted</th>
-                <th className="text-right font-medium px-3 py-2">Actual</th>
+                <th className="text-right font-medium px-3 py-2">Budgeted{showSecondary && ` (${baseCurrency})`}</th>
+                {showSecondary && <th className="text-right font-medium px-3 py-2">Budgeted ({secondary})</th>}
+                <th className="text-right font-medium px-3 py-2">Actual{showSecondary && ` (${baseCurrency})`}</th>
+                {showSecondary && <th className="text-right font-medium px-3 py-2">Actual ({secondary})</th>}
                 <th className="text-right font-medium px-3 py-2">Variance</th>
                 <th className="text-right font-medium px-3 py-2">Prior Year</th>
                 {canManage && <th className="px-3 py-2"></th>}
@@ -261,20 +263,20 @@ export function BudgetEditor({
                         <p className="text-xs text-gray-400">from contract: {item.contractTitle}</p>
                       )}
                     </td>
+                    <td className="text-right px-3 py-2 tabular-nums">{money(item.budgetedAmount)}</td>
+                    {showSecondary && (
+                      <td className="text-right px-3 py-2 tabular-nums text-gray-500">
+                        {secondaryCell(item.budgetedAmount, budgetedRate)}
+                      </td>
+                    )}
                     <td className="text-right px-3 py-2 tabular-nums">
-                      {money(item.budgetedAmount)}
-                      {secondaryLine(item.budgetedAmount, budgetedRate)}
+                      {item.actualAmount != null ? money(item.actualAmount) : "—"}
                     </td>
-                    <td className="text-right px-3 py-2 tabular-nums">
-                      {item.actualAmount != null ? (
-                        <>
-                          {money(item.actualAmount)}
-                          {secondaryLine(item.actualAmount, actualRate)}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
+                    {showSecondary && (
+                      <td className="text-right px-3 py-2 tabular-nums text-gray-500">
+                        {secondaryCell(item.actualAmount, actualRate)}
+                      </td>
+                    )}
                     <td
                       className={`text-right px-3 py-2 tabular-nums ${
                         variance == null ? "" : variance > 0 ? "text-red-600" : "text-green-600"
@@ -304,7 +306,7 @@ export function BudgetEditor({
               })}
               {budget.lineItems.length === 0 && (
                 <tr>
-                  <td colSpan={canManage ? 6 : 5} className="px-3 py-8 text-center text-gray-400">
+                  <td colSpan={(canManage ? 6 : 5) + (showSecondary ? 2 : 0)} className="px-3 py-8 text-center text-gray-400">
                     No line items yet.
                   </td>
                 </tr>
@@ -314,20 +316,20 @@ export function BudgetEditor({
               <tfoot>
                 <tr className="border-t bg-gray-50 font-semibold">
                   <td className="px-3 py-2">Total</td>
+                  <td className="text-right px-3 py-2 tabular-nums">{money(totals.budgeted)}</td>
+                  {showSecondary && (
+                    <td className="text-right px-3 py-2 tabular-nums text-gray-500 font-normal">
+                      {secondaryCell(totals.budgeted, budgetedRate)}
+                    </td>
+                  )}
                   <td className="text-right px-3 py-2 tabular-nums">
-                    {money(totals.budgeted)}
-                    {secondaryLine(totals.budgeted, budgetedRate)}
+                    {totals.hasActual ? money(totals.actual) : "—"}
                   </td>
-                  <td className="text-right px-3 py-2 tabular-nums">
-                    {totals.hasActual ? (
-                      <>
-                        {money(totals.actual)}
-                        {secondaryLine(totals.actual, actualRate)}
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
+                  {showSecondary && (
+                    <td className="text-right px-3 py-2 tabular-nums text-gray-500 font-normal">
+                      {totals.hasActual ? secondaryCell(totals.actual, actualRate) : "—"}
+                    </td>
+                  )}
                   <td
                     className={`text-right px-3 py-2 tabular-nums ${
                       totalVariance == null ? "" : totalVariance > 0 ? "text-red-600" : "text-green-600"

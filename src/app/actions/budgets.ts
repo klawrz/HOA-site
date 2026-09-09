@@ -425,6 +425,7 @@ const BUDGET_DRAFT_TOOL = {
     type: "object" as const,
     properties: {
       fiscalYear: { type: "number", description: "The year the NEW proposed budget is for. If the document is last year's, this is the following year." },
+      currency: { type: "string", enum: ["USD", "MXN"], description: "The currency the amounts in the document are stated in." },
       lineItems: {
         type: "array",
         description: "One entry per operating expense/revenue line in the document. Skip subtotal and grand-total rows.",
@@ -440,12 +441,13 @@ const BUDGET_DRAFT_TOOL = {
       },
       assumptions: { type: "string", description: "1-3 sentences: what you carried forward, any line you couldn't read a number for, and any total that didn't reconcile." },
     },
-    required: ["fiscalYear", "lineItems", "assumptions"],
+    required: ["fiscalYear", "currency", "lineItems", "assumptions"],
   },
 }
 
 interface BudgetDraftExtract {
   fiscalYear: number
+  currency: "USD" | "MXN"
   lineItems: { label: string; budgetedAmount: number; priorYearAmount?: number | null }[]
   assumptions: string
 }
@@ -524,6 +526,13 @@ export async function draftBudgetFromFile(
   const year = Number.isFinite(yearOverride) && yearOverride ? yearOverride : Math.round(extract.fiscalYear) || new Date().getFullYear() + 1
   const assumptions = String(extract.assumptions ?? "").trim()
 
+  const org = await db.organization.findUnique({ where: { id: session.user.orgId }, select: { baseCurrency: true } })
+  const docCurrency = extract.currency === "MXN" || extract.currency === "USD" ? extract.currency : null
+  const currencyWarning =
+    docCurrency && org && docCurrency !== org.baseCurrency
+      ? `\n\n⚠ This document is in ${docCurrency}, but the workspace base currency is ${org.baseCurrency}. Set the base currency to ${docCurrency} on the exchange-rate bar so these amounts read correctly and the ${org.baseCurrency === "USD" ? "USD" : "secondary"} column converts the right way.`
+      : ""
+
   const budget = await db.budget.create({
     data: {
       orgId: session.user.orgId,
@@ -531,7 +540,7 @@ export async function draftBudgetFromFile(
       version: "Proposed",
       type: "OPERATING",
       status: "DRAFT",
-      notes: `Drafted by HOPE from an uploaded document (${uploaded.name}) on ${new Date().toISOString().slice(0, 10)}. Review every line before approving.${assumptions ? `\n\nReader's notes: ${assumptions}` : ""}`,
+      notes: `Drafted by HOPE from an uploaded document (${uploaded.name}) on ${new Date().toISOString().slice(0, 10)}. Amounts as read: ${docCurrency ?? "unknown currency"}. Review every line before approving.${currencyWarning}${assumptions ? `\n\nReader's notes: ${assumptions}` : ""}`,
       createdById: session.user.id,
       lineItems: {
         create: items.map((i) => ({
