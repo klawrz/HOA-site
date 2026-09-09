@@ -20,15 +20,16 @@ Supersedes Revision 1
 
 ### 0.2 Historical reserve fund activity — five-year summary
 
-All amounts in USD. Coverage = closing balance ÷ target reserve level (USD 150,000).
+All amounts in USD. Coverage = closing balance ÷ target reserve level (USD 100,000
+placeholder, pending AGM approval — see section 0.3).
 
 | Year | Opening balance | Contributions | Reserve expenditures | Closing balance | Coverage |
 |---|---:|---:|---:|---:|---:|
 | 2022 | TBD | TBD | TBD | TBD | TBD |
 | 2023 | TBD | TBD | TBD | TBD | TBD |
 | 2024 | TBD | TBD | TBD | TBD | TBD |
-| 2025 | 90,000 | 60,000 | 90,000 | 60,000 | 40% |
-| 2026 | 60,000 | TBD | TBD | 60,000 *(no activity recorded yet)* | 40% |
+| 2025 | 90,000 | 60,000 | 90,000 | 60,000 | 60% |
+| 2026 | 60,000 | TBD | TBD | 60,000 *(no activity recorded yet)* | 60% |
 
 **2025 reserve expenditure commentary.** The 2025 reserve expenditures reflect
 deliberate capital investment, not erosion of the fund:
@@ -42,15 +43,25 @@ deliberate capital investment, not erosion of the fund:
 
 ### 0.3 Reserve funding target & coverage
 
+The target reserve level is an **Owner-approved amount**. It is established and
+amended only by **motion of the owners at a General Meeting (AGM)**. No motion has
+yet been passed; the figure below is a working placeholder for planning until the
+owners approve a target.
+
 | | |
 |---|---|
-| Target reserve level | **USD 150,000** |
-| Coverage at end of 2025 | 40% |
-| Coverage at start of 2026 | 40% |
+| Target reserve level | **USD 100,000** — placeholder, AGM motion required |
+| Coverage at end of 2025 | 60% |
+| Coverage at start of 2026 | 60% |
 
 ### 0.4 Recommended annual reserve contribution
 
 **Recommended annual contribution: USD 18,000 – 22,500.**
+
+The reserve contribution is funded through the operating budget's reserve
+contribution line item and approved by the owners as part of the annual budget.
+Increases to the reserve are taken from that budget line — not from separate
+special assessments, except where the Board and owners specifically approve one.
 
 Planning context for owners:
 
@@ -69,8 +80,8 @@ Planning context for owners:
 | Item / metric | Amount (USD) | Notes |
 |---|---:|---|
 | Current reserve balance (start 2026) | 60,000 | Per section 0.1 |
-| Target reserve level | 150,000 | Per section 0.3 |
-| Current funding gap | 90,000 | To reach target |
+| Target reserve level | 100,000 | Placeholder pending AGM motion (section 0.3) |
+| Current funding gap | 40,000 | To reach the placeholder target |
 | Roof project exposure | up to 100,000 | May span years |
 | Roof cost not covered by current reserves | up to 40,000 | If incurred before replenishment |
 
