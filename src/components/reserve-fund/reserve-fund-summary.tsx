@@ -45,24 +45,26 @@ export function ReserveFundSummary({
 
       <div className="flex items-start gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
         <Landmark className="h-3.5 w-3.5 text-gray-400 mt-0.5 shrink-0" />
-        <div>
+        <div className="min-w-0">
           <p className="text-xs text-gray-400">Held At</p>
-          <p>{heldAt || <span className="text-gray-400">Not on file</span>}</p>
+          <p className="break-words">{heldAt || <span className="text-gray-400">Not on file</span>}</p>
         </div>
       </div>
 
       <div className="flex items-start gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
         <Landmark className="h-3.5 w-3.5 text-gray-400 mt-0.5 shrink-0" />
-        <div>
+        <div className="min-w-0">
           <p className="text-xs text-gray-400">Signing Authority</p>
-          <p className="whitespace-pre-line">{signingAuthority || <span className="text-gray-400">Not on file</span>}</p>
+          <p className="whitespace-pre-line break-words">
+            {signingAuthority || <span className="text-gray-400">Not on file</span>}
+          </p>
         </div>
       </div>
 
       <div className="text-sm">
         <p className="text-xs text-gray-400 mb-1">Reserve Fund Policy</p>
         {policy ? (
-          <p className="text-gray-600 whitespace-pre-line">{policy}</p>
+          <p className="text-gray-600 whitespace-pre-line break-words">{policy}</p>
         ) : (
           <p className="text-gray-400">No policy on file yet.</p>
         )}

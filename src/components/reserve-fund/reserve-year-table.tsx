@@ -36,7 +36,11 @@ function CommentCell({ year, initial, canManage }: { year: number; initial: stri
   }
 
   if (!canManage) {
-    return <span className="text-gray-600 whitespace-pre-line">{initial || <span className="text-gray-300">—</span>}</span>
+    return (
+      <span className="block max-w-[240px] text-gray-600 whitespace-pre-line break-words">
+        {initial || <span className="text-gray-300">—</span>}
+      </span>
+    )
   }
 
   if (!editing) {
@@ -44,7 +48,7 @@ function CommentCell({ year, initial, canManage }: { year: number; initial: stri
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="text-left w-full text-gray-600 hover:bg-gray-50 rounded px-1 -mx-1 whitespace-pre-line"
+        className="block text-left w-full max-w-[240px] text-gray-600 hover:bg-gray-50 rounded px-1 -mx-1 whitespace-pre-line break-words"
         disabled={saving}
       >
         {value || <span className="text-gray-300">Click to add a note...</span>}
@@ -147,7 +151,10 @@ export function ReserveYearTable({
               <tr>
                 <td className="px-3 py-2 text-gray-500 align-top sticky left-0 bg-white">Comment</td>
                 {rows.map((r) => (
-                  <td key={r.year} className={`px-3 py-2 align-top ${r.year === currentYear ? "bg-blue-50" : ""}`}>
+                  <td
+                    key={r.year}
+                    className={`px-3 py-2 align-top max-w-[240px] ${r.year === currentYear ? "bg-blue-50" : ""}`}
+                  >
                     <CommentCell year={r.year} initial={comments[r.year] ?? ""} canManage={canManage} />
                   </td>
                 ))}
