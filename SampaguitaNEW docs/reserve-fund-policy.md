@@ -68,8 +68,10 @@ section 0.8; the range above is advisory context, not the binding number.
 Planning context for owners:
 
 - Gradual rebuilding after the major 2025 capital spend.
-- Avoids sudden special assessments.
-- Targets 70–80% funding within 3–4 years.
+- Keeps routine reserve rebuilding inside the operating budget; major projects
+  such as the 2027 roof are handled separately (section 0.8).
+- Aims to return the fund to target over about five years, absent major
+  drawdowns — a horizon owners can change by AGM motion.
 
 ### 0.5 Anticipated reserve expenditures — 2026–2027
 
@@ -121,27 +123,32 @@ into the proposed operations budget.
 | Anticipated drawdowns (plan period) | 150,000 | Villa roof replacement, 2027 (section 0.5) |
 | Projected closing balance before top-up | (90,000) | Opening balance − anticipated drawdowns |
 | Shortfall to close (to target) | 190,000 | Target − projected closing balance |
-| Years to top up | 3 | Fixed planning horizon |
-| **Budgeted top-up per year** | **≈ 63,333** | Shortfall to close ÷ years to top up |
+| Years to top up | 5 | Planning default — amendable by owner motion at the AGM |
+| **Budgeted top-up per year** | **≈ 38,000** | Shortfall to close ÷ years to top up |
 
 **Translation to the operating budget.** Carrying the full shortfall through the
-operating budget would put the reserve line at **≈ USD 63,333/year**
-(≈ MXN 1,108,000 at 17.5) — roughly a quarter of annual dues income and, on its
-own, the largest line in the budget. That is not fundable from operations alone.
+operating budget puts the reserve line at **≈ USD 38,000/year**
+(≈ MXN 665,000 at 17.5) — a large line, comparable to the landscaping contract,
+but within reach over five years. This is the awareness the plan exists to give
+the Board and owners early, before a project forces a crisis assessment.
 
 **Notes.**
 
 - A USD 150,000 roof drawdown against a USD 60,000 opening balance **cannot be met
-  from reserves**. The fund is projected at **−90,000** before any top-up.
-- The realistic structure is a split: the annual operating-budget reserve line
-  funds only the **target gap** — USD 40,000 ÷ 3 ≈ **USD 13,333/year**
-  (≈ MXN 233,000) — while the **roof is funded by its own special assessment**
-  (and insurance recovery where applicable), not amortized into operations.
+  from reserves**. The fund is projected at **−90,000** before any top-up, so the
+  roof still needs a dedicated special assessment and/or phasing regardless of the
+  annual top-up.
+- Alternative structure — split funding: the annual operating-budget reserve line
+  funds only the **target gap**, USD 40,000 ÷ 5 ≈ **USD 8,000/year**
+  (≈ MXN 140,000), while the **roof is funded by its own special assessment** (and
+  insurance recovery where applicable), not amortized into operations.
 - This is the trigger the shortfall alert (section 0.6) anticipates: phased
   execution, insurance recovery, a dedicated special assessment, and continued
   reserve rebuilding.
-- If the roof is deferred, descoped, or the top-up horizon is extended beyond
-  three years, the plan is re-worked and the per-year figure recalculated.
+- The **five-year horizon is a planning default**. Owners may lengthen or shorten
+  it by motion at the AGM, which recalculates the per-year figure.
+- If the roof is deferred or descoped, the plan is re-worked and the per-year
+  figure recalculated.
 - The target of USD 100,000 is a placeholder. Once the owners approve a target by
   AGM motion, the shortfall and the per-year top-up are recalculated.
 
