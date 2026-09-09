@@ -1,3 +1,10 @@
+// Who can edit reserve-fund data (transactions, details, policy figures).
+// The server actions re-check this against the REAL role/isBoardMember - this
+// export is shared so pages can decide whether to render the edit controls.
+export function canManageReserveFund(role: string | null | undefined, isBoardMember: boolean): boolean {
+  return role === "BOARD_MEMBER" || role === "PROPERTY_MANAGER" || isBoardMember
+}
+
 export function reserveYearRange(): number[] {
   const current = new Date().getFullYear()
   const years: number[] = []

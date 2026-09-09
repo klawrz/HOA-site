@@ -11,7 +11,8 @@ import { ReserveYearTable } from "@/components/reserve-fund/reserve-year-table"
 import { TransactionList } from "@/components/reserve-fund/transaction-list"
 import { CapitalItemsTable } from "@/components/reserve-fund/capital-items-table"
 import { ReservePolicySummaryCard } from "@/components/reserve-fund/reserve-policy-summary-card"
-import { reserveYearRange, computeReserveYearRows } from "@/lib/reserve-fund"
+import { reserveYearRange, computeReserveYearRows, canManageReserveFund } from "@/lib/reserve-fund"
+import { resolveReservePolicy } from "@/lib/reserve-policy-summary"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
 import { canPreviewRole } from "@/lib/role-access"
@@ -77,7 +78,10 @@ export default async function BoardReservePage() {
         </CardContent>
       </Card>
 
-      <ReservePolicySummaryCard />
+      <ReservePolicySummaryCard
+        figures={resolveReservePolicy(org)}
+        canManage={canManageReserveFund(session.user.role, session.user.isBoardMember)}
+      />
 
       <ReserveYearTable rows={yearRows} comments={comments} canManage />
 

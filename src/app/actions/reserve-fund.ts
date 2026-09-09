@@ -5,10 +5,7 @@ import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { ReserveTransactionType } from "@/generated/prisma"
 import { parseDateOnly } from "@/lib/occupancy"
-
-function canManageReserveFund(role: string, isBoardMember: boolean) {
-  return role === "BOARD_MEMBER" || role === "PROPERTY_MANAGER" || isBoardMember
-}
+import { canManageReserveFund } from "@/lib/reserve-fund"
 
 function revalidateReservePaths() {
   revalidatePath("/dashboard/owner/governance")
@@ -30,6 +27,58 @@ export async function setReserveDetails(data: { target: number | null; policy: s
       reserveTarget: data.target,
       reservePolicy: data.policy.trim() || null,
       reserveHeldAt: data.heldAt.trim() || null,
+    },
+  })
+
+  revalidateReservePaths()
+  return { success: true }
+}
+
+export async function setReservePolicyFigures(data: {
+  revision: string
+  status: string
+  asOf: string
+  balance: number | null
+  target: number | null
+  topUpYears: number | null
+  floorPct: number | null
+  exchangeRate: number | null
+  roofYear: number | null
+  roofDrawdown: number | null
+  budgetYear: number | null
+  budgetLineUsd: number | null
+}) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageReserveFund(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+
+  const nonNeg = (v: number | null) => (v == null || v < 0 ? null : v)
+  if (data.topUpYears != null && data.topUpYears < 1) {
+    return { success: false, error: "Years to top up must be at least 1" }
+  }
+  if (data.floorPct != null && (data.floorPct < 0 || data.floorPct > 100)) {
+    return { success: false, error: "Floor must be between 0 and 100%" }
+  }
+  if (data.exchangeRate != null && data.exchangeRate <= 0) {
+    return { success: false, error: "Exchange rate must be greater than zero" }
+  }
+
+  await db.organization.update({
+    where: { id: session.user.orgId },
+    data: {
+      reserveTarget: nonNeg(data.target),
+      reservePolicyRevision: data.revision.trim() || null,
+      reservePolicyStatus: data.status.trim() || null,
+      reservePolicyAsOf: data.asOf.trim() || null,
+      reservePolicyBalance: nonNeg(data.balance),
+      reservePolicyTopUpYears: data.topUpYears != null ? Math.round(data.topUpYears) : null,
+      reservePolicyFloorPct: data.floorPct != null ? Math.round(data.floorPct) : null,
+      reservePolicyExchangeRate: nonNeg(data.exchangeRate),
+      reservePolicyRoofYear: data.roofYear != null ? Math.round(data.roofYear) : null,
+      reservePolicyRoofDrawdown: nonNeg(data.roofDrawdown),
+      reservePolicyBudgetYear: data.budgetYear != null ? Math.round(data.budgetYear) : null,
+      reservePolicyBudgetLineUsd: nonNeg(data.budgetLineUsd),
     },
   })
 
