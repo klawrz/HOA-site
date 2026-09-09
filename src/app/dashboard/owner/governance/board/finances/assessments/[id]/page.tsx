@@ -21,7 +21,7 @@ export default async function OwnerBoardAssessmentDetailPage({
   )
     redirect("/dashboard")
 
-  const [assessment, unitLabel] = await Promise.all([
+  const [assessment, unitLabel, org] = await Promise.all([
     db.assessment.findUnique({
       where: { id },
       include: {
@@ -32,6 +32,7 @@ export default async function OwnerBoardAssessmentDetailPage({
       },
     }),
     getUnitLabel(session.user.orgId),
+    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
   ])
 
   if (!assessment || assessment.orgId !== session.user.orgId) notFound()
@@ -42,7 +43,7 @@ export default async function OwnerBoardAssessmentDetailPage({
         href="/dashboard/owner/governance/board/finances/assessments"
         className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to Dues & Assessments
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to Assessments
       </Link>
 
       <AssessmentEditor
@@ -51,6 +52,7 @@ export default async function OwnerBoardAssessmentDetailPage({
           title: assessment.title,
           type: assessment.type,
           status: assessment.status,
+          split: assessment.split,
           totalAmount: assessment.totalAmount,
           dueDate: assessment.dueDate,
           notes: assessment.notes,
@@ -73,6 +75,8 @@ export default async function OwnerBoardAssessmentDetailPage({
         canIssue
         onDeletedHref="/dashboard/owner/governance/board/finances/assessments"
         unitLabel={unitLabel}
+        currency={org?.baseCurrency ?? "USD"}
+        exchangeRate={org?.currentExchangeRate ?? null}
       />
     </div>
   )

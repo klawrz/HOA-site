@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { RecordPaymentDialog } from "./record-payment-dialog"
 import { deleteAssessment, issueAssessment } from "@/app/actions/assessments"
 import { formatDateISO } from "@/lib/utils"
-import { PaymentMethod } from "@/generated/prisma"
+import { convertToSecondary, secondaryCurrency, formatMoney } from "@/lib/currency"
+import { PaymentMethod, Currency } from "@/generated/prisma"
 
 interface ChargeRow {
   id: string
@@ -26,12 +27,18 @@ interface AssessmentData {
   title: string
   type: string
   status: string
+  split: string
   totalAmount: number
   dueDate: Date
   notes: string | null
   budgetLabel: string | null
   budgetTotal: number | null
   charges: ChargeRow[]
+}
+
+const splitLabel: Record<string, string> = {
+  EVEN: "Split evenly",
+  PERCENT: "Split by allocation %",
 }
 
 const typeLabel: Record<string, string> = {
@@ -47,10 +54,6 @@ const methodLabel: Record<string, string> = {
   OTHER: "Other",
 }
 
-function money(n: number) {
-  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
-}
-
 function chargeStatus(due: number, paid: number) {
   if (paid <= 0) return { label: "Unpaid", color: "bg-red-100 text-red-700" }
   if (paid < due) return { label: "Partial", color: "bg-amber-100 text-amber-700" }
@@ -63,16 +66,28 @@ export function AssessmentEditor({
   canIssue,
   onDeletedHref,
   unitLabel,
+  currency = "USD",
+  exchangeRate = null,
 }: {
   assessment: AssessmentData
   canManage: boolean
   canIssue: boolean
   onDeletedHref?: string
   unitLabel: string
+  currency?: Currency
+  exchangeRate?: number | null
 }) {
   const [issuing, setIssuing] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  const secondary = secondaryCurrency(currency)
+  const money = (n: number) => formatMoney(n, currency)
+  const approx = (n: number) =>
+    exchangeRate != null ? formatMoney(convertToSecondary(n, exchangeRate, currency), secondary) : null
+
+  const charges = [...assessment.charges].sort((a, b) =>
+    a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true })
+  )
   const totalCollected = assessment.charges.reduce((s, c) => s + c.amountPaid, 0)
   const paidCount = assessment.charges.filter((c) => c.amountPaid >= c.amountDue && c.amountDue > 0).length
   const percentCollected = assessment.totalAmount > 0 ? (totalCollected / assessment.totalAmount) * 100 : 0
@@ -103,6 +118,9 @@ export function AssessmentEditor({
             <h2 className="text-xl font-bold">{assessment.title}</h2>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700">
               {typeLabel[assessment.type] ?? assessment.type}
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700">
+              {splitLabel[assessment.split] ?? assessment.split}
             </span>
             <span
               className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -144,13 +162,19 @@ export function AssessmentEditor({
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-3">
           <p className="text-xs text-gray-400">Total Assessed</p>
-          <p className="text-lg font-semibold">{money(assessment.totalAmount)}</p>
+          <p className="text-lg font-semibold tabular-nums">{money(assessment.totalAmount)}</p>
+          {approx(assessment.totalAmount) && (
+            <p className="text-xs text-gray-400 tabular-nums">≈ {approx(assessment.totalAmount)}</p>
+          )}
         </Card>
         <Card className="p-3">
           <p className="text-xs text-gray-400">Collected</p>
-          <p className="text-lg font-semibold text-green-700">
+          <p className="text-lg font-semibold text-green-700 tabular-nums">
             {money(totalCollected)} <span className="text-xs text-gray-400">({percentCollected.toFixed(0)}%)</span>
           </p>
+          {approx(totalCollected) && (
+            <p className="text-xs text-gray-400 tabular-nums">≈ {approx(totalCollected)}</p>
+          )}
         </Card>
         <Card className="p-3">
           <p className="text-xs text-gray-400">Units Paid in Full</p>
@@ -176,7 +200,7 @@ export function AssessmentEditor({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {assessment.charges.map((c) => {
+              {charges.map((c) => {
                 const status = chargeStatus(c.amountDue, c.amountPaid)
                 return (
                   <tr key={c.id}>
@@ -188,8 +212,18 @@ export function AssessmentEditor({
                     <td className="text-right px-3 py-2 tabular-nums text-gray-500">
                       {assessment.totalAmount > 0 ? `${((c.amountDue / assessment.totalAmount) * 100).toFixed(1)}%` : "—"}
                     </td>
-                    <td className="text-right px-3 py-2 tabular-nums">{money(c.amountDue)}</td>
-                    <td className="text-right px-3 py-2 tabular-nums">{money(c.amountPaid)}</td>
+                    <td className="text-right px-3 py-2 tabular-nums">
+                      {money(c.amountDue)}
+                      {approx(c.amountDue) && (
+                        <span className="block text-xs text-gray-400">≈ {approx(c.amountDue)}</span>
+                      )}
+                    </td>
+                    <td className="text-right px-3 py-2 tabular-nums">
+                      {money(c.amountPaid)}
+                      {c.amountPaid > 0 && approx(c.amountPaid) && (
+                        <span className="block text-xs text-gray-400">≈ {approx(c.amountPaid)}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2">
                       <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${status.color}`}>
                         {status.label}

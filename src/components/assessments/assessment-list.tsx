@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Receipt } from "lucide-react"
+import { Currency } from "@/generated/prisma"
+import { convertToSecondary, secondaryCurrency, formatMoney } from "@/lib/currency"
 
 type AssessmentRow = {
   id: string
@@ -20,9 +22,13 @@ const typeLabel: Record<string, string> = {
 export function AssessmentList({
   assessments,
   detailBasePath,
+  currency = "USD",
+  exchangeRate = null,
 }: {
   assessments: AssessmentRow[]
   detailBasePath: string
+  currency?: Currency
+  exchangeRate?: number | null
 }) {
   if (assessments.length === 0) {
     return (
@@ -35,6 +41,11 @@ export function AssessmentList({
     )
   }
 
+  const secondary = secondaryCurrency(currency)
+  const money = (n: number) => formatMoney(n, currency)
+  const approx = (n: number) =>
+    exchangeRate != null ? ` ≈ ${formatMoney(convertToSecondary(n, exchangeRate, currency), secondary)}` : ""
+
   const sorted = [...assessments].sort((a, b) => b.dueDate.getTime() - a.dueDate.getTime())
 
   return (
@@ -42,7 +53,7 @@ export function AssessmentList({
       {sorted.map((a) => (
         <Link key={a.id} href={`${detailBasePath}/${a.id}`}>
           <Card className="hover:border-gray-300 transition-colors">
-            <CardContent className="py-3 px-4 flex items-center justify-between">
+            <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-sm">{a.title}</p>
@@ -60,10 +71,15 @@ export function AssessmentList({
                 <p className="text-xs text-gray-400 mt-0.5">
                   Due {a.dueDate.toISOString().slice(0, 10)}
                   {a.status === "ISSUED" &&
-                    ` · $${a.totalCollected.toLocaleString()} of $${a.totalAmount.toLocaleString()} collected`}
+                    ` · ${money(a.totalCollected)} of ${money(a.totalAmount)} collected`}
                 </p>
               </div>
-              <p className="text-sm font-semibold">${a.totalAmount.toLocaleString()}</p>
+              <p className="text-sm font-semibold tabular-nums text-right">
+                {money(a.totalAmount)}
+                {exchangeRate != null && (
+                  <span className="block text-xs font-normal text-gray-400">{approx(a.totalAmount).trim()}</span>
+                )}
+              </p>
             </CardContent>
           </Card>
         </Link>

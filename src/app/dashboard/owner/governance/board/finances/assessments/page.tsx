@@ -16,7 +16,7 @@ export default async function OwnerBoardAssessmentsPage() {
   )
     redirect("/dashboard")
 
-  const [assessments, budgets, approvedBudget] = await Promise.all([
+  const [assessments, budgets, org] = await Promise.all([
     db.assessment.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { charges: true },
@@ -26,13 +26,8 @@ export default async function OwnerBoardAssessmentsPage() {
       where: { orgId: session.user.orgId ?? undefined },
       orderBy: { year: "desc" },
     }),
-    db.budget.findFirst({
-      where: { orgId: session.user.orgId ?? undefined, status: "APPROVED", type: "OPERATING" },
-      include: { lineItems: true },
-      orderBy: { year: "desc" },
-    }),
+    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
   ])
-  const approvedBudgetTotal = approvedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
 
   return (
     <div className="space-y-6">
@@ -45,12 +40,9 @@ export default async function OwnerBoardAssessmentsPage() {
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Dues & Assessments</h1>
-            <p className="text-gray-500 mt-1">Issued charges to owners, and payment reconciliation</p>
-            <p className="text-sm text-gray-500 mt-1">
-              {approvedBudget
-                ? `Drawing from the ${approvedBudget.year} approved Operating Budget: $${approvedBudgetTotal!.toLocaleString()}`
-                : "No approved Operating budget yet"}
+            <h1 className="text-2xl font-bold">Assessments</h1>
+            <p className="text-gray-500 mt-1">
+              One-off special levies. Decided by the owners; any Board member can enter one here.
             </p>
           </div>
           <NewAssessmentDialog
@@ -71,6 +63,8 @@ export default async function OwnerBoardAssessmentsPage() {
           dueDate: a.dueDate,
         }))}
         detailBasePath="/dashboard/owner/governance/board/finances/assessments"
+        currency={org?.baseCurrency ?? "USD"}
+        exchangeRate={org?.currentExchangeRate ?? null}
       />
     </div>
   )

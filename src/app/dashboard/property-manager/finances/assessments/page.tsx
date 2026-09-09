@@ -11,7 +11,7 @@ export default async function PropertyManagerAssessmentsPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
-  const [assessments, budgets] = await Promise.all([
+  const [assessments, budgets, org] = await Promise.all([
     db.assessment.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: { charges: true },
@@ -21,6 +21,7 @@ export default async function PropertyManagerAssessmentsPage() {
       where: { orgId: session.user.orgId ?? undefined },
       orderBy: { year: "desc" },
     }),
+    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
   ])
 
   return (
@@ -57,6 +58,8 @@ export default async function PropertyManagerAssessmentsPage() {
           dueDate: a.dueDate,
         }))}
         detailBasePath="/dashboard/property-manager/finances/assessments"
+        currency={org?.baseCurrency ?? "USD"}
+        exchangeRate={org?.currentExchangeRate ?? null}
       />
     </div>
   )
