@@ -16,7 +16,7 @@ Supersedes Revision 1
 | Funds held | In USD, in a Canadian bank, segregated from operating funds |
 | Rationale for USD / offshore | Currency stability and clear governance separation from operations |
 | Current signing authority | Greg Smith |
-| Permitted use | Restricted exclusively to reserve-eligible capital expenditures |
+| Permitted use | Restricted to reserve-eligible capital expenditures and the contingencies listed in section 0.7 |
 
 ### 0.2 Historical reserve fund activity — five-year summary
 
@@ -77,6 +77,17 @@ Planning context for owners:
 **Shortfall commentary.** This alert is provided for planning transparency only.
 It does not signal an emergency. It highlights the importance of phased
 execution, insurance recovery where applicable, and continued reserve rebuilding.
+
+### 0.7 Permitted use of reserve funds
+
+Reserve funds may be used for the following:
+
+- Unforeseen repairs exceeding USD 20,000.
+- Hurricane damage.
+- Other unanticipated major situations.
+
+Reserve funds remain restricted to reserve-eligible capital expenditures and the
+contingencies listed above. They are not available for routine operating costs.
 
 ---
 
