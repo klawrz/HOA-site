@@ -214,12 +214,16 @@ export function BudgetEditor({
 
   const colCount = (canManage ? 7 : 6) + (showSecondary ? 2 : 0)
 
-  const groupMap = new Map<string, { items: LineItem[]; total: number }>()
+  const groupMap = new Map<string, { items: LineItem[]; total: number; priorTotal: number; hasPrior: boolean }>()
   for (const item of budget.lineItems) {
     const key = item.category ?? GROUP_NONE
-    const g = groupMap.get(key) ?? { items: [], total: 0 }
+    const g = groupMap.get(key) ?? { items: [], total: 0, priorTotal: 0, hasPrior: false }
     g.items.push(item)
     g.total += item.budgetedAmount
+    if (item.previousYearActual != null) {
+      g.priorTotal += item.previousYearActual
+      g.hasPrior = true
+    }
     groupMap.set(key, g)
   }
   let counter = 0
@@ -228,6 +232,7 @@ export function BudgetEditor({
       key,
       label: key === GROUP_NONE ? "Uncategorised" : budgetCategoryLabel[key as BudgetCategory],
       total: g.total,
+      priorTotal: g.hasPrior ? g.priorTotal : null,
       items: [...g.items].sort((a, b) => b.budgetedAmount - a.budgetedAmount),
     }))
     .sort((a, b) => b.total - a.total)
@@ -347,26 +352,34 @@ export function BudgetEditor({
                 return (
                   <Fragment key={g.key}>
                     {showGroups && (
-                      <tr className="bg-gray-100/70 border-t">
-                        <td colSpan={colCount} className="px-3 py-1.5">
+                      <tr className="bg-gray-100/70 border-t text-xs font-semibold text-gray-700">
+                        <td className="px-3 py-1.5"></td>
+                        <td className="px-3 py-1.5">
                           <button
                             type="button"
                             onClick={() => toggleGroup(g.key)}
-                            className="w-full flex items-center gap-2 text-xs font-semibold text-gray-700"
+                            className="flex items-center gap-1.5"
                           >
                             {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                             {g.label}
                             <span className="text-gray-400 font-normal">
                               · {g.items.length} line{g.items.length !== 1 ? "s" : ""}
                             </span>
-                            <span className="ml-auto tabular-nums">
-                              {money(g.total)}
-                              {showSecondary && (
-                                <span className="text-gray-400 font-normal"> · {secondaryCell(g.total, budgetedRate)}</span>
-                              )}
-                            </span>
                           </button>
                         </td>
+                        <td className="text-right px-3 py-1.5 tabular-nums">{money(g.total)}</td>
+                        {showSecondary && (
+                          <td className="text-right px-3 py-1.5 tabular-nums text-gray-500">
+                            {secondaryCell(g.total, budgetedRate)}
+                          </td>
+                        )}
+                        <td className="px-3 py-1.5"></td>
+                        {showSecondary && <td className="px-3 py-1.5"></td>}
+                        <td className="px-3 py-1.5"></td>
+                        <td className="text-right px-3 py-1.5 tabular-nums text-gray-400 font-normal">
+                          {g.priorTotal != null ? money(g.priorTotal) : ""}
+                        </td>
+                        {canManage && <td className="px-3 py-1.5"></td>}
                       </tr>
                     )}
                     {(open || !showGroups) &&

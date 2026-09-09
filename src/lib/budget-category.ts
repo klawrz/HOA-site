@@ -34,14 +34,14 @@ export function parseBudgetCategory(v: unknown): BudgetCategory | null {
 // Best-effort keyword mapping for a free-text section/label from an
 // imported budget ("Water", "Payroll tax", "Landscaping contract").
 const CATEGORY_KEYWORDS: [BudgetCategory, RegExp][] = [
-  ["UTILITIES", /electric|water|propane|gas|utilit|sewer|internet|telephone|phone|power/i],
-  ["PAYROLL", /payroll|wage|salar|employee|social security|imss|sat isr|vacation pay|christmas pay|bonus|aguinaldo/i],
+  ["UTILITIES", /electric|water|propane|\bgas\b|utilit|sewer|internet|telephone|phone|power|waste|garbage|trash|refuse|recycl/i],
+  ["PAYROLL", /payroll|wage|salar|employee|social security|imss|sat isr|isr\b|vacation|christmas|bonus|aguinaldo|uniform/i],
   ["GROUNDS", /landscap|garden|lawn|mower|irrigation|palm|tree|grounds|pool/i],
-  ["MAINTENANCE", /maintenance|repair|building|equipment|fumigat|pest|paint|elevator/i],
+  ["MAINTENANCE", /maintenance|repair|building|equipment|fumigat|pest|paint|elevator|fire protection/i],
   ["SECURITY", /security|guard|surveillance|camera/i],
   ["INSURANCE", /insurance/i],
-  ["ADMIN", /management fee|admin|bank commission|bank fee|legal|lawyer|account|audit|office|postage|software/i],
-  ["TAXES_AND_FEES", /tax|government fee|permit|licen[cs]e|concession|fine|registration/i],
+  ["ADMIN", /manag[e]?ment fee|\badmin|bank com+is+ion|bank com+is+ión|bank fee|legal|lawyer|account|audit|office|postage|software|contingenc/i],
+  ["TAXES_AND_FEES", /\btax|government fee|permit|licen[cs]e|concession|fine|registration/i],
   ["RESERVE_CONTRIBUTION", /reserve|capital contribution|sinking fund/i],
 ]
 
