@@ -95,6 +95,10 @@ export default async function OwnerGovernancePage() {
                 budget={{
                   id: latestApprovedBudget.id,
                   year: latestApprovedBudget.year,
+          periodLabel: latestApprovedBudget.periodLabel,
+          revision: latestApprovedBudget.revision,
+          currency: latestApprovedBudget.currency,
+          exchangeRate: latestApprovedBudget.exchangeRate,
                   version: latestApprovedBudget.version,
                   status: latestApprovedBudget.status,
                   notes: latestApprovedBudget.notes,

@@ -1204,7 +1204,19 @@ model Budget {
   id                   String       @id @default(cuid())
   orgId                String
   year                 Int
+  // Optional human period label ("Fiscal 2027", "Jul 2026 - Jun 2027").
+  // `year` still anchors dues derivation and the multi-year comparison;
+  // this is just what the Board calls the period.
+  periodLabel          String?
+  // Bumped as a proposed budget goes through changes before approval.
+  revision             Int          @default(1)
   version              String       @default("Draft") // e.g. "Proposed", "Revised", "Final"
+  // The currency this budget's line-item amounts are stated in, captured
+  // when the budget is proposed rather than inherited live from the org.
+  currency             Currency     @default(USD)
+  // Working pesos-per-USD rate for this budget's converted column. Frozen
+  // once APPROVED - approvalExchangeRate below keeps the approval snapshot.
+  exchangeRate         Float?
   type                 BudgetType   @default(OPERATING)
   status               BudgetStatus @default(DRAFT)
   approvedAt           DateTime?

@@ -31,7 +31,10 @@ function revalidateBudgetPaths() {
 
 export async function createBudget(data: {
   year: number
+  periodLabel?: string
   version: string
+  currency?: Currency
+  exchangeRate?: number | null
   type?: BudgetType
   notes?: string
   cloneFromBudgetId?: string
@@ -55,7 +58,10 @@ export async function createBudget(data: {
     data: {
       orgId: session.user.orgId,
       year: data.year,
+      periodLabel: data.periodLabel?.trim() || null,
       version: data.version.trim() || "Draft",
+      currency: data.currency ?? "USD",
+      exchangeRate: typeof data.exchangeRate === "number" && data.exchangeRate > 0 ? data.exchangeRate : null,
       type: data.type ?? "OPERATING",
       notes: data.notes || null,
       createdById: session.user.id,
@@ -111,12 +117,68 @@ export async function approveBudget(id: string, meetingId?: string) {
       status: "APPROVED",
       approvedAt: new Date(),
       meetingId: meetingId || null,
-      approvalExchangeRate: org?.currentExchangeRate ?? null,
+      // Freeze whichever rate this budget was using - its own if set,
+      // otherwise the org's live rate at approval time.
+      approvalExchangeRate: budget.exchangeRate ?? org?.currentExchangeRate ?? null,
     },
   })
 
   revalidateBudgetPaths()
   return { success: true }
+}
+
+// Edit the proposal metadata (period, currency, rate, revision, version)
+// on a DRAFT budget. Once APPROVED these are frozen - use revert first.
+export async function setBudgetMeta(
+  id: string,
+  data: {
+    year?: number
+    periodLabel?: string | null
+    version?: string
+    currency?: Currency
+    exchangeRate?: number | null
+  }
+) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageBudget(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+  const budget = await db.budget.findUnique({ where: { id } })
+  if (!budget || budget.orgId !== session.user.orgId) return { success: false }
+  if (budget.status === "APPROVED") return { success: false, error: "Revert the budget to draft before changing this." }
+
+  await db.budget.update({
+    where: { id },
+    data: {
+      ...(data.year && Number.isFinite(data.year) ? { year: Math.round(data.year) } : {}),
+      ...(data.periodLabel !== undefined ? { periodLabel: data.periodLabel?.trim() || null } : {}),
+      ...(data.version !== undefined ? { version: data.version.trim() || "Draft" } : {}),
+      ...(data.currency ? { currency: data.currency } : {}),
+      ...(data.exchangeRate !== undefined
+        ? { exchangeRate: typeof data.exchangeRate === "number" && data.exchangeRate > 0 ? data.exchangeRate : null }
+        : {}),
+    },
+  })
+  revalidateBudgetPaths()
+  return { success: true }
+}
+
+// Bump the revision number - "we changed things, this is Rev N+1".
+export async function reviseBudget(id: string) {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageBudget(session.user.role, session.user.isBoardMember)) {
+    return { success: false }
+  }
+  const budget = await db.budget.findUnique({ where: { id } })
+  if (!budget || budget.orgId !== session.user.orgId) return { success: false }
+  if (budget.status === "APPROVED") return { success: false, error: "Revert to draft before revising." }
+
+  await db.budget.update({
+    where: { id },
+    data: { revision: budget.revision + 1, version: budget.version === "Draft" ? "Revised" : budget.version },
+  })
+  revalidateBudgetPaths()
+  return { success: true, revision: budget.revision + 1 }
 }
 
 export async function revertBudgetToDraft(id: string) {
@@ -474,6 +536,11 @@ export async function draftBudgetFromFile(
   if (!supportedType) return { success: false, error: "Only PDF, PNG, or JPG files can be read automatically." }
 
   const yearOverride = formData.get("year") ? Number(formData.get("year")) : null
+  const periodLabel = (formData.get("periodLabel") as string)?.trim() || null
+  const currencyOverride = formData.get("currency") === "MXN" || formData.get("currency") === "USD"
+    ? (formData.get("currency") as Currency)
+    : null
+  const rateOverride = formData.get("exchangeRate") ? Number(formData.get("exchangeRate")) : null
 
   const base64 = Buffer.from(await uploaded.arrayBuffer()).toString("base64")
   const anthropic = new Anthropic({ apiKey, timeout: 60_000 })
@@ -526,21 +593,24 @@ export async function draftBudgetFromFile(
   const year = Number.isFinite(yearOverride) && yearOverride ? yearOverride : Math.round(extract.fiscalYear) || new Date().getFullYear() + 1
   const assumptions = String(extract.assumptions ?? "").trim()
 
-  const org = await db.organization.findUnique({ where: { id: session.user.orgId }, select: { baseCurrency: true } })
   const docCurrency = extract.currency === "MXN" || extract.currency === "USD" ? extract.currency : null
-  const currencyWarning =
-    docCurrency && org && docCurrency !== org.baseCurrency
-      ? `\n\n⚠ This document is in ${docCurrency}, but the workspace base currency is ${org.baseCurrency}. Set the base currency to ${docCurrency} on the exchange-rate bar so these amounts read correctly and the ${org.baseCurrency === "USD" ? "USD" : "secondary"} column converts the right way.`
+  const currency: Currency = currencyOverride ?? docCurrency ?? "USD"
+  const currencyNote =
+    currencyOverride && docCurrency && currencyOverride !== docCurrency
+      ? `\n\n⚠ You set the currency to ${currencyOverride} but the document appears to be in ${docCurrency} - the amounts were NOT converted, they were kept as-is. Check the figures.`
       : ""
 
   const budget = await db.budget.create({
     data: {
       orgId: session.user.orgId,
       year,
+      periodLabel,
       version: "Proposed",
+      currency,
+      exchangeRate: rateOverride && rateOverride > 0 ? rateOverride : null,
       type: "OPERATING",
       status: "DRAFT",
-      notes: `Drafted by HOPE from an uploaded document (${uploaded.name}) on ${new Date().toISOString().slice(0, 10)}. Amounts as read: ${docCurrency ?? "unknown currency"}. Review every line before approving.${currencyWarning}${assumptions ? `\n\nReader's notes: ${assumptions}` : ""}`,
+      notes: `Drafted by HOPE from an uploaded document (${uploaded.name}) on ${new Date().toISOString().slice(0, 10)}. Amounts as read: ${currency}. Review every line before approving.${currencyNote}${assumptions ? `\n\nReader's notes: ${assumptions}` : ""}`,
       createdById: session.user.id,
       lineItems: {
         create: items.map((i) => ({

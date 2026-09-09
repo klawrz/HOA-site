@@ -43,7 +43,11 @@ export default async function BoardBudgetDetailPage({
         budget={{
           id: budget.id,
           year: budget.year,
+          periodLabel: budget.periodLabel,
+          revision: budget.revision,
           version: budget.version,
+          currency: budget.currency,
+          exchangeRate: budget.exchangeRate,
           status: budget.status,
           notes: budget.notes,
           approvedAt: budget.approvedAt,

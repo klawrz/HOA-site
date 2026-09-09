@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { draftBudgetFromFile } from "@/app/actions/budgets"
 
 // Upload a prior-year budget / financial statement (PDF or image) -> HOPE
@@ -23,6 +24,7 @@ export function BudgetFromDocumentDialog({ detailBasePath }: { detailBasePath: s
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [fileName, setFileName] = useState("")
+  const [currency, setCurrency] = useState<"auto" | "USD" | "MXN">("auto")
   const fileRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -36,6 +38,7 @@ export function BudgetFromDocumentDialog({ detailBasePath }: { detailBasePath: s
     }
     const fd = new FormData(e.currentTarget)
     fd.set("file", file)
+    if (currency !== "auto") fd.set("currency", currency)
     setBusy(true)
     const result = await draftBudgetFromFile(fd)
     setBusy(false)
@@ -82,9 +85,31 @@ export function BudgetFromDocumentDialog({ detailBasePath }: { detailBasePath: s
           </div>
 
           <div className="space-y-1">
-            <Label>Budget year (optional)</Label>
-            <Input name="year" type="number" placeholder={`${new Date().getFullYear() + 1}`} />
-            <p className="text-[11px] text-gray-400">Leave blank to let HOPE infer it from the document.</p>
+            <Label>Period</Label>
+            <Input name="periodLabel" placeholder="e.g. Fiscal 2027 (leave blank to infer)" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Anchor year</Label>
+              <Input name="year" type="number" placeholder={`${new Date().getFullYear() + 1}`} />
+              <p className="text-[11px] text-gray-400">Blank = infer from the document.</p>
+            </div>
+            <div className="space-y-1">
+              <Label>Currency</Label>
+              <Select value={currency} onValueChange={(v) => setCurrency((v as "auto" | "USD" | "MXN") ?? "auto")} items={{ auto: "Auto-detect", USD: "USD ($)", MXN: "MXN (pesos)" }}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto-detect</SelectItem>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="MXN">MXN (pesos)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Exchange rate (optional)</Label>
+            <Input name="exchangeRate" type="number" min="0.01" step="0.01" placeholder="Pesos per 1 USD" />
+            <p className="text-[11px] text-gray-400">Sets the converted column. You can change it later on the budget.</p>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

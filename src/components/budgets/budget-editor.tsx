@@ -9,7 +9,8 @@ import { LineItemDialog } from "./line-item-dialog"
 import { ApproveBudgetDialog } from "./approve-budget-dialog"
 import { ImportCsvDialog } from "./import-csv-dialog"
 import { ExchangeRateBar } from "./exchange-rate-bar"
-import { deleteLineItem, revertBudgetToDraft, deleteBudget, saveBudgetAsTemplate } from "@/app/actions/budgets"
+import { deleteLineItem, revertBudgetToDraft, deleteBudget, saveBudgetAsTemplate, reviseBudget } from "@/app/actions/budgets"
+import { BudgetMetaDialog } from "./budget-meta-dialog"
 import { formatDateISO } from "@/lib/utils"
 import { downloadCsv } from "@/lib/csv"
 import { convertToSecondary, secondaryCurrency, formatMoney } from "@/lib/currency"
@@ -41,7 +42,11 @@ interface LineItem {
 interface BudgetData {
   id: string
   year: number
+  periodLabel: string | null
+  revision: number
   version: string
+  currency: Currency
+  exchangeRate: number | null
   status: string
   notes: string | null
   approvedAt: Date | null
@@ -74,26 +79,38 @@ export function BudgetEditor({
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [deletingBudget, setDeletingBudget] = useState(false)
   const [savingTemplate, setSavingTemplate] = useState(false)
+  const [revising, setRevising] = useState(false)
 
-  const secondary = secondaryCurrency(baseCurrency)
-  // Budgeted figures lock to the rate in effect when the budget was
-  // approved; while still DRAFT there's no locked rate yet, so fall back
-  // to the live rate as an estimate. Actual figures always use the live
-  // rate, regardless of approval status - that's the whole point.
-  const budgetedRate = budget.status === "APPROVED" ? budget.approvalExchangeRate : currentExchangeRate
-  const actualRate = currentExchangeRate
+  // Currency + rate are the budget's own (captured when it was proposed),
+  // falling back to the org defaults for budgets created before that.
+  const currency: Currency = budget.currency ?? baseCurrency
+  const secondary = secondaryCurrency(currency)
+  // Budgeted figures lock to the rate frozen at approval; while DRAFT they
+  // use this budget's working rate (or the org's live rate as a fallback).
+  // Actual figures always use the live rate - that's the point.
+  const workingRate = budget.exchangeRate ?? currentExchangeRate
+  const budgetedRate = budget.status === "APPROVED" ? budget.approvalExchangeRate : workingRate
+  const actualRate = budget.status === "APPROVED" ? currentExchangeRate ?? workingRate : workingRate
+
+  async function handleRevise() {
+    setRevising(true)
+    const result = await reviseBudget(budget.id)
+    setRevising(false)
+    if (result.success) toast.success(`Now Rev ${result.revision}`)
+    else toast.error(result.error || "Failed to revise")
+  }
   // When a rate is set, the converted amount gets its own column (per
   // Dara: "two columns... the pesos and a USD column") rather than a
   // sub-line under each figure.
   const showSecondary = !!(budgetedRate || actualRate)
 
-  // Primary column figures in the workspace's base currency (MXN for a
-  // Mexican condo). Previously hardcoded "$" - wrong for a peso budget.
-  const money = (n: number) => formatMoney(n, baseCurrency)
+  // Primary column figures in the budget's own currency (MXN for a peso
+  // budget). Previously hardcoded "$".
+  const money = (n: number) => formatMoney(n, currency)
 
   function secondaryCell(amount: number | null, rate: number | null) {
     if (amount == null || !rate) return "—"
-    return formatMoney(convertToSecondary(amount, rate, baseCurrency), secondary)
+    return formatMoney(convertToSecondary(amount, rate, currency), secondary)
   }
 
   async function handleRemoveItem(id: string) {
@@ -145,8 +162,8 @@ export function BudgetEditor({
       ]
       if (budgetedRate || actualRate) {
         row.push(
-          budgetedRate ? convertToSecondary(item.budgetedAmount, budgetedRate, baseCurrency) : "",
-          actualRate && item.actualAmount != null ? convertToSecondary(item.actualAmount, actualRate, baseCurrency) : ""
+          budgetedRate ? convertToSecondary(item.budgetedAmount, budgetedRate, currency) : "",
+          actualRate && item.actualAmount != null ? convertToSecondary(item.actualAmount, actualRate, currency) : ""
         )
       }
       rows.push(row)
@@ -178,9 +195,12 @@ export function BudgetEditor({
     <div className="space-y-4">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold uppercase tracking-wide bg-gray-900 text-white rounded px-1.5 py-0.5">
+              Rev {budget.revision}
+            </span>
             <h2 className="text-xl font-bold">
-              {budget.year} — {budget.version}
+              {budget.periodLabel || budget.year} — {budget.version}
             </h2>
             <span
               className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -190,15 +210,39 @@ export function BudgetEditor({
               {budget.status === "APPROVED" ? "Approved" : "Draft"}
             </span>
           </div>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {currency}
+            {(budget.status === "APPROVED" ? budget.approvalExchangeRate : workingRate)
+              ? ` · 1 USD = ${(budget.status === "APPROVED" ? budget.approvalExchangeRate : workingRate)!.toLocaleString()} MXN${budget.status === "APPROVED" ? " (frozen at approval)" : ""}`
+              : " · no exchange rate set"}
+            {budget.periodLabel && ` · anchor year ${budget.year}`}
+          </p>
           {budget.status === "APPROVED" && budget.approvedAt && (
             <p className="text-xs text-gray-400 mt-0.5">
               Approved {formatDateISO(budget.approvedAt)}
               {budget.meetingTitle && ` at ${budget.meetingTitle}`}
             </p>
           )}
-          {budget.notes && <p className="text-sm text-gray-600 mt-1">{budget.notes}</p>}
+          {budget.notes && <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{budget.notes}</p>}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {canManage && budget.status === "DRAFT" && (
+            <>
+              <BudgetMetaDialog
+                budgetId={budget.id}
+                current={{
+                  year: budget.year,
+                  periodLabel: budget.periodLabel,
+                  version: budget.version,
+                  currency,
+                  exchangeRate: budget.exchangeRate,
+                }}
+              />
+              <Button size="sm" variant="outline" onClick={handleRevise} disabled={revising}>
+                {revising ? "…" : "Revise (Rev " + (budget.revision + 1) + ")"}
+              </Button>
+            </>
+          )}
           <Button size="sm" variant="outline" onClick={handleExport} className="gap-1.5">
             <Download className="h-3.5 w-3.5" /> Export CSV
           </Button>
@@ -243,9 +287,9 @@ export function BudgetEditor({
             <thead>
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
                 <th className="text-left font-medium px-3 py-2">Line Item</th>
-                <th className="text-right font-medium px-3 py-2">Budgeted{showSecondary && ` (${baseCurrency})`}</th>
+                <th className="text-right font-medium px-3 py-2">Budgeted{showSecondary && ` (${currency})`}</th>
                 {showSecondary && <th className="text-right font-medium px-3 py-2">Budgeted ({secondary})</th>}
-                <th className="text-right font-medium px-3 py-2">Actual{showSecondary && ` (${baseCurrency})`}</th>
+                <th className="text-right font-medium px-3 py-2">Actual{showSecondary && ` (${currency})`}</th>
                 {showSecondary && <th className="text-right font-medium px-3 py-2">Actual ({secondary})</th>}
                 <th className="text-right font-medium px-3 py-2">Variance</th>
                 <th className="text-right font-medium px-3 py-2">Prior Year</th>
