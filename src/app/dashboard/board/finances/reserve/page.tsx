@@ -10,6 +10,7 @@ import { ReserveDetailsDialog } from "@/components/reserve-fund/reserve-details-
 import { ReserveYearTable } from "@/components/reserve-fund/reserve-year-table"
 import { TransactionList } from "@/components/reserve-fund/transaction-list"
 import { CapitalItemsTable } from "@/components/reserve-fund/capital-items-table"
+import { ReservePolicySummaryCard } from "@/components/reserve-fund/reserve-policy-summary-card"
 import { reserveYearRange, computeReserveYearRows } from "@/lib/reserve-fund"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
@@ -75,6 +76,8 @@ export default async function BoardReservePage() {
           />
         </CardContent>
       </Card>
+
+      <ReservePolicySummaryCard />
 
       <ReserveYearTable rows={yearRows} comments={comments} canManage />
 

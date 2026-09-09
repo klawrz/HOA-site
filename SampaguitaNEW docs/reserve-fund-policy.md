@@ -6,6 +6,23 @@ Supersedes Revision 1
 
 ---
 
+## Document control
+
+- **Status:** frozen at Revision 2 on 2026-09-09 — the definitive circulation
+  draft for owner review. Use this version as the standing reference.
+- **Changes:** any change opens a new revision (2.1, 3, …) with a dated note
+  below; the frozen text above is not edited in place.
+- **Adoption:** this remains a *proposed* policy until adopted by owner motion at
+  a General Meeting. Placeholder figures (the USD 100,000 target, the 2027–2028
+  assessment split) are confirmed or amended by that motion.
+
+| Revision | Date | Note |
+|---|---|---|
+| 1 | — | Superseded. |
+| 2 | 2026-09-09 | Frozen circulation draft. Adds the funding plan (0.8), roof special assessments (0.9), and the 30%-of-target floor (0.10). |
+
+---
+
 ## 0. Current Reserve Fund Status & Target
 
 ### 0.1 Current status (as of 2026)
