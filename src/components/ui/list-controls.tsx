@@ -1,9 +1,46 @@
 "use client"
 
+import { useState } from "react"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+
+// State bundle for a client-filtered list: a search string, any number of
+// named multi-select filters, and the current page. Page resets to 1
+// whenever the search or a filter changes (adjusted during render, not in
+// an effect - see react.dev "You Might Not Need an Effect").
+export function useListControls() {
+  const [search, setSearch] = useState("")
+  const [filters, setFilters] = useState<Record<string, string[]>>({})
+  const [page, setPage] = useState(1)
+
+  const toggleFilter = (key: string) => (value: string) =>
+    setFilters((prev) => {
+      const current = prev[key] ?? []
+      return {
+        ...prev,
+        [key]: current.includes(value) ? current.filter((v) => v !== value) : [...current, value],
+      }
+    })
+
+  const queryKey = `${search}|${JSON.stringify(filters)}`
+  const [prevQueryKey, setPrevQueryKey] = useState(queryKey)
+  if (queryKey !== prevQueryKey) {
+    setPrevQueryKey(queryKey)
+    setPage(1)
+  }
+
+  return {
+    search,
+    setSearch,
+    filters,
+    filterFor: (key: string) => filters[key] ?? [],
+    toggleFilter,
+    page,
+    setPage,
+  }
+}
 
 // Small shared primitives for long, client-filtered lists (units, owners,
 // tickets...). Each list keeps its own row markup and its own filter logic;

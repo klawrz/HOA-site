@@ -1,20 +1,11 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
-import { Building2, Trash2 } from "lucide-react"
-import { deleteUnit } from "@/app/actions/org"
 import { getUnitLabel, unitDisplayName, compareUnitNumbers } from "@/lib/unit-label"
 import { NewUnitDialog } from "./new-unit-dialog"
 import { BulkAddUnitsDialog } from "./bulk-add-units-dialog"
-import { EditUnitDialog } from "./edit-unit-dialog"
 import { UnitLabelForm } from "./unit-label-form"
-
-const statusColors: Record<string, string> = {
-  AVAILABLE: "bg-green-100 text-green-700",
-  OWNER_OCCUPIED: "bg-blue-100 text-blue-700",
-  RENTED: "bg-yellow-100 text-yellow-700",
-  UNAVAILABLE: "bg-gray-100 text-gray-500",
-}
+import { AccountUnitsList } from "./units-list"
 
 export default async function AccountUnitsPage() {
   const session = await auth()
@@ -32,6 +23,26 @@ export default async function AccountUnitsPage() {
   ])
   units.sort(compareUnitNumbers)
 
+  const rows = units.map((u) => ({
+    id: u.id,
+    number: u.number,
+    display: unitDisplayName(unitLabel, u.number),
+    building: u.building,
+    floor: u.floor,
+    bedrooms: u.bedrooms,
+    bathrooms: u.bathrooms,
+    sqft: u.sqft,
+    description: u.description,
+    civicRoll: u.civicRoll,
+    status: u.status,
+    owner: u.ownerships[0]?.owner
+      ? { name: u.ownerships[0].owner.name, email: u.ownerships[0].owner.email }
+      : null,
+    managerName: u.managers[0]
+      ? u.managers[0].user?.name ?? u.managers[0].user?.email ?? u.managers[0].name
+      : null,
+  }))
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -48,57 +59,7 @@ export default async function AccountUnitsPage() {
         </div>
       </div>
 
-      <div className="bg-white border rounded-xl divide-y">
-        {units.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p>No {unitLabel.toLowerCase()}s yet</p>
-          </div>
-        )}
-        {units.map((u) => (
-          <div key={u.id} className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="min-w-0">
-                <p className="font-medium">{unitDisplayName(unitLabel, u.number)}</p>
-                <p className="text-xs text-gray-400">
-                  {[u.building, u.bedrooms && `${u.bedrooms}bd`, u.bathrooms && `${u.bathrooms}ba`]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 shrink-0">
-              <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
-                {u.status.replace(/_/g, " ")}
-              </span>
-              <div className="text-right text-xs">
-                {u.ownerships[0]?.owner && (
-                  <p className="text-gray-600">{u.ownerships[0].owner.name ?? u.ownerships[0].owner.email}</p>
-                )}
-                {u.managers[0] && (
-                  <p className="text-gray-400">
-                    UM: {u.managers[0].user?.name ?? u.managers[0].user?.email ?? u.managers[0].name}
-                  </p>
-                )}
-              </div>
-              <EditUnitDialog
-                unit={{
-                  ...u,
-                  owner: u.ownerships[0]?.owner
-                    ? { name: u.ownerships[0].owner.name, email: u.ownerships[0].owner.email }
-                    : null,
-                }}
-                unitLabel={unitLabel}
-              />
-              <form action={deleteUnit.bind(null, u.id)}>
-                <button type="submit" className="text-gray-400 hover:text-red-500 transition-colors">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </form>
-            </div>
-          </div>
-        ))}
-      </div>
+      <AccountUnitsList units={rows} unitLabel={unitLabel} />
     </div>
   )
 }
