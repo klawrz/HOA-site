@@ -20,11 +20,14 @@ const EXAMPLE_PROMPTS: Partial<Record<Role, string[]>> = {
   RENTER: ["What's the status of my ticket?", "How do I submit a new maintenance request?"],
   BOARD_MEMBER: ["What's our reserve fund balance?", "How much in dues is still outstanding?", "What tickets are open right now?"],
   PROPERTY_MANAGER: ["What's our reserve fund balance?", "How much in dues is still outstanding?", "What tickets are open right now?"],
+  ACCOUNT_OWNER: ["What's our reserve fund balance?", "How much in dues is still outstanding?", "What tickets are open right now?"],
 }
 
-// Matches Phase 1 scope - CONTRACTOR/UNIT_MANAGER/ACCOUNT_OWNER get a
-// "coming soon" state rather than tools that don't exist yet.
-const SUPPORTED_ROLES: Role[] = ["OWNER", "RENTER", "BOARD_MEMBER", "PROPERTY_MANAGER"]
+// CONTRACTOR/UNIT_MANAGER get a "coming soon" state rather than tools that
+// don't exist yet. ACCOUNT_OWNER is included: the custodian running the
+// workspace holds the same org-wide finance/property/governance context a
+// Board member does (see the Agentic Intelligence brief).
+const SUPPORTED_ROLES: Role[] = ["OWNER", "RENTER", "BOARD_MEMBER", "PROPERTY_MANAGER", "ACCOUNT_OWNER"]
 
 export function AskHopePanel({ role, userName }: { role: Role; userName?: string | null }) {
   const [open, setOpen] = useState(false)

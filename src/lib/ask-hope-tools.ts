@@ -143,7 +143,7 @@ export const RESPOND_TO_USER_TOOL_NAME = "respond_to_user"
 export const RESPOND_TO_USER_SCHEMA: JsonSchema = {
   type: "object",
   properties: {
-    answer: { type: "string", description: "The concise answer to show the user, in plain conversational language." },
+    answer: { type: "string", description: "The concise answer to show the user, in plain conversational sentences - no markdown, no bullet lists, no headings (the UI renders it as plain text)." },
     sources: {
       type: "array",
       description: "Which tool result(s) this answer is based on, for transparency.",
