@@ -4,6 +4,19 @@ Structured, near-real Sampaguita data to load when the live sandbox is stood up,
 so the figures don't have to be re-typed. Source documents live one level up in
 `SampaguitaNEW docs/`.
 
+## Rebuilding the data — the fast path
+
+- **`prisma/seed-sampaguita.ts`** (run `npm run db:seed:sampaguita`) re-applies the
+  whole financial + roster layer — org currency/rate, reserve target/policy/figures
+  and history, the FY2027 budget with all 34 line items, the 14 villa dues
+  allocations, and the employee roster — onto an existing `SampaguitaNEW` org.
+  Idempotent; safe to run repeatedly.
+- It does **not** recreate the org / units / users / ownerships. Those come from
+  the `dev.db` committed in git (state at every commit) or the `dev.db.backup-*`
+  snapshots. Restore one of those first, then run the seed if needed.
+- The files below are the human-readable copy of the same data and the route for
+  loading it through the app UI.
+
 ## Files
 
 | File | What it is | How to load |
