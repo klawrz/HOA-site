@@ -4,8 +4,9 @@ import Anthropic from "@anthropic-ai/sdk"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { BudgetType, Currency } from "@/generated/prisma"
+import { BudgetType, Currency, BudgetCategory } from "@/generated/prisma"
 import { parseCsv, findColumn, parseMoney } from "@/lib/csv-parse"
+import { parseBudgetCategory, guessBudgetCategory } from "@/lib/budget-category"
 import { saveUploadedFile } from "@/lib/file-upload"
 
 // Drafting/entering numbers is common ground for the Board and the PM (who
@@ -44,7 +45,13 @@ export async function createBudget(data: {
     return { success: false }
   }
 
-  let sourceLineItems: { label: string; budgetedAmount: number; actualAmount: number | null; sortOrder: number }[] = []
+  let sourceLineItems: {
+    label: string
+    category: BudgetCategory | null
+    budgetedAmount: number
+    actualAmount: number | null
+    sortOrder: number
+  }[] = []
   if (data.cloneFromBudgetId) {
     const source = await db.budget.findUnique({
       where: { id: data.cloneFromBudgetId },
@@ -73,6 +80,7 @@ export async function createBudget(data: {
       lineItems: {
         create: sourceLineItems.map((i) => ({
           label: i.label,
+          category: i.category,
           budgetedAmount: i.budgetedAmount,
           previousYearActual: i.actualAmount ?? i.budgetedAmount,
           sortOrder: i.sortOrder,
@@ -227,6 +235,7 @@ export async function createLineItem(
   budgetId: string,
   data: {
     label: string
+    category?: BudgetCategory | null
     budgetedAmount: number
     actualAmount?: number
     previousYearActual?: number
@@ -251,6 +260,7 @@ export async function createLineItem(
     data: {
       budgetId,
       label,
+      category: data.category ?? null,
       budgetedAmount: data.budgetedAmount,
       actualAmount: data.actualAmount ?? null,
       previousYearActual: data.previousYearActual ?? null,
@@ -267,6 +277,7 @@ export async function updateLineItem(
   id: string,
   data: {
     label: string
+    category?: BudgetCategory | null
     budgetedAmount: number
     actualAmount?: number
     previousYearActual?: number
@@ -288,6 +299,7 @@ export async function updateLineItem(
     where: { id },
     data: {
       label,
+      ...(data.category !== undefined ? { category: data.category } : {}),
       budgetedAmount: data.budgetedAmount,
       actualAmount: data.actualAmount ?? null,
       previousYearActual: data.previousYearActual ?? null,
@@ -350,7 +362,8 @@ export async function importBudgetLineItemsFromCsv(budgetId: string, csvText: st
   if (rows.length < 2) return { success: false, error: "No data rows found in file" }
 
   const [header, ...dataRows] = rows
-  const labelIdx = findColumn(header, ["line item", "label", "category", "description", "item"])
+  const labelIdx = findColumn(header, ["line item", "label", "description", "item"])
+  const groupIdx = findColumn(header, ["category", "group", "section", "area"])
   const budgetedIdx = findColumn(header, ["budgeted", "budget", "amount", "proposed", "budgeted amount"])
   const actualIdx = findColumn(header, ["actual", "actual amount"])
   const priorIdx = findColumn(header, [
@@ -374,6 +387,9 @@ export async function importBudgetLineItemsFromCsv(budgetId: string, csvText: st
   const items = dataRows
     .map((row, i) => ({
       label: row[labelIdx]?.trim() ?? "",
+      category:
+        (groupIdx !== -1 ? guessBudgetCategory(row[groupIdx]) : null) ??
+        guessBudgetCategory(row[labelIdx]),
       budgetedAmount: parseMoney(row[budgetedIdx]),
       actualAmount: actualIdx !== -1 ? parseMoney(row[actualIdx]) : null,
       previousYearActual: priorIdx !== -1 ? parseMoney(row[priorIdx]) : null,
@@ -398,6 +414,7 @@ export async function importBudgetLineItemsFromCsv(budgetId: string, csvText: st
     data: items.map((i) => ({
       budgetId,
       label: i.label,
+      category: i.category,
       budgetedAmount: i.budgetedAmount!,
       actualAmount: i.actualAmount,
       previousYearActual: i.previousYearActual,
@@ -497,6 +514,11 @@ const BUDGET_DRAFT_TOOL = {
             label: { type: "string", description: "The line item name exactly as written." },
             budgetedAmount: { type: "number", description: "Proposed amount for the new year. Use the document's stated proposed/next-year figure if it has one; otherwise carry the prior-year actual forward unchanged." },
             priorYearAmount: { type: ["number", "null"], description: "The prior year's actual (or budgeted, if no actual) for this line, else null." },
+            category: {
+              type: ["string", "null"],
+              enum: ["UTILITIES", "PAYROLL", "GROUNDS", "MAINTENANCE", "SECURITY", "INSURANCE", "ADMIN", "TAXES_AND_FEES", "RESERVE_CONTRIBUTION", "OTHER", null],
+              description: "Which group this line belongs to. Electricity/water/propane -> UTILITIES; wages/payroll tax/social security/vacation/Christmas -> PAYROLL; landscaping/irrigation/palm trimming/pool -> GROUNDS; repairs/fumigation/equipment -> MAINTENANCE; management fee/bank/legal/accounting -> ADMIN; property tax/concession/permits/fines -> TAXES_AND_FEES; reserve transfer -> RESERVE_CONTRIBUTION. Null if genuinely unclear.",
+            },
           },
           required: ["label", "budgetedAmount"],
         },
@@ -510,7 +532,7 @@ const BUDGET_DRAFT_TOOL = {
 interface BudgetDraftExtract {
   fiscalYear: number
   currency: "USD" | "MXN"
-  lineItems: { label: string; budgetedAmount: number; priorYearAmount?: number | null }[]
+  lineItems: { label: string; budgetedAmount: number; priorYearAmount?: number | null; category?: string | null }[]
   assumptions: string
 }
 
@@ -551,7 +573,7 @@ export async function draftBudgetFromFile(
       model: "claude-sonnet-5",
       max_tokens: 4096,
       system:
-        "You read an HOA/condo operating budget or annual financial statement and turn it into a proposed operating budget for the next fiscal year, to be reviewed by the Board. Extract every operating line item. For each, set budgetedAmount to the document's proposed/next-year figure if it states one, otherwise carry the prior-year actual forward unchanged - do not invent increases. Record the prior-year amount in priorYearAmount. Skip subtotals and totals. Call provide_budget_draft once with your best reading. Amounts are plain numbers, no currency symbols.",
+        "You read an HOA/condo operating budget or annual financial statement and turn it into a proposed operating budget for the next fiscal year, to be reviewed by the Board. Extract every operating line item. For each: set budgetedAmount to the document's proposed/next-year figure if it states one, otherwise carry the prior-year actual forward unchanged - do not invent increases; record the prior-year amount in priorYearAmount; and assign a category from the fixed list (use the section headings in the document to guide this). Skip subtotals and totals. Call provide_budget_draft once with your best reading. Amounts are plain numbers, no currency symbols.",
       tools: [BUDGET_DRAFT_TOOL],
       tool_choice: { type: "tool", name: "provide_budget_draft" },
       messages: [
@@ -579,6 +601,7 @@ export async function draftBudgetFromFile(
   const items = (Array.isArray(extract.lineItems) ? extract.lineItems : [])
     .map((i, idx) => ({
       label: String(i.label ?? "").trim(),
+      category: parseBudgetCategory(i.category) ?? guessBudgetCategory(String(i.label ?? "")),
       budgetedAmount: typeof i.budgetedAmount === "number" ? i.budgetedAmount : NaN,
       previousYearActual: typeof i.priorYearAmount === "number" ? i.priorYearAmount : null,
       sortOrder: idx,
@@ -615,6 +638,7 @@ export async function draftBudgetFromFile(
       lineItems: {
         create: items.map((i) => ({
           label: i.label,
+          category: i.category,
           budgetedAmount: i.budgetedAmount,
           previousYearActual: i.previousYearActual,
           sortOrder: i.sortOrder,

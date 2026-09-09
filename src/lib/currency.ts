@@ -10,7 +10,9 @@ export function secondaryCurrency(base: Currency): Currency {
   return base === "USD" ? "MXN" : "USD"
 }
 
+// Whole units only - HOA budgets and financial summaries are discussed to
+// the nearest peso / dollar, not the cent.
 export function formatMoney(amount: number, currency: Currency): string {
-  const formatted = amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  const formatted = Math.round(amount).toLocaleString("en-US", { maximumFractionDigits: 0 })
   return currency === "USD" ? `$${formatted}` : `${formatted} MXN`
 }

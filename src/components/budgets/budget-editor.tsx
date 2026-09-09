@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { toast } from "sonner"
-import { Trash2, Download, FileStack } from "lucide-react"
+import { Trash2, Download, FileStack, ChevronDown, ChevronRight } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineItemDialog } from "./line-item-dialog"
@@ -14,7 +14,8 @@ import { BudgetMetaDialog } from "./budget-meta-dialog"
 import { formatDateISO } from "@/lib/utils"
 import { downloadCsv } from "@/lib/csv"
 import { convertToSecondary, secondaryCurrency, formatMoney } from "@/lib/currency"
-import { Currency } from "@/generated/prisma"
+import { budgetCategoryLabel } from "@/lib/budget-category"
+import { Currency, BudgetCategory } from "@/generated/prisma"
 
 interface ContractOption {
   id: string
@@ -32,12 +33,15 @@ interface MeetingOption {
 interface LineItem {
   id: string
   label: string
+  category: BudgetCategory | null
   budgetedAmount: number
   actualAmount: number | null
   previousYearActual: number | null
   contractId: string | null
   contractTitle: string | null
 }
+
+const GROUP_NONE = "__none__"
 
 interface BudgetData {
   id: string
@@ -148,26 +152,31 @@ export function BudgetEditor({
   }
 
   function handleExport() {
-    const headers = ["#", "Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual"]
+    const headers = ["#", "Category", "Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual"]
     if (budgetedRate || actualRate) headers.push(`Budgeted (${secondary})`, `Actual (${secondary})`)
     const rows: (string | number)[][] = [headers]
-    for (const [i, item] of budget.lineItems.entries()) {
-      const variance = item.actualAmount != null ? item.actualAmount - item.budgetedAmount : ""
-      const row: (string | number)[] = [
-        i + 1,
-        item.label,
-        item.budgetedAmount,
-        item.actualAmount ?? "",
-        variance,
-        item.previousYearActual ?? "",
-      ]
-      if (budgetedRate || actualRate) {
-        row.push(
-          budgetedRate ? convertToSecondary(item.budgetedAmount, budgetedRate, currency) : "",
-          actualRate && item.actualAmount != null ? convertToSecondary(item.actualAmount, actualRate, currency) : ""
-        )
+    for (const g of groups) {
+      for (const { item, number } of g.items) {
+        const variance = item.actualAmount != null ? item.actualAmount - item.budgetedAmount : ""
+        const row: (string | number)[] = [
+          number,
+          g.key === GROUP_NONE ? "" : g.label,
+          item.label,
+          Math.round(item.budgetedAmount),
+          item.actualAmount != null ? Math.round(item.actualAmount) : "",
+          variance === "" ? "" : Math.round(variance),
+          item.previousYearActual != null ? Math.round(item.previousYearActual) : "",
+        ]
+        if (budgetedRate || actualRate) {
+          row.push(
+            budgetedRate ? Math.round(convertToSecondary(item.budgetedAmount, budgetedRate, currency)) : "",
+            actualRate && item.actualAmount != null
+              ? Math.round(convertToSecondary(item.actualAmount, actualRate, currency))
+              : ""
+          )
+        }
+        rows.push(row)
       }
-      rows.push(row)
     }
     downloadCsv(`budget-${budget.year}-${budget.version.toLowerCase().replace(/\s+/g, "-")}.csv`, rows)
   }
@@ -191,6 +200,40 @@ export function BudgetEditor({
     { budgeted: 0, actual: 0, budgetedForItemsWithActual: 0, hasActual: false, previousYear: 0, hasPreviousYear: false }
   )
   const totalVariance = totals.hasActual ? totals.actual - totals.budgetedForItemsWithActual : null
+
+  // Group line items by category, order groups by total budgeted spend
+  // (biggest first), order lines within a group the same way, and number
+  // the whole thing continuously so "line 14" in a meeting is unambiguous.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+
+  const colCount = (canManage ? 7 : 6) + (showSecondary ? 2 : 0)
+
+  const groupMap = new Map<string, { items: LineItem[]; total: number }>()
+  for (const item of budget.lineItems) {
+    const key = item.category ?? GROUP_NONE
+    const g = groupMap.get(key) ?? { items: [], total: 0 }
+    g.items.push(item)
+    g.total += item.budgetedAmount
+    groupMap.set(key, g)
+  }
+  let counter = 0
+  const groups = [...groupMap.entries()]
+    .map(([key, g]) => ({
+      key,
+      label: key === GROUP_NONE ? "Uncategorised" : budgetCategoryLabel[key as BudgetCategory],
+      total: g.total,
+      items: [...g.items].sort((a, b) => b.budgetedAmount - a.budgetedAmount),
+    }))
+    .sort((a, b) => b.total - a.total)
+    .map((g) => ({ ...g, items: g.items.map((item) => ({ item, number: ++counter })) }))
+  // Only show group headers when there's a real category in play.
+  const showGroups = groups.length > 1 || (groups.length === 1 && groups[0].key !== GROUP_NONE)
 
   return (
     <div className="space-y-4">
@@ -299,61 +342,92 @@ export function BudgetEditor({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {budget.lineItems.map((item, idx) => {
-                const variance = item.actualAmount != null ? item.actualAmount - item.budgetedAmount : null
+              {groups.map((g) => {
+                const open = !collapsed.has(g.key)
                 return (
-                  <tr key={item.id}>
-                    <td className="text-right px-3 py-2 tabular-nums text-gray-400">{idx + 1}</td>
-                    <td className="px-3 py-2">
-                      <p className="font-medium">{item.label}</p>
-                      {item.contractTitle && (
-                        <p className="text-xs text-gray-400">from contract: {item.contractTitle}</p>
-                      )}
-                    </td>
-                    <td className="text-right px-3 py-2 tabular-nums">{money(item.budgetedAmount)}</td>
-                    {showSecondary && (
-                      <td className="text-right px-3 py-2 tabular-nums text-gray-500">
-                        {secondaryCell(item.budgetedAmount, budgetedRate)}
-                      </td>
-                    )}
-                    <td className="text-right px-3 py-2 tabular-nums">
-                      {item.actualAmount != null ? money(item.actualAmount) : "—"}
-                    </td>
-                    {showSecondary && (
-                      <td className="text-right px-3 py-2 tabular-nums text-gray-500">
-                        {secondaryCell(item.actualAmount, actualRate)}
-                      </td>
-                    )}
-                    <td
-                      className={`text-right px-3 py-2 tabular-nums ${
-                        variance == null ? "" : variance > 0 ? "text-red-600" : "text-green-600"
-                      }`}
-                    >
-                      {variance != null ? `${variance > 0 ? "+" : ""}${money(variance)}` : "—"}
-                    </td>
-                    <td className="text-right px-3 py-2 tabular-nums text-gray-500">
-                      {item.previousYearActual != null ? money(item.previousYearActual) : "—"}
-                    </td>
-                    {canManage && (
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2 justify-end">
-                          <LineItemDialog budgetId={budget.id} contracts={contracts} item={item} />
+                  <Fragment key={g.key}>
+                    {showGroups && (
+                      <tr className="bg-gray-100/70 border-t">
+                        <td colSpan={colCount} className="px-3 py-1.5">
                           <button
-                            onClick={() => handleRemoveItem(item.id)}
-                            disabled={removingId === item.id}
-                            className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                            type="button"
+                            onClick={() => toggleGroup(g.key)}
+                            className="w-full flex items-center gap-2 text-xs font-semibold text-gray-700"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                            {g.label}
+                            <span className="text-gray-400 font-normal">
+                              · {g.items.length} line{g.items.length !== 1 ? "s" : ""}
+                            </span>
+                            <span className="ml-auto tabular-nums">
+                              {money(g.total)}
+                              {showSecondary && (
+                                <span className="text-gray-400 font-normal"> · {secondaryCell(g.total, budgetedRate)}</span>
+                              )}
+                            </span>
                           </button>
-                        </div>
-                      </td>
+                        </td>
+                      </tr>
                     )}
-                  </tr>
+                    {(open || !showGroups) &&
+                      g.items.map(({ item, number }) => {
+                        const variance = item.actualAmount != null ? item.actualAmount - item.budgetedAmount : null
+                        return (
+                          <tr key={item.id}>
+                            <td className="text-right px-3 py-2 tabular-nums text-gray-400">{number}</td>
+                            <td className="px-3 py-2">
+                              <p className="font-medium">{item.label}</p>
+                              {item.contractTitle && (
+                                <p className="text-xs text-gray-400">from contract: {item.contractTitle}</p>
+                              )}
+                            </td>
+                            <td className="text-right px-3 py-2 tabular-nums">{money(item.budgetedAmount)}</td>
+                            {showSecondary && (
+                              <td className="text-right px-3 py-2 tabular-nums text-gray-500">
+                                {secondaryCell(item.budgetedAmount, budgetedRate)}
+                              </td>
+                            )}
+                            <td className="text-right px-3 py-2 tabular-nums">
+                              {item.actualAmount != null ? money(item.actualAmount) : "—"}
+                            </td>
+                            {showSecondary && (
+                              <td className="text-right px-3 py-2 tabular-nums text-gray-500">
+                                {secondaryCell(item.actualAmount, actualRate)}
+                              </td>
+                            )}
+                            <td
+                              className={`text-right px-3 py-2 tabular-nums ${
+                                variance == null ? "" : variance > 0 ? "text-red-600" : "text-green-600"
+                              }`}
+                            >
+                              {variance != null ? `${variance > 0 ? "+" : ""}${money(variance)}` : "—"}
+                            </td>
+                            <td className="text-right px-3 py-2 tabular-nums text-gray-500">
+                              {item.previousYearActual != null ? money(item.previousYearActual) : "—"}
+                            </td>
+                            {canManage && (
+                              <td className="px-3 py-2">
+                                <div className="flex items-center gap-2 justify-end">
+                                  <LineItemDialog budgetId={budget.id} contracts={contracts} item={item} />
+                                  <button
+                                    onClick={() => handleRemoveItem(item.id)}
+                                    disabled={removingId === item.id}
+                                    className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
+                  </Fragment>
                 )
               })}
               {budget.lineItems.length === 0 && (
                 <tr>
-                  <td colSpan={(canManage ? 7 : 6) + (showSecondary ? 2 : 0)} className="px-3 py-8 text-center text-gray-400">
+                  <td colSpan={colCount} className="px-3 py-8 text-center text-gray-400">
                     No line items yet.
                   </td>
                 </tr>

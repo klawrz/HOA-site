@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select"
 import { Pencil } from "lucide-react"
 import { createLineItem, updateLineItem } from "@/app/actions/budgets"
+import { BudgetCategory } from "@/generated/prisma"
+import { budgetCategoryLabel, BUDGET_CATEGORIES } from "@/lib/budget-category"
 
 interface ContractOption {
   id: string
@@ -32,11 +34,14 @@ interface ContractOption {
 interface LineItem {
   id: string
   label: string
+  category: BudgetCategory | null
   budgetedAmount: number
   actualAmount: number | null
   previousYearActual: number | null
   contractId: string | null
 }
+
+const NONE = "__none__"
 
 export function LineItemDialog({
   budgetId,
@@ -50,6 +55,7 @@ export function LineItemDialog({
   const isEdit = !!item
   const [open, setOpen] = useState(false)
   const [contractId, setContractId] = useState(item?.contractId ?? "")
+  const [category, setCategory] = useState<string>(item?.category ?? NONE)
   const [saving, setSaving] = useState(false)
 
   const contractItems: Record<string, string> = { "": "None" }
@@ -80,6 +86,7 @@ export function LineItemDialog({
     const form = new FormData(e.currentTarget)
     const data = {
       label: form.get("label") as string,
+      category: category === NONE ? null : (category as BudgetCategory),
       budgetedAmount: Number(form.get("budgetedAmount")),
       actualAmount: form.get("actualAmount") ? Number(form.get("actualAmount")) : undefined,
       previousYearActual: form.get("previousYearActual") ? Number(form.get("previousYearActual")) : undefined,
@@ -93,6 +100,7 @@ export function LineItemDialog({
       setOpen(false)
       if (!isEdit) {
         setContractId("")
+        setCategory(NONE)
         ;(document.getElementById(`line-item-form-${budgetId}-new`) as HTMLFormElement)?.reset()
       }
     } else {
@@ -125,6 +133,22 @@ export function LineItemDialog({
           <div className="space-y-1">
             <Label>Label</Label>
             <Input name="label" placeholder="e.g. Landscaping, Insurance, Reserve Contribution" defaultValue={item?.label} required />
+          </div>
+          <div className="space-y-1">
+            <Label>Category</Label>
+            <Select
+              value={category}
+              onValueChange={(v) => setCategory(v ?? NONE)}
+              items={{ [NONE]: "Uncategorised", ...Object.fromEntries(BUDGET_CATEGORIES.map((c) => [c, budgetCategoryLabel[c]])) }}
+            >
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>Uncategorised</SelectItem>
+                {BUDGET_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{budgetCategoryLabel[c]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {contracts.length > 0 && (
             <div className="space-y-1">

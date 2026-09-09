@@ -56,6 +56,7 @@ export default async function BoardBudgetDetailPage({
           lineItems: budget.lineItems.map((i) => ({
             id: i.id,
             label: i.label,
+            category: i.category,
             budgetedAmount: i.budgetedAmount,
             actualAmount: i.actualAmount,
             previousYearActual: i.previousYearActual,

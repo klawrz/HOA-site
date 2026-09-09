@@ -1239,17 +1239,35 @@ model Budget {
   assessments Assessment[]
 }
 
+// Optional grouping for budget line items - lets a real HOA budget be
+// presented the way it's discussed ("Utilities: $X", "Payroll: $Y")
+// without turning the flat list into a chart of accounts. Fixed taxonomy
+// + OTHER, same "preset list not free text" approach as ContractorCategory.
+enum BudgetCategory {
+  UTILITIES
+  PAYROLL
+  GROUNDS
+  MAINTENANCE
+  SECURITY
+  INSURANCE
+  ADMIN
+  TAXES_AND_FEES
+  RESERVE_CONTRIBUTION
+  OTHER
+}
+
 model BudgetLineItem {
-  id                 String   @id @default(cuid())
+  id                 String          @id @default(cuid())
   budgetId           String
   label              String
+  category           BudgetCategory?
   budgetedAmount     Float
   actualAmount       Float? // filled in at/after year-end for variance
   previousYearActual Float? // manually carried forward - useful reference for Owners
   contractId         String? // pulls in a specific recurring contract's committed amount
-  sortOrder          Int      @default(0)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  sortOrder          Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   budget   Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
   contract Contract? @relation(fields: [contractId], references: [id])
