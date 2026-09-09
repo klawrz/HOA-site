@@ -148,12 +148,13 @@ export function BudgetEditor({
   }
 
   function handleExport() {
-    const headers = ["Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual"]
+    const headers = ["#", "Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual"]
     if (budgetedRate || actualRate) headers.push(`Budgeted (${secondary})`, `Actual (${secondary})`)
     const rows: (string | number)[][] = [headers]
-    for (const item of budget.lineItems) {
+    for (const [i, item] of budget.lineItems.entries()) {
       const variance = item.actualAmount != null ? item.actualAmount - item.budgetedAmount : ""
       const row: (string | number)[] = [
+        i + 1,
         item.label,
         item.budgetedAmount,
         item.actualAmount ?? "",
@@ -286,6 +287,7 @@ export function BudgetEditor({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
+                <th className="text-right font-medium px-3 py-2 w-10">#</th>
                 <th className="text-left font-medium px-3 py-2">Line Item</th>
                 <th className="text-right font-medium px-3 py-2">Budgeted{showSecondary && ` (${currency})`}</th>
                 {showSecondary && <th className="text-right font-medium px-3 py-2">Budgeted ({secondary})</th>}
@@ -297,10 +299,11 @@ export function BudgetEditor({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {budget.lineItems.map((item) => {
+              {budget.lineItems.map((item, idx) => {
                 const variance = item.actualAmount != null ? item.actualAmount - item.budgetedAmount : null
                 return (
                   <tr key={item.id}>
+                    <td className="text-right px-3 py-2 tabular-nums text-gray-400">{idx + 1}</td>
                     <td className="px-3 py-2">
                       <p className="font-medium">{item.label}</p>
                       {item.contractTitle && (
@@ -350,7 +353,7 @@ export function BudgetEditor({
               })}
               {budget.lineItems.length === 0 && (
                 <tr>
-                  <td colSpan={(canManage ? 6 : 5) + (showSecondary ? 2 : 0)} className="px-3 py-8 text-center text-gray-400">
+                  <td colSpan={(canManage ? 7 : 6) + (showSecondary ? 2 : 0)} className="px-3 py-8 text-center text-gray-400">
                     No line items yet.
                   </td>
                 </tr>
@@ -359,6 +362,7 @@ export function BudgetEditor({
             {budget.lineItems.length > 0 && (
               <tfoot>
                 <tr className="border-t bg-gray-50 font-semibold">
+                  <td className="px-3 py-2"></td>
                   <td className="px-3 py-2">Total</td>
                   <td className="text-right px-3 py-2 tabular-nums">{money(totals.budgeted)}</td>
                   {showSecondary && (
