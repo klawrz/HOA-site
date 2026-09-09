@@ -14,6 +14,8 @@ import { ShareLinksPanel } from "./share-links-panel"
 import { parseSpecialties } from "@/lib/unit-manager-specialties"
 import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
 import { effectiveAllocations } from "@/lib/unit-allocation"
+import { convertToSecondary, formatMoney } from "@/lib/currency"
+import { Currency } from "@/generated/prisma"
 import { Receipt } from "lucide-react"
 import Link from "next/link"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
@@ -52,7 +54,7 @@ export default async function UnitDetailPage({
   const { unit } = ownership
   const activeLease = unit.leases[0]
 
-  const [contractorMemberships, org, unitLabel, orgUnits, approvedBudget, ownMembership] = await Promise.all([
+  const [contractorMemberships, org, unitLabel, orgUnits, approvedBudget, proposedBudget, ownMembership] = await Promise.all([
     db.membership.findMany({
       where: { orgId: session.user.orgId ?? undefined, role: "CONTRACTOR" },
       include: { user: true },
@@ -69,6 +71,13 @@ export default async function UnitDetailPage({
       include: { lineItems: true },
       orderBy: { year: "desc" },
     }),
+    // Fallback when nothing is approved yet - the current proposed budget,
+    // clearly labelled so owners know the figure isn't final.
+    db.budget.findFirst({
+      where: { orgId: session.user.orgId ?? undefined, status: "DRAFT", type: "OPERATING" },
+      include: { lineItems: true },
+      orderBy: [{ year: "desc" }, { updatedAt: "desc" }],
+    }),
     db.membership.findUnique({
       where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
       select: { onboardingSteps: true },
@@ -79,8 +88,32 @@ export default async function UnitDetailPage({
   const unitName = unitDisplayName(unitLabel, unit.number, unit.building)
 
   const allocationPercent = effectiveAllocations(orgUnits).get(unit.id) ?? 0
-  const approvedBudgetTotal = approvedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
-  const estimatedDues = approvedBudgetTotal != null ? approvedBudgetTotal * (allocationPercent / 100) : null
+  const duesBudget = approvedBudget ?? proposedBudget
+  const duesBudgetTotal = duesBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
+  const duesBudgetCurrency = (duesBudget?.currency ?? org?.baseCurrency ?? "USD") as Currency
+  const duesBudgetRate = duesBudget?.exchangeRate ?? org?.currentExchangeRate ?? null
+  const duesBudgetIsApproved = !!approvedBudget
+  const duesBudgetLabel = duesBudget
+    ? duesBudgetIsApproved
+      ? `${duesBudget.year} approved operating budget`
+      : `Proposed ${duesBudget.periodLabel || duesBudget.year} — not yet approved`
+    : "Operating budget — not yet set"
+  const annualDues = duesBudgetTotal != null ? duesBudgetTotal * (allocationPercent / 100) : null
+  // Show pesos and US$ side by side regardless of which is the budget's base.
+  const pesoAmount = (nBase: number): number | null =>
+    duesBudgetCurrency === "MXN"
+      ? nBase
+      : duesBudgetRate != null
+        ? convertToSecondary(nBase, duesBudgetRate, "USD")
+        : null
+  const usdAmount = (nBase: number): number | null =>
+    duesBudgetCurrency === "USD"
+      ? nBase
+      : duesBudgetRate != null
+        ? convertToSecondary(nBase, duesBudgetRate, "MXN")
+        : null
+  const fmtPeso = (n: number | null) => (n != null ? formatMoney(n, "MXN") : "—")
+  const fmtUsd = (n: number | null) => (n != null ? formatMoney(n, "USD") : "—")
 
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
@@ -193,27 +226,43 @@ export default async function UnitDetailPage({
             <Receipt className="h-4 w-4 text-gray-500" /> Dues & Assessments
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 text-sm">
+        <CardContent className="text-sm">
           <div className="flex items-baseline justify-between">
             <p className="text-gray-500">Allocation share</p>
-            <p className="font-semibold">{allocationPercent.toFixed(2)}%</p>
+            <p className="font-semibold tabular-nums">{allocationPercent.toFixed(2)}%</p>
           </div>
-          <div className="flex items-baseline justify-between">
-            <p className="text-gray-500">
-              {approvedBudget ? `${approvedBudget.year} approved Operating Budget` : "Approved Operating Budget"}
-            </p>
-            <p className="font-semibold">
-              {approvedBudgetTotal != null ? `$${approvedBudgetTotal.toLocaleString()}` : "Not yet approved"}
-            </p>
+          <p className="text-xs text-gray-400 mt-0.5">Owner-approved share of the common budget</p>
+
+          <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1.5">
+            <div />
+            <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">Pesos (MXN)</p>
+            <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">US$</p>
+
+            <p className="text-gray-500">{duesBudgetLabel}</p>
+            <p className="text-right tabular-nums">{duesBudgetTotal != null ? fmtPeso(pesoAmount(duesBudgetTotal)) : "—"}</p>
+            <p className="text-right tabular-nums">{duesBudgetTotal != null ? fmtUsd(usdAmount(duesBudgetTotal)) : "—"}</p>
+
+            {annualDues != null && (
+              <>
+                <p className="text-gray-500 border-t pt-1.5">This unit&apos;s dues — annual</p>
+                <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtPeso(pesoAmount(annualDues))}</p>
+                <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtUsd(usdAmount(annualDues))}</p>
+
+                <p className="text-gray-500">This unit&apos;s dues — monthly</p>
+                <p className="text-right font-semibold tabular-nums">{fmtPeso(pesoAmount(annualDues / 12))}</p>
+                <p className="text-right font-semibold tabular-nums">{fmtUsd(usdAmount(annualDues / 12))}</p>
+              </>
+            )}
           </div>
-          <div className="flex items-baseline justify-between border-t pt-1 mt-1">
-            <p className="text-gray-500">Estimated dues</p>
-            <p className="font-semibold">
-              {estimatedDues != null
-                ? `$${estimatedDues.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr`
-                : "—"}
+
+          {annualDues != null && (
+            <p className="text-xs text-gray-400 pt-2">
+              {allocationPercent.toFixed(2)}% of the {duesBudgetIsApproved ? "approved" : "proposed"}{" "}
+              operating budget
+              {duesBudgetRate != null && `, converted at ${duesBudgetRate} MXN / USD`}
+              {!duesBudgetIsApproved && " — final once the budget is approved"}.
             </p>
-          </div>
+          )}
           <Link
             href="/dashboard/owner/financial/dues"
             className="text-xs text-blue-600 hover:underline inline-block pt-2"
