@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { db } from "@/lib/db"
-import { Receipt, ChevronRight, PiggyBank, TableProperties } from "lucide-react"
+import { Receipt, ChevronRight, PiggyBank, TableProperties, Calculator } from "lucide-react"
 import { BudgetList } from "@/components/budgets/budget-list"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import { BudgetFromDocumentDialog } from "@/components/budgets/budget-from-document-dialog"
@@ -45,6 +45,9 @@ export default async function BoardFinancesPage() {
 
   const operating = budgets.filter((b) => b.type === "OPERATING")
   const capital = budgets.filter((b) => b.type === "CAPITAL")
+  // The "Budget" quick link jumps straight to the working operating budget -
+  // the one with the most line items (an empty stray draft never wins).
+  const primaryBudget = [...operating].sort((a, b) => b.lineItems.length - a.lineItems.length)[0] ?? null
 
   return (
     <div className="space-y-6">
@@ -54,7 +57,17 @@ export default async function BoardFinancesPage() {
         <p className="text-gray-500 mt-1">Annual budgets - drafted, revised, and approved</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Link
+          href={primaryBudget ? `/dashboard/board/finances/${primaryBudget.id}` : "#operating-budgets"}
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium">Budget</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </Link>
         <Link
           href="/dashboard/board/finances/assessments"
           className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
@@ -77,7 +90,7 @@ export default async function BoardFinancesPage() {
         </Link>
         <Link
           href="/dashboard/board/finances/comparison"
-          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors sm:col-span-2"
+          className="flex items-center justify-between bg-white border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors sm:col-span-3"
         >
           <div className="flex items-center gap-2">
             <TableProperties className="h-4 w-4 text-gray-500" />
@@ -88,7 +101,7 @@ export default async function BoardFinancesPage() {
         </Link>
       </div>
 
-      <div>
+      <div id="operating-budgets" className="scroll-mt-6">
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h2 className="text-sm font-medium text-gray-500">Operating Budgets</h2>
           <div className="flex items-center gap-2">
