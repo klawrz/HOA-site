@@ -89,6 +89,9 @@ Reserve funds may be used for the following:
 Reserve funds remain restricted to reserve-eligible capital expenditures and the
 contingencies listed above. They are not available for routine operating costs.
 
+**Authorization requirement.** Any drawdown from the reserve fund requires the
+full agreement of the Board.
+
 ---
 
 ## 6. Adoption status
