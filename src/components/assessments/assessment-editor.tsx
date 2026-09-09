@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Trash2, CheckCircle2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
@@ -10,6 +10,17 @@ import { deleteAssessment, issueAssessment } from "@/app/actions/assessments"
 import { formatDateISO } from "@/lib/utils"
 import { convertToSecondary, secondaryCurrency, formatMoney } from "@/lib/currency"
 import { PaymentMethod, Currency } from "@/generated/prisma"
+import {
+  ListSearch,
+  ListFilterChips,
+  ListPager,
+  paginate,
+  pageCountFor,
+  useListControls,
+  type ChipOption,
+} from "@/components/ui/list-controls"
+
+const PAGE_SIZE = 25
 
 interface ChargeRow {
   id: string
@@ -79,18 +90,55 @@ export function AssessmentEditor({
 }) {
   const [issuing, setIssuing] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const { search, setSearch, filterFor, toggleFilter, page, setPage } = useListControls()
+  const statusSel = filterFor("status")
 
   const secondary = secondaryCurrency(currency)
   const money = (n: number) => formatMoney(n, currency)
   const approx = (n: number) =>
     exchangeRate != null ? formatMoney(convertToSecondary(n, exchangeRate, currency), secondary) : null
 
-  const charges = [...assessment.charges].sort((a, b) =>
-    a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true })
+  const charges = useMemo(
+    () =>
+      [...assessment.charges].sort((a, b) =>
+        a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true })
+      ),
+    [assessment.charges]
   )
+  // Summary cards stay over every charge; search / status / pagination only
+  // narrow which rows the table draws.
   const totalCollected = assessment.charges.reduce((s, c) => s + c.amountPaid, 0)
   const paidCount = assessment.charges.filter((c) => c.amountPaid >= c.amountDue && c.amountDue > 0).length
   const percentCollected = assessment.totalAmount > 0 ? (totalCollected / assessment.totalAmount) * 100 : 0
+
+  const statusOptions: ChipOption[] = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const c of charges) counts.set(chargeStatus(c.amountDue, c.amountPaid).label, 0)
+    for (const c of charges) {
+      const l = chargeStatus(c.amountDue, c.amountPaid).label
+      counts.set(l, (counts.get(l) ?? 0) + 1)
+    }
+    return (["Unpaid", "Partial", "Paid"] as const)
+      .filter((l) => counts.get(l))
+      .map((l) => ({ value: l, label: l, count: counts.get(l) }))
+  }, [charges])
+
+  const filteredCharges = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return charges.filter((c) => {
+      if (statusSel.length > 0 && !statusSel.includes(chargeStatus(c.amountDue, c.amountPaid).label)) return false
+      if (!q) return true
+      return (
+        c.unitNumber.toLowerCase().includes(q) ||
+        (c.unitBuilding ?? "").toLowerCase().includes(q) ||
+        (c.ownerName ?? "").toLowerCase().includes(q)
+      )
+    })
+  }, [charges, search, statusSel])
+
+  const pageCount = pageCountFor(filteredCharges.length, PAGE_SIZE)
+  const safePage = Math.min(page, pageCount)
+  const visibleCharges = paginate(filteredCharges, safePage, PAGE_SIZE)
 
   async function handleIssue() {
     setIssuing(true)
@@ -184,6 +232,24 @@ export function AssessmentEditor({
         </Card>
       </div>
 
+      {assessment.charges.length > 8 && (
+        <div className="space-y-2">
+          <ListSearch
+            value={search}
+            onChange={setSearch}
+            placeholder={`Search by ${unitLabel.toLowerCase()} number or owner...`}
+          />
+          {statusOptions.length > 1 && (
+            <ListFilterChips
+              label="Status"
+              options={statusOptions}
+              selected={statusSel}
+              onToggle={toggleFilter("status")}
+            />
+          )}
+        </div>
+      )}
+
       <Card className="py-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -200,7 +266,14 @@ export function AssessmentEditor({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {charges.map((c) => {
+              {visibleCharges.length === 0 && (
+                <tr>
+                  <td colSpan={canManage ? 8 : 7} className="px-3 py-6 text-center text-gray-400">
+                    No charges match your search
+                  </td>
+                </tr>
+              )}
+              {visibleCharges.map((c) => {
                 const status = chargeStatus(c.amountDue, c.amountPaid)
                 return (
                   <tr key={c.id}>
@@ -251,6 +324,14 @@ export function AssessmentEditor({
           </table>
         </div>
       </Card>
+
+      <ListPager
+        page={safePage}
+        pageSize={PAGE_SIZE}
+        total={filteredCharges.length}
+        onPageChange={setPage}
+        noun="charges"
+      />
     </div>
   )
 }

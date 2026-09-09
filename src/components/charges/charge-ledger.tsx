@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useMemo, useState, useTransition } from "react"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Currency } from "@/generated/prisma"
@@ -10,6 +10,17 @@ import { formatDate } from "@/lib/utils"
 import { recordChargePayment, deleteUnitCharge } from "@/app/actions/charges"
 import { Check, Trash2, Undo2 } from "lucide-react"
 import type { UnitChargeType } from "@/generated/prisma"
+import {
+  ListSearch,
+  ListFilterChips,
+  ListPager,
+  paginate,
+  pageCountFor,
+  useListControls,
+  type ChipOption,
+} from "@/components/ui/list-controls"
+
+const PAGE_SIZE = 25
 
 interface ChargeRow {
   id: string
@@ -33,6 +44,9 @@ export function ChargeLedger({
 }) {
   const [pending, startTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const { search, setSearch, filterFor, toggleFilter, page, setPage } = useListControls()
+  const statusSel = filterFor("status")
+  const typeSel = filterFor("type")
 
   const peso = (n: number): number | null =>
     currency === "MXN" ? n : exchangeRate != null ? convertToSecondary(n, exchangeRate, "USD") : null
@@ -61,15 +75,61 @@ export function ChargeLedger({
     })
   }
 
+  // The summary line stays over every charge; search / filters / pagination
+  // only narrow which rows the table draws.
   const outstanding = charges.reduce((s, c) => s + Math.max(0, c.amount - c.amountPaid), 0)
   const billed = charges.reduce((s, c) => s + c.amount, 0)
 
   // Newest first, then grouped by unit so a bulk "all units" charge reads in order.
-  const rows = [...charges].sort(
-    (a, b) =>
-      b.chargedOn.getTime() - a.chargedOn.getTime() ||
-      a.unitName.localeCompare(b.unitName, undefined, { numeric: true })
+  const rows = useMemo(
+    () =>
+      [...charges].sort(
+        (a, b) =>
+          b.chargedOn.getTime() - a.chargedOn.getTime() ||
+          a.unitName.localeCompare(b.unitName, undefined, { numeric: true })
+      ),
+    [charges]
   )
+
+  const typeOptions: ChipOption[] = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const c of rows) counts.set(c.type, (counts.get(c.type) ?? 0) + 1)
+    return [...counts.keys()].map((t) => ({
+      value: t,
+      label: UNIT_CHARGE_TYPE_LABEL[t as UnitChargeType] ?? t,
+      count: counts.get(t),
+    }))
+  }, [rows])
+
+  const statusOptions: ChipOption[] = useMemo(() => {
+    let paid = 0
+    let out = 0
+    for (const c of rows) {
+      if (c.amountPaid >= c.amount) paid++
+      else out++
+    }
+    const opts: ChipOption[] = []
+    if (out) opts.push({ value: "outstanding", label: "Outstanding", count: out })
+    if (paid) opts.push({ value: "paid", label: "Paid", count: paid })
+    return opts
+  }, [rows])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return rows.filter((c) => {
+      if (typeSel.length > 0 && !typeSel.includes(c.type)) return false
+      if (statusSel.length > 0) {
+        const st = c.amountPaid >= c.amount ? "paid" : "outstanding"
+        if (!statusSel.includes(st)) return false
+      }
+      if (!q) return true
+      return c.unitName.toLowerCase().includes(q) || (c.label ?? "").toLowerCase().includes(q)
+    })
+  }, [rows, search, typeSel, statusSel])
+
+  const pageCount = pageCountFor(filtered.length, PAGE_SIZE)
+  const safePage = Math.min(page, pageCount)
+  const visible = paginate(filtered, safePage, PAGE_SIZE)
 
   return (
     <Card>
@@ -80,11 +140,35 @@ export function ChargeLedger({
           outstanding {p(peso(outstanding))} / {u(usd(outstanding))}
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
         {charges.length === 0 ? (
           <p className="py-6 text-center text-sm text-gray-400">No charges yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {charges.length > 8 && (
+              <div className="space-y-2">
+                <ListSearch value={search} onChange={setSearch} placeholder="Search by unit or description..." />
+                <div className="space-y-2">
+                  {statusOptions.length > 1 && (
+                    <ListFilterChips
+                      label="Status"
+                      options={statusOptions}
+                      selected={statusSel}
+                      onToggle={toggleFilter("status")}
+                    />
+                  )}
+                  {typeOptions.length > 1 && (
+                    <ListFilterChips
+                      label="Type"
+                      options={typeOptions}
+                      selected={typeSel}
+                      onToggle={toggleFilter("type")}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-xs text-gray-400">
@@ -99,7 +183,14 @@ export function ChargeLedger({
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {rows.map((row) => {
+                {visible.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-6 text-center text-gray-400">
+                      No charges match your search
+                    </td>
+                  </tr>
+                )}
+                {visible.map((row) => {
                   const paid = row.amountPaid >= row.amount
                   return (
                     <tr key={row.id} className={busyId === row.id && pending ? "opacity-50" : ""}>
@@ -143,7 +234,15 @@ export function ChargeLedger({
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+            <ListPager
+              page={safePage}
+              pageSize={PAGE_SIZE}
+              total={filtered.length}
+              onPageChange={setPage}
+              noun="charges"
+            />
+          </>
         )}
       </CardContent>
     </Card>
