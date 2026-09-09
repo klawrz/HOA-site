@@ -1,7 +1,8 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
-import { Building2 } from "lucide-react"
+import Link from "next/link"
+import { Building2, ChevronRight } from "lucide-react"
 import { getUnitLabel, unitDisplayName, compareUnitNumbers } from "@/lib/unit-label"
 import { TransferOwnershipDialog } from "@/components/units/transfer-ownership-dialog"
 import { CancelTransferButton } from "@/components/units/cancel-transfer-button"
@@ -46,7 +47,8 @@ export default async function BoardUnitsPage() {
       <div>
         <h1 className="text-2xl font-bold">Units</h1>
         <p className="text-gray-500 text-sm">
-          {units.length} {unitLabel.toLowerCase()}{units.length !== 1 ? "s" : ""} in the HOA.
+          {units.length} {unitLabel.toLowerCase()}{units.length !== 1 ? "s" : ""} in the HOA. Select
+          one for full detail and status.
         </p>
       </div>
 
@@ -71,42 +73,46 @@ export default async function BoardUnitsPage() {
           const pending = pendingByUnit.get(u.id)
           return (
             <div key={u.id} className="px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <Link
+                  href={`/dashboard/board/units/${u.id}`}
+                  className="flex flex-1 items-center justify-between gap-4 min-w-0 group"
+                >
                   <div className="min-w-0">
-                    <p className="font-medium">{display}</p>
+                    <p className="font-medium group-hover:underline">{display}</p>
                     <p className="text-xs text-gray-400">
                       {[u.building, u.bedrooms && `${u.bedrooms}bd`, u.bathrooms && `${u.bathrooms}ba`]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-4 shrink-0">
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
-                    {u.status.replace(/_/g, " ")}
-                  </span>
-                  <div className="text-right text-xs">
-                    {ownerNames && <p className="text-gray-600">{ownerNames}</p>}
-                    {earliestSince && (
-                      <p className="text-gray-400">
-                        Since {new Date(earliestSince).toLocaleDateString()}
-                      </p>
-                    )}
-                    {u.managers[0] && (
-                      <p className="text-gray-400">
-                        UM: {u.managers[0].user?.name ?? u.managers[0].user?.email ?? u.managers[0].name}
-                      </p>
-                    )}
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
+                      {u.status.replace(/_/g, " ")}
+                    </span>
+                    <div className="text-right text-xs">
+                      {ownerNames && <p className="text-gray-600">{ownerNames}</p>}
+                      {earliestSince && (
+                        <p className="text-gray-400">
+                          Since {new Date(earliestSince).toLocaleDateString()}
+                        </p>
+                      )}
+                      {u.managers[0] && (
+                        <p className="text-gray-400">
+                          UM: {u.managers[0].user?.name ?? u.managers[0].user?.email ?? u.managers[0].name}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
                   </div>
-                  {!pending && (
-                    <TransferOwnershipDialog
-                      unitId={u.id}
-                      unitDisplay={display}
-                      currentOwnerName={ownerNames || null}
-                    />
-                  )}
-                </div>
+                </Link>
+                {!pending && (
+                  <TransferOwnershipDialog
+                    unitId={u.id}
+                    unitDisplay={display}
+                    currentOwnerName={ownerNames || null}
+                  />
+                )}
               </div>
               {pending && (
                 <div className="mt-3 flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs">

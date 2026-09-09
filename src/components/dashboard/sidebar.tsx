@@ -6,7 +6,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2, Calculator, Coins,
+  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2, Coins,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -110,8 +110,13 @@ const navByRole: Record<Role, NavEntry[]> = {
     {
       label: "Finances",
       icon: DollarSign,
+      // Header both links to the Finances overview and toggles the group
+      // (same pattern as PM's Finances group above) - clicking "Finances"
+      // should land you on a page, not just open the dropdown. The overview's
+      // own "Budget" tile jumps to the working operating budget, so there's
+      // no separate Budget child here.
+      href: "/dashboard/board/finances",
       children: [
-        { label: "Budget", href: "/dashboard/board/finances", icon: Calculator },
         { label: "Dues", href: "/dashboard/board/finances/dues", icon: Receipt },
         { label: "Assessments", href: "/dashboard/board/finances/assessments", icon: Landmark },
         { label: "Charges", href: "/dashboard/board/finances/charges", icon: Coins },
