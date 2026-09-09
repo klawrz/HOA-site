@@ -6,7 +6,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2,
+  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2, Calculator,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -108,8 +108,8 @@ const navByRole: Record<Role, NavEntry[]> = {
     {
       label: "Finances",
       icon: DollarSign,
-      href: "/dashboard/board/finances",
       children: [
+        { label: "Budget", href: "/dashboard/board/finances", icon: Calculator },
         { label: "Dues & Assessments", href: "/dashboard/board/finances/assessments", icon: Receipt },
         { label: "Reserve Fund", href: "/dashboard/board/finances/reserve", icon: PiggyBank },
         { label: "Multi-Year Comparison", href: "/dashboard/board/finances/comparison", icon: TableProperties },
