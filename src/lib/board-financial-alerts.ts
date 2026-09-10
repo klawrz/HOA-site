@@ -1,6 +1,11 @@
 import { db } from "@/lib/db"
 import { resolveReservePolicy } from "@/lib/reserve-policy-summary"
 import { formatMoney } from "@/lib/currency"
+import {
+  analyzeSpendConcentration,
+  CLUSTER_FLAG_PCT,
+  CLUSTER_WARN_PCT,
+} from "@/lib/budget-concentration"
 import type { Currency } from "@/generated/prisma"
 
 // Board-landing-page alerts. Unlike getAttentionItems (expiring contracts,
@@ -310,6 +315,38 @@ export async function getBoardFinancialAlerts(
       detail: clauses.join(" ") + (agmSoon ? agmPhrase : ""),
       href: `${portalBase}/finances/${b.id}`,
     })
+  }
+
+  // ---------------------------------------------------------------
+  // Spend concentration: cross-category clusters (grounds upkeep =
+  // landscaping + crew payroll + irrigation water, etc.) that dominate
+  // the budget - the first place to look for savings, hard to see from a
+  // flat category list.
+  // ---------------------------------------------------------------
+  const budgetForClusters = approvedOperating[0] ?? latestPopulatedDraft
+  if (budgetForClusters && budgetForClusters.lineItems.length > 0) {
+    const cur = budgetForClusters.currency
+    const { clusters } = analyzeSpendConcentration(
+      budgetForClusters.lineItems.map((li) => ({
+        category: li.category,
+        label: li.label,
+        budgetedAmount: li.budgetedAmount,
+      })),
+    )
+    for (const c of clusters) {
+      if (c.pct < CLUSTER_FLAG_PCT) continue
+      const pct = Math.round(c.pct)
+      alerts.push({
+        id: `spend-concentration-${c.id}`,
+        level: c.pct >= CLUSTER_WARN_PCT ? "warning" : "info",
+        title: `${c.label} is ${pct}% of the operating budget`,
+        detail:
+          `${formatMoney(c.amount, cur)}${cur !== "USD" ? ` ${cur}` : ""} of the ${budgetForClusters.year} ` +
+          `budget goes to this one area — ${c.note.charAt(0).toLowerCase()}${c.note.slice(1)} ` +
+          `It is the clearest single place to look for savings.`,
+        href: `${portalBase}/finances/${budgetForClusters.id}`,
+      })
+    }
   }
 
   return alerts.sort((a, b) => levelRank[a.level] - levelRank[b.level])
