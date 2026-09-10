@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { buttonVariants } from "@/components/ui/button"
 import { cn, formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, statusLabel, scopeLabel } from "@/lib/ticket-styles"
+import { canEditTicketRecord } from "@/lib/ticket-access"
 import { formatMoney } from "@/lib/currency"
 import { TicketStatusControls } from "@/app/dashboard/_components/ticket-status-controls"
+import { TicketDetailsEditor } from "@/app/dashboard/_components/ticket-details-editor"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
@@ -78,15 +80,21 @@ export default async function OwnerTicketsPage() {
                       {t.unit ? unitDisplayName(unitLabel, t.unit.number, t.unit.building) : scopeLabel[t.scope]}
                     </span>
                   </div>
-                  <p className="font-semibold">{t.title}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">{t.description}</p>
+                  <TicketDetailsEditor
+                    ticketId={t.id}
+                    title={t.title}
+                    description={t.description}
+                    canEdit={canEditTicketRecord(session.user, t)}
+                  />
                   <p className="text-xs text-gray-400 mt-2">
                     Submitted by {t.submittedBy.name ?? t.submittedBy.email} on {formatDateTime(t.createdAt)}
                   </p>
                   {t.costEstimate != null && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Estimated cost to resolve: {formatMoney(t.costEstimate, baseCurrency)}
-                      {baseCurrency !== "USD" && ` ${baseCurrency}`}
+                      Estimated cost to resolve:{" "}
+                      {formatMoney(t.costEstimate, t.costEstimateCurrency ?? baseCurrency)}
+                      {(t.costEstimateCurrency ?? baseCurrency) !== "USD" &&
+                        ` ${t.costEstimateCurrency ?? baseCurrency}`}
                       {t.costEstimateNote && ` — ${t.costEstimateNote}`}
                     </p>
                   )}
@@ -98,6 +106,7 @@ export default async function OwnerTicketsPage() {
                   canEstimate={false}
                   costEstimate={t.costEstimate}
                   costEstimateNote={t.costEstimateNote}
+                  costEstimateCurrency={t.costEstimateCurrency}
                   baseCurrency={baseCurrency}
                 />
               </div>

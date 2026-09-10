@@ -2,7 +2,8 @@
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
-import { Role, TicketPriority, TicketScope, TicketStatus } from "@/generated/prisma"
+import { Currency, Role, TicketPriority, TicketScope, TicketStatus } from "@/generated/prisma"
+import { canEditTicketRecord } from "@/lib/ticket-access"
 import { revalidatePath } from "next/cache"
 
 const TICKET_PATHS = [
@@ -38,20 +39,6 @@ function canManageTicket(role: Role | null, scope: TicketScope) {
   if (role === "PROPERTY_MANAGER") return true
   if (role === "BOARD_MEMBER" && scope === "COMMON_AREA") return true
   return false
-}
-
-// Who may edit a ticket's own fields (status, cost estimate): the Property
-// Manager, any Board member (not scope-limited, unlike assign/prioritize),
-// and the person who raised it. Assignment/priority stay with
-// canManageTicket; this is the lighter "keep the ticket's state current"
-// authority.
-function canEditTicketRecord(
-  session: { user: { id: string; role: Role | null; isBoardMember?: boolean } },
-  ticket: { submittedById: string },
-) {
-  const { role } = session.user
-  if (role === "PROPERTY_MANAGER" || role === "BOARD_MEMBER" || session.user.isBoardMember) return true
-  return ticket.submittedById === session.user.id
 }
 
 // Entering a cost-to-resolve estimate is a management judgement - PM or
@@ -153,7 +140,7 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
     session.user.role === "CONTRACTOR" &&
     ticket.assignments.some((a) => a.contractorId === session.user.id)
 
-  if (!isAssignedContractor && !canEditTicketRecord(session, ticket)) {
+  if (!isAssignedContractor && !canEditTicketRecord(session.user, ticket)) {
     return { success: false }
   }
 
@@ -166,9 +153,39 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
   return { success: true }
 }
 
+export async function editTicketDetails(
+  ticketId: string,
+  data: { title: string; description: string },
+) {
+  const session = await auth()
+  if (!session?.user.orgId) return { success: false, error: "Not signed in" }
+
+  const ticket = await db.troubleTicket.findFirst({
+    where: { id: ticketId, orgId: session.user.orgId },
+  })
+  if (!ticket) return { success: false, error: "Ticket not found" }
+  if (!canEditTicketRecord(session.user, ticket)) {
+    return { success: false, error: "You can't edit this ticket" }
+  }
+
+  const title = data.title.trim()
+  const description = data.description.trim()
+  if (!title || !description) {
+    return { success: false, error: "Title and description are both required" }
+  }
+
+  await db.troubleTicket.update({
+    where: { id: ticketId },
+    data: { title, description },
+  })
+
+  revalidateTicketPaths()
+  return { success: true }
+}
+
 export async function setTicketCostEstimate(
   ticketId: string,
-  data: { cost: number | null; note?: string },
+  data: { cost: number | null; note?: string; currency?: Currency },
 ) {
   const session = await auth()
   if (!session?.user.orgId) return { success: false, error: "Not signed in" }
@@ -184,12 +201,22 @@ export async function setTicketCostEstimate(
   const cost =
     data.cost != null && Number.isFinite(data.cost) && data.cost >= 0 ? data.cost : null
 
+  const org = await db.organization.findUnique({
+    where: { id: session.user.orgId },
+    select: { baseCurrency: true },
+  })
+  const currency: Currency =
+    data.currency === "USD" || data.currency === "MXN"
+      ? data.currency
+      : org?.baseCurrency ?? "USD"
+
   await db.troubleTicket.update({
     where: { id: ticketId },
     data: {
       costEstimate: cost,
       costEstimateNote: data.note?.trim() || null,
       costEstimateAt: cost == null ? null : new Date(),
+      costEstimateCurrency: cost == null ? null : currency,
     },
   })
 

@@ -8,6 +8,8 @@ import { TicketManageForm } from "@/app/dashboard/_components/ticket-manage-form
 import { TicketStatusControls } from "@/app/dashboard/_components/ticket-status-controls"
 import { cn, formatDateTime } from "@/lib/utils"
 import { priorityColor, statusColor, statusLabel, scopeLabel } from "@/lib/ticket-styles"
+import { canEditTicketRecord } from "@/lib/ticket-access"
+import { TicketDetailsEditor } from "@/app/dashboard/_components/ticket-details-editor"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 import { canPreviewRole } from "@/lib/role-access"
 
@@ -73,8 +75,13 @@ export default async function BoardTicketsPage() {
                         {t.unit ? unitDisplayName(unitLabel, t.unit.number, t.unit.building) : scopeLabel[t.scope]}
                       </span>
                     </div>
-                    <p className="font-semibold">{t.title}</p>
-                    <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{t.description}</p>
+                    <TicketDetailsEditor
+                      ticketId={t.id}
+                      title={t.title}
+                      description={t.description}
+                      canEdit={canEditTicketRecord(session.user, t)}
+                      clampDescription
+                    />
                     <div className="flex flex-wrap gap-3 text-xs text-gray-400 mt-2">
                       <span>Submitted by {t.submittedBy.name ?? t.submittedBy.email} on {formatDateTime(t.createdAt)}</span>
                     </div>
@@ -92,6 +99,7 @@ export default async function BoardTicketsPage() {
                       canEstimate
                       costEstimate={t.costEstimate}
                       costEstimateNote={t.costEstimateNote}
+                      costEstimateCurrency={t.costEstimateCurrency}
                       baseCurrency={baseCurrency}
                     />
                     {canManage && t.status !== "CLOSED" && (

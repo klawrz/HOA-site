@@ -30,6 +30,7 @@ export function TicketStatusControls({
   canEstimate,
   costEstimate,
   costEstimateNote,
+  costEstimateCurrency,
   baseCurrency,
 }: {
   ticketId: string
@@ -38,14 +39,17 @@ export function TicketStatusControls({
   canEstimate: boolean
   costEstimate: number | null
   costEstimateNote: string | null
+  costEstimateCurrency: Currency | null
   baseCurrency: Currency
 }) {
   const router = useRouter()
+  const displayCurrency = costEstimateCurrency ?? baseCurrency
   const [status, setStatus] = useState<TicketStatus>(currentStatus)
   const [busy, setBusy] = useState(false)
   const [editingEstimate, setEditingEstimate] = useState(false)
   const [costInput, setCostInput] = useState(costEstimate != null ? String(costEstimate) : "")
   const [noteInput, setNoteInput] = useState(costEstimateNote ?? "")
+  const [currencyInput, setCurrencyInput] = useState<Currency>(costEstimateCurrency ?? baseCurrency)
 
   if (!canEditStatus && !canEstimate) return null
 
@@ -76,6 +80,7 @@ export function TicketStatusControls({
     const res = await setTicketCostEstimate(ticketId, {
       cost: clear ? null : parsed,
       note: clear ? "" : noteInput,
+      currency: currencyInput,
     })
     setBusy(false)
     if (res.success) {
@@ -84,6 +89,7 @@ export function TicketStatusControls({
       if (clear) {
         setCostInput("")
         setNoteInput("")
+        setCurrencyInput(baseCurrency)
       }
       router.refresh()
     } else {
@@ -113,13 +119,28 @@ export function TicketStatusControls({
       {canEstimate &&
         (editingEstimate ? (
           <div className="space-y-1.5 rounded-lg border p-2">
-            <Input
-              inputMode="decimal"
-              value={costInput}
-              onChange={(e) => setCostInput(e.target.value)}
-              placeholder={`Cost to resolve (${baseCurrency})`}
-              className="h-7 text-xs"
-            />
+            <div className="flex gap-1.5">
+              <Select
+                value={currencyInput}
+                onValueChange={(v) => v && setCurrencyInput(v as Currency)}
+                items={{ USD: "USD", MXN: "MXN" }}
+              >
+                <SelectTrigger className="h-7 w-[4.5rem] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="MXN">MXN</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                inputMode="decimal"
+                value={costInput}
+                onChange={(e) => setCostInput(e.target.value)}
+                placeholder="Cost to resolve"
+                className="h-7 flex-1 text-xs"
+              />
+            </div>
             <Input
               value={noteInput}
               onChange={(e) => setNoteInput(e.target.value)}
@@ -139,6 +160,7 @@ export function TicketStatusControls({
                   setEditingEstimate(false)
                   setCostInput(costEstimate != null ? String(costEstimate) : "")
                   setNoteInput(costEstimateNote ?? "")
+                  setCurrencyInput(costEstimateCurrency ?? baseCurrency)
                 }}
               >
                 Cancel
@@ -163,8 +185,8 @@ export function TicketStatusControls({
           >
             <span className="flex items-center justify-between gap-2">
               <span className="font-medium text-gray-700">
-                Est. to resolve: {formatMoney(costEstimate, baseCurrency)}
-                {baseCurrency !== "USD" && ` ${baseCurrency}`}
+                Est. to resolve: {formatMoney(costEstimate, displayCurrency)}
+                {displayCurrency !== "USD" && ` ${displayCurrency}`}
               </span>
               <Pencil className="h-3 w-3 text-gray-400 group-hover:text-gray-600" />
             </span>

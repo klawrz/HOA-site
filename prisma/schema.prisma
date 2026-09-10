@@ -1041,12 +1041,16 @@ model TroubleTicket {
   updatedAt     DateTime       @updatedAt
   resolvedAt    DateTime?
 
-  // Estimated cost to resolve, entered by the PM or a Board member. Stored
-  // in the org's base currency (see Organization.baseCurrency); the note is
-  // free text for what the figure covers / who quoted it.
-  costEstimate     Float?
-  costEstimateNote String?
-  costEstimateAt   DateTime?
+  // Estimated cost to resolve, entered by the PM or a Board member. The
+  // note is free text for what the figure covers / who quoted it.
+  // costEstimateCurrency is the currency the figure is stated in, picked
+  // when the estimate is entered (a contractor may quote in USD even when
+  // the org's base currency is MXN, or vice versa); it defaults to the
+  // org's base currency but is captured on the record, not read live.
+  costEstimate         Float?
+  costEstimateNote     String?
+  costEstimateAt       DateTime?
+  costEstimateCurrency Currency?
 
   org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   unit        Unit?              @relation(fields: [unitId], references: [id], onDelete: Cascade)
