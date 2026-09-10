@@ -54,7 +54,7 @@ export default async function OwnerDuesPage() {
     unitCharges,
     pmContract,
     unitManagers,
-    securityContact,
+    keyContacts,
     ownMembership,
   ] = await Promise.all([
     getEffectiveOperatingBudget(orgId),
@@ -89,10 +89,7 @@ export default async function OwnerDuesPage() {
           include: { user: true },
         })
       : Promise.resolve([]),
-    db.keyContact.findFirst({
-      where: { orgId, category: "SECURITY" },
-      orderBy: { sortOrder: "asc" },
-    }),
+    db.keyContact.findMany({ where: { orgId }, orderBy: { sortOrder: "asc" } }),
     db.membership.findUnique({
       where: { userId_orgId: { userId: session.user.id, orgId } },
       select: { onboardingSteps: true },
@@ -155,6 +152,12 @@ export default async function OwnerDuesPage() {
       }
     : null
 
+  // The running Prisma client may predate the SECURITY category value, so
+  // match on category OR a "security" hint in the role/name rather than
+  // filtering by the enum in the query.
+  const securityContact =
+    keyContacts.find((c) => c.category === "SECURITY") ??
+    keyContacts.find((c) => /security/i.test(c.role ?? "") || /security/i.test(c.name))
   const securityService: ServiceContact | null = securityContact
     ? {
         name: securityContact.name,
