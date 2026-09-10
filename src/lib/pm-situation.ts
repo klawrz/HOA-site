@@ -38,12 +38,12 @@ export async function getPMSituationData(orgId: string): Promise<PMSituationData
         include: { company: true },
         orderBy: { createdAt: "desc" },
       }),
-      db.troubleTicket.count({ where: { orgId, status: { in: ["OPEN", "IN_PROGRESS"] } } }),
+      db.troubleTicket.count({ where: { orgId, status: { in: ["ACTIVE", "DEFERRED"] } } }),
       db.troubleTicket.count({
-        where: { orgId, status: { in: ["OPEN", "IN_PROGRESS"] }, priority: { in: ["URGENT", "EMERGENCY"] } },
+        where: { orgId, status: { in: ["ACTIVE", "DEFERRED"] }, priority: { in: ["URGENT", "EMERGENCY"] } },
       }),
       db.troubleTicket.findFirst({
-        where: { orgId, status: { in: ["OPEN", "IN_PROGRESS"] } },
+        where: { orgId, status: { in: ["ACTIVE", "DEFERRED"] } },
         orderBy: { createdAt: "asc" },
         select: { title: true, createdAt: true },
       }),

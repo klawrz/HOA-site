@@ -5,7 +5,9 @@ import { db } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
 import { buttonVariants } from "@/components/ui/button"
 import { cn, formatDateTime } from "@/lib/utils"
-import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
+import { priorityColor, statusColor, statusLabel, scopeLabel } from "@/lib/ticket-styles"
+import { formatMoney } from "@/lib/currency"
+import { TicketStatusControls } from "@/app/dashboard/_components/ticket-status-controls"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
@@ -20,7 +22,7 @@ export default async function OwnerTicketsPage() {
   })
   const ownedUnitIds = ownerships.map((o) => o.unitId)
 
-  const [tickets, unitLabel, ownMembership] = await Promise.all([
+  const [tickets, unitLabel, ownMembership, org] = await Promise.all([
     db.troubleTicket.findMany({
       where: {
         OR: [
@@ -36,7 +38,12 @@ export default async function OwnerTicketsPage() {
       where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
       select: { onboardingSteps: true },
     }),
+    db.organization.findUnique({
+      where: { id: session.user.orgId ?? undefined },
+      select: { baseCurrency: true },
+    }),
   ])
+  const baseCurrency = org?.baseCurrency ?? "USD"
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("tickets")
 
   return (
@@ -58,22 +65,42 @@ export default async function OwnerTicketsPage() {
         {tickets.map((t) => (
           <Card key={t.id}>
             <CardContent className="pt-4">
-              <div className="flex flex-wrap gap-2 mb-1">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColor[t.priority]}`}>
-                  {t.priority}
-                </span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[t.status]}`}>
-                  {t.status.replace("_", " ")}
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
-                  {t.unit ? unitDisplayName(unitLabel, t.unit.number, t.unit.building) : scopeLabel[t.scope]}
-                </span>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap gap-2 mb-1">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColor[t.priority]}`}>
+                      {t.priority}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[t.status]}`}>
+                      {statusLabel[t.status] ?? t.status}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
+                      {t.unit ? unitDisplayName(unitLabel, t.unit.number, t.unit.building) : scopeLabel[t.scope]}
+                    </span>
+                  </div>
+                  <p className="font-semibold">{t.title}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{t.description}</p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Submitted by {t.submittedBy.name ?? t.submittedBy.email} on {formatDateTime(t.createdAt)}
+                  </p>
+                  {t.costEstimate != null && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Estimated cost to resolve: {formatMoney(t.costEstimate, baseCurrency)}
+                      {baseCurrency !== "USD" && ` ${baseCurrency}`}
+                      {t.costEstimateNote && ` — ${t.costEstimateNote}`}
+                    </p>
+                  )}
+                </div>
+                <TicketStatusControls
+                  ticketId={t.id}
+                  currentStatus={t.status}
+                  canEditStatus={t.submittedById === session.user.id}
+                  canEstimate={false}
+                  costEstimate={t.costEstimate}
+                  costEstimateNote={t.costEstimateNote}
+                  baseCurrency={baseCurrency}
+                />
               </div>
-              <p className="font-semibold">{t.title}</p>
-              <p className="text-sm text-gray-500 mt-0.5">{t.description}</p>
-              <p className="text-xs text-gray-400 mt-2">
-                Submitted by {t.submittedBy.name ?? t.submittedBy.email} on {formatDateTime(t.createdAt)}
-              </p>
             </CardContent>
           </Card>
         ))}

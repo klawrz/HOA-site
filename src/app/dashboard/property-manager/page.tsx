@@ -37,7 +37,7 @@ export default async function PropertyManagerDashboard() {
     db.unit.count({ where: { orgId: session.user.orgId ?? undefined } }),
     db.unit.count({ where: { orgId: session.user.orgId ?? undefined, status: "RENTED" } }),
     db.troubleTicket.count({
-      where: { orgId: session.user.orgId ?? undefined, status: { in: ["OPEN", "IN_PROGRESS"] } },
+      where: { orgId: session.user.orgId ?? undefined, status: { in: ["ACTIVE", "DEFERRED"] } },
     }),
     // Driven by UnitOwnership, not Membership.role === "OWNER" - a
     // custodian who claimed their own unit (see claimOwnUnit) stays an
@@ -62,7 +62,7 @@ export default async function PropertyManagerDashboard() {
   const onboardingDone = isOnboardingComplete(ownMembership?.onboardingSteps ?? null, PM_STEP_IDS)
 
   const recentTickets = await db.troubleTicket.findMany({
-    where: { orgId: session.user.orgId ?? undefined, status: { in: ["OPEN", "IN_PROGRESS"] } },
+    where: { orgId: session.user.orgId ?? undefined, status: { in: ["ACTIVE", "DEFERRED"] } },
     include: { unit: true, submittedBy: true },
     orderBy: { createdAt: "desc" },
     take: 6,

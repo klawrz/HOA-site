@@ -5,8 +5,9 @@ import { db } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
 import { buttonVariants } from "@/components/ui/button"
 import { TicketManageForm } from "@/app/dashboard/_components/ticket-manage-form"
+import { TicketStatusControls } from "@/app/dashboard/_components/ticket-status-controls"
 import { cn, formatDateTime } from "@/lib/utils"
-import { priorityColor, statusColor, scopeLabel } from "@/lib/ticket-styles"
+import { priorityColor, statusColor, statusLabel, scopeLabel } from "@/lib/ticket-styles"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 import { OnboardingStepTracker } from "@/components/onboarding/onboarding-step-tracker"
 import { parseCompletedSteps } from "@/lib/onboarding-steps"
@@ -16,7 +17,7 @@ export default async function AllTicketsPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
-  const [tickets, contractorMemberships, unitLabel, ownMembership] = await Promise.all([
+  const [tickets, contractorMemberships, unitLabel, ownMembership, orgForCurrency] = await Promise.all([
     db.troubleTicket.findMany({
       where: { orgId: session.user.orgId ?? undefined },
       include: {
@@ -36,9 +37,14 @@ export default async function AllTicketsPage() {
       where: { userId_orgId: { userId: session.user.id, orgId: session.user.orgId ?? "" } },
       select: { onboardingSteps: true },
     }),
+    db.organization.findUnique({
+      where: { id: session.user.orgId ?? undefined },
+      select: { baseCurrency: true },
+    }),
   ])
   const contractors = contractorMemberships.map((m) => m.user)
   const onboardingStepDone = parseCompletedSteps(ownMembership?.onboardingSteps ?? null).has("pm_tickets")
+  const baseCurrency = orgForCurrency?.baseCurrency ?? "USD"
 
   return (
     <div className="space-y-6">
@@ -66,7 +72,7 @@ export default async function AllTicketsPage() {
                         {t.priority}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[t.status]}`}>
-                        {t.status.replace("_", " ")}
+                        {statusLabel[t.status] ?? t.status}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
                         {t.unit ? unitDisplayName(unitLabel, t.unit.number, t.unit.building) : scopeLabel[t.scope]}
@@ -83,14 +89,25 @@ export default async function AllTicketsPage() {
                       </p>
                     )}
                   </div>
-                  {t.status !== "RESOLVED" && t.status !== "CLOSED" && (
-                    <TicketManageForm
+                  <div className="flex flex-col gap-2">
+                    <TicketStatusControls
                       ticketId={t.id}
-                      contractors={contractors}
-                      currentContractorId={assigned?.contractorId}
-                      currentPriority={t.priority}
+                      currentStatus={t.status}
+                      canEditStatus
+                      canEstimate
+                      costEstimate={t.costEstimate}
+                      costEstimateNote={t.costEstimateNote}
+                      baseCurrency={baseCurrency}
                     />
-                  )}
+                    {t.status !== "CLOSED" && (
+                      <TicketManageForm
+                        ticketId={t.id}
+                        contractors={contractors}
+                        currentContractorId={assigned?.contractorId}
+                        currentPriority={t.priority}
+                      />
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

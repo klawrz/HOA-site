@@ -52,7 +52,7 @@ const STATUS_FILTER_SCHEMA: JsonSchema = {
   properties: {
     status: {
       type: "string",
-      enum: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"],
+      enum: ["ACTIVE", "DEFERRED", "CLOSED"],
       description: "Optional filter",
     },
   },

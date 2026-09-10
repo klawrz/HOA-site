@@ -40,6 +40,26 @@ function canManageTicket(role: Role | null, scope: TicketScope) {
   return false
 }
 
+// Who may edit a ticket's own fields (status, cost estimate): the Property
+// Manager, any Board member (not scope-limited, unlike assign/prioritize),
+// and the person who raised it. Assignment/priority stay with
+// canManageTicket; this is the lighter "keep the ticket's state current"
+// authority.
+function canEditTicketRecord(
+  session: { user: { id: string; role: Role | null; isBoardMember?: boolean } },
+  ticket: { submittedById: string },
+) {
+  const { role } = session.user
+  if (role === "PROPERTY_MANAGER" || role === "BOARD_MEMBER" || session.user.isBoardMember) return true
+  return ticket.submittedById === session.user.id
+}
+
+// Entering a cost-to-resolve estimate is a management judgement - PM or
+// Board member only, never the originator.
+function canEstimateTicket(role: Role | null, isBoardMember?: boolean) {
+  return role === "PROPERTY_MANAGER" || role === "BOARD_MEMBER" || Boolean(isBoardMember)
+}
+
 // A Unit Manager's authority is per-unit and comes entirely from a grant
 // the unit's Owner assigned (see actions/unit-profile.ts) - not from role
 // alone, since the Owner retains control of who can do what for their unit.
@@ -96,10 +116,11 @@ export async function assignTicket(ticketId: string, contractorId: string) {
     data: { ticketId, contractorId },
   })
 
-  await db.troubleTicket.update({
-    where: { id: ticketId },
-    data: { status: "IN_PROGRESS" },
-  })
+  // Assigning work reactivates a deferred ticket; otherwise leave the
+  // lifecycle state alone.
+  if (ticket.status === "DEFERRED") {
+    await db.troubleTicket.update({ where: { id: ticketId }, data: { status: "ACTIVE" } })
+  }
 
   revalidateTicketPaths()
   return { success: true }
@@ -132,16 +153,45 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
     session.user.role === "CONTRACTOR" &&
     ticket.assignments.some((a) => a.contractorId === session.user.id)
 
-  if (!isAssignedContractor && !canManageTicket(session.user.role, ticket.scope)) {
+  if (!isAssignedContractor && !canEditTicketRecord(session, ticket)) {
     return { success: false }
   }
 
-  const data: { status: TicketStatus; resolvedAt?: Date } = { status }
-  if (status === "RESOLVED" || status === "CLOSED") {
-    data.resolvedAt = new Date()
+  await db.troubleTicket.update({
+    where: { id: ticketId },
+    data: { status, resolvedAt: status === "CLOSED" ? new Date() : null },
+  })
+
+  revalidateTicketPaths()
+  return { success: true }
+}
+
+export async function setTicketCostEstimate(
+  ticketId: string,
+  data: { cost: number | null; note?: string },
+) {
+  const session = await auth()
+  if (!session?.user.orgId) return { success: false, error: "Not signed in" }
+  if (!canEstimateTicket(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Only the Property Manager or a Board member can set an estimate" }
   }
 
-  await db.troubleTicket.update({ where: { id: ticketId }, data })
+  const ticket = await db.troubleTicket.findFirst({
+    where: { id: ticketId, orgId: session.user.orgId },
+  })
+  if (!ticket) return { success: false, error: "Ticket not found" }
+
+  const cost =
+    data.cost != null && Number.isFinite(data.cost) && data.cost >= 0 ? data.cost : null
+
+  await db.troubleTicket.update({
+    where: { id: ticketId },
+    data: {
+      costEstimate: cost,
+      costEstimateNote: data.note?.trim() || null,
+      costEstimateAt: cost == null ? null : new Date(),
+    },
+  })
 
   revalidateTicketPaths()
   return { success: true }

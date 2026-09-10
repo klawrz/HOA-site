@@ -77,7 +77,7 @@ export default async function OwnerDashboard() {
         unit: {
           include: {
             leases: { where: { isActive: true }, include: { renter: true } },
-            tickets: { where: { status: { in: ["OPEN", "IN_PROGRESS"] } }, orderBy: { createdAt: "desc" } },
+            tickets: { where: { status: { in: ["ACTIVE", "DEFERRED"] } }, orderBy: { createdAt: "desc" } },
             occupancyEntries: { orderBy: { startDate: "asc" } },
             managers: true,
             contracts: true,

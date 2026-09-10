@@ -116,11 +116,11 @@ async function main() {
 
   // --- Tickets ---
   if (!await db.troubleTicket.findFirst({ where: { title: "Leaking kitchen faucet" } })) {
-    const t1 = await db.troubleTicket.create({ data: { orgId: org.id, unitId: u1A.id, submittedById: renter1.id, title: "Leaking kitchen faucet", description: "The faucet has been dripping for 3 days.", status: "IN_PROGRESS", priority: "HIGH" } })
+    const t1 = await db.troubleTicket.create({ data: { orgId: org.id, unitId: u1A.id, submittedById: renter1.id, title: "Leaking kitchen faucet", description: "The faucet has been dripping for 3 days.", status: "ACTIVE", priority: "HIGH" } })
     await db.ticketAssignment.create({ data: { ticketId: t1.id, contractorId: contractor1.id } })
   }
   if (!await db.troubleTicket.findFirst({ where: { title: "HVAC not cooling properly" } })) {
-    await db.troubleTicket.create({ data: { orgId: org.id, unitId: u2A.id, submittedById: renter2.id, title: "HVAC not cooling properly", description: "AC running but unit stays at 80°F.", status: "OPEN", priority: "URGENT" } })
+    await db.troubleTicket.create({ data: { orgId: org.id, unitId: u2A.id, submittedById: renter2.id, title: "HVAC not cooling properly", description: "AC running but unit stays at 80°F.", status: "ACTIVE", priority: "URGENT" } })
   }
 
   // --- Meetings ---

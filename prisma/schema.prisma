@@ -59,9 +59,8 @@ enum DuesFrequency {
 }
 
 enum TicketStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
+  ACTIVE
+  DEFERRED
   CLOSED
 }
 
@@ -1036,11 +1035,18 @@ model TroubleTicket {
   submittedById String
   title         String
   description   String
-  status        TicketStatus   @default(OPEN)
+  status        TicketStatus   @default(ACTIVE)
   priority      TicketPriority @default(MEDIUM)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   resolvedAt    DateTime?
+
+  // Estimated cost to resolve, entered by the PM or a Board member. Stored
+  // in the org's base currency (see Organization.baseCurrency); the note is
+  // free text for what the figure covers / who quoted it.
+  costEstimate     Float?
+  costEstimateNote String?
+  costEstimateAt   DateTime?
 
   org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   unit        Unit?              @relation(fields: [unitId], references: [id], onDelete: Cascade)

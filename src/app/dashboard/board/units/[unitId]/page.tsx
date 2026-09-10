@@ -32,10 +32,9 @@ const statusColors: Record<string, string> = {
 }
 
 const ticketStatusColors: Record<string, string> = {
-  OPEN: "bg-red-100 text-red-700",
-  IN_PROGRESS: "bg-amber-100 text-amber-700",
-  RESOLVED: "bg-green-100 text-green-700",
-  CLOSED: "bg-gray-100 text-gray-500",
+  ACTIVE: "bg-red-100 text-red-700",
+  DEFERRED: "bg-amber-100 text-amber-700",
+  CLOSED: "bg-green-100 text-green-700",
 }
 
 const rentalPolicyLabel: Record<string, string> = {
@@ -173,9 +172,9 @@ export default async function BoardUnitDetailPage({
   const leaseVisible = occupancyShared ? activeLease : null
 
   // --- tickets -----------------------------------------------------------
-  const openTickets = unit.tickets.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS")
+  const openTickets = unit.tickets.filter((t) => t.status !== "CLOSED")
   const recentClosedTickets = unit.tickets
-    .filter((t) => t.status === "RESOLVED" || t.status === "CLOSED")
+    .filter((t) => t.status === "CLOSED")
     .slice(0, 3)
 
   const { propertyLines } = unitAddressLines(

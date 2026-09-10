@@ -58,7 +58,7 @@ export function ContractorDirectory({
           <div className="grid gap-4">
             {grouped[key].map((c) => {
               const activeTickets = c.assignedTickets.filter(
-                (a) => a.ticket.status === "OPEN" || a.ticket.status === "IN_PROGRESS"
+                (a) => a.ticket.status !== "CLOSED"
               )
               // Prefer a genuinely ACTIVE contract over just the most recent
               // one - a lapsed/ended contract sorting newest-first would

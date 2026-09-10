@@ -14,7 +14,7 @@ import { Prisma, TicketStatus } from "@/generated/prisma"
 // `ReturnType<typeof auth>` resolves to the wrong overload (NextMiddleware).
 export type AskHopeSession = Session
 
-const TICKET_STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const
+const TICKET_STATUSES = ["ACTIVE", "DEFERRED", "CLOSED"] as const
 
 function asTicketStatus(value: unknown): TicketStatus | undefined {
   return typeof value === "string" && (TICKET_STATUSES as readonly string[]).includes(value)
@@ -293,7 +293,7 @@ export async function getUnitStatus(session: AskHopeSession, args: { unit?: unkn
       managers: { include: { user: true } },
       leases: { where: { isActive: true }, include: { renter: true } },
       occupancyEntries: { orderBy: { startDate: "desc" } },
-      tickets: { where: { status: { in: ["OPEN", "IN_PROGRESS"] } }, orderBy: { priority: "desc" } },
+      tickets: { where: { status: { in: ["ACTIVE", "DEFERRED"] } }, orderBy: { priority: "desc" } },
       contracts: { where: { scope: "UNIT", status: "ACTIVE" } },
       contacts: true,
     },

@@ -33,12 +33,8 @@ export default async function ContractorDashboard() {
     orderBy: { assignedAt: "desc" },
   })
 
-  const activeAssignments = assignments.filter(
-    (a) => a.ticket.status === "OPEN" || a.ticket.status === "IN_PROGRESS"
-  )
-  const completedAssignments = assignments.filter(
-    (a) => a.ticket.status === "RESOLVED" || a.ticket.status === "CLOSED"
-  )
+  const activeAssignments = assignments.filter((a) => a.ticket.status !== "CLOSED")
+  const completedAssignments = assignments.filter((a) => a.ticket.status === "CLOSED")
 
   const contracts = await db.contract.findMany({
     where: { contractorId: session.user.id },

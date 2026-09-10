@@ -63,7 +63,7 @@ export async function getBoardFinancialAlerts(
         include: { charges: true },
       }),
       db.troubleTicket.findMany({
-        where: { orgId, status: { in: ["OPEN", "IN_PROGRESS"] } },
+        where: { orgId, status: "ACTIVE" },
         include: { assignments: true, comments: true },
       }),
       db.keyDate.findUnique({ where: { orgId_type: { orgId, type: "AGM" } } }).catch(() => null),

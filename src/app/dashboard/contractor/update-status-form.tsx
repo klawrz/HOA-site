@@ -36,13 +36,17 @@ export function UpdateTicketStatusForm({
 
   return (
     <div className="flex flex-col gap-2 w-36 shrink-0">
-      <Select value={status} onValueChange={(v) => setStatus(v as TicketStatus)}>
+      <Select
+        value={status}
+        onValueChange={(v) => setStatus(v as TicketStatus)}
+        items={{ ACTIVE: "Active", DEFERRED: "Deferred", CLOSED: "Closed" }}
+      >
         <SelectTrigger className="h-8 text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-          <SelectItem value="RESOLVED">Resolved</SelectItem>
+          <SelectItem value="ACTIVE">Active</SelectItem>
+          <SelectItem value="DEFERRED">Deferred</SelectItem>
           <SelectItem value="CLOSED">Closed</SelectItem>
         </SelectContent>
       </Select>

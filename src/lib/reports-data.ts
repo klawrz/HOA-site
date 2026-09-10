@@ -125,14 +125,14 @@ export async function getOperationsReportData(orgId: string) {
   }))
 
   const now = new Date()
-  const ticketsByStatus = { OPEN: 0, IN_PROGRESS: 0, RESOLVED: 0, CLOSED: 0 }
+  const ticketsByStatus = { ACTIVE: 0, DEFERRED: 0, CLOSED: 0 }
   const ticketsByPriority = { LOW: 0, MEDIUM: 0, HIGH: 0, URGENT: 0, EMERGENCY: 0 }
   for (const t of tickets) {
     ticketsByStatus[t.status]++
     ticketsByPriority[t.priority]++
   }
   const openTickets = tickets
-    .filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS")
+    .filter((t) => t.status !== "CLOSED")
     .map((t) => ({
       ...t,
       ageDays: Math.floor((now.getTime() - t.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
