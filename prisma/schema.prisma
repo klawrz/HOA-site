@@ -862,6 +862,10 @@ model User {
   password  String?
   phone     String?
   company   String?
+  // The person's Mexican federal tax ID (Registro Federal de
+  // Contribuyentes). Owner-facing detail an owner may record for their own
+  // property dealings - optional, self-entered.
+  rfc       String?
   category  ContractorCategory? // service type, Contractor role only
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
@@ -1583,6 +1587,7 @@ model PMContract {
 enum UnitContactKind {
   PRIME
   EMERGENCY
+  CLEANER
 }
 
 model UnitContact {

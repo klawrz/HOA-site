@@ -23,7 +23,7 @@ interface Contact {
   email: string | null
 }
 
-const KIND_ITEMS = { PRIME: "Prime Contact", EMERGENCY: "Emergency Contact" }
+const KIND_ITEMS = { PRIME: "Prime Contact", EMERGENCY: "Emergency Contact", CLEANER: "Cleaner" }
 
 export function UnitContacts({ unitId, contacts }: { unitId: string; contacts: Contact[] }) {
   const [kind, setKind] = useState<UnitContactKind>("PRIME")
@@ -33,6 +33,7 @@ export function UnitContacts({ unitId, contacts }: { unitId: string; contacts: C
 
   const primeCount = contacts.filter((c) => c.kind === "PRIME").length
   const emergencyCount = contacts.filter((c) => c.kind === "EMERGENCY").length
+  const cleanerCount = contacts.filter((c) => c.kind === "CLEANER").length
 
   async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -42,6 +43,10 @@ export function UnitContacts({ unitId, contacts }: { unitId: string; contacts: C
     }
     if (kind === "EMERGENCY" && emergencyCount >= 2) {
       toast.error("Only 2 emergency contacts are needed - remove one first")
+      return
+    }
+    if (kind === "CLEANER" && cleanerCount >= 1) {
+      toast.error("Only one cleaner is tracked - remove the existing one first")
       return
     }
     setSaving(true)
@@ -72,7 +77,7 @@ export function UnitContacts({ unitId, contacts }: { unitId: string; contacts: C
 
   return (
     <div className="space-y-4">
-      {["PRIME", "EMERGENCY"].map((k) => {
+      {["PRIME", "EMERGENCY", "CLEANER"].map((k) => {
         const kindContacts = contacts.filter((c) => c.kind === k)
         if (kindContacts.length === 0) return null
         return (

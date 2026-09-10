@@ -1,6 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { ServiceContacts } from "@/components/owner/service-contacts"
-import { DUES_FREQUENCY_LABEL } from "@/lib/dues"
 import type { OwnerFinancialOverview } from "@/lib/owner-financial-overview"
 
 function usd(n: number) {
@@ -23,20 +22,18 @@ const typeLabel: Record<string, string> = {
   SPECIAL: "Special Assessment",
 }
 
-// The full owner money picture: the PM / Unit Manager / Security panel, the
-// outstanding + anticipated totals, and per-unit anticipated dues schedule,
-// assessments and charges. Rendered on both the owner dashboard and the
-// Dues & Assessments page from one getOwnerFinancialOverview() call.
+// The owner money picture: PM / Security contacts, the outstanding +
+// anticipated totals, and per-unit - a one-line dues & assessments summary
+// (allocation share, annual total, payment schedule), the instalment
+// schedule with due dates, the assessments, and charges totalled by
+// quarter (payable at quarter-end). Shared by the dashboard and the Dues,
+// Assessments & Charges page.
 export function OwnerFinancialDetail({ data }: { data: OwnerFinancialOverview }) {
   const { budget } = data
 
   return (
     <div className="space-y-4">
-      <ServiceContacts
-        propertyManager={data.propertyManager}
-        unitManager={data.unitManager}
-        security={data.security}
-      />
+      <ServiceContacts propertyManager={data.propertyManager} security={data.security} />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Card className="p-4">
@@ -71,23 +68,24 @@ export function OwnerFinancialDetail({ data }: { data: OwnerFinancialOverview })
 
       {data.units.map((u) => (
         <div key={u.unitId} className="space-y-3">
-          <h2 className="text-lg font-semibold pt-2">{u.unitName}</h2>
+          <h3 className="text-base font-semibold pt-1">{u.unitName}</h3>
 
+          {/* Dues & assessments summary line */}
           <Card>
             <CardContent className="pt-4 space-y-3">
-              <div className="flex items-baseline justify-between">
-                <div>
-                  <p className="text-sm font-semibold">
-                    {budget?.isProposed ? "Anticipated" : "Estimated"} annual dues
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {u.allocationPercent.toFixed(2)}% allocation ×{" "}
-                    {budget ? `${budget.label ?? budget.year} operating budget` : "budget"} ·{" "}
-                    {DUES_FREQUENCY_LABEL[u.duesFrequency]}
-                  </p>
-                </div>
-                <p className="text-xl font-bold">{u.annualDuesUsd != null ? usd(u.annualDuesUsd) : "—"}</p>
-              </div>
+              <p className="text-sm">
+                <span className="font-semibold">Dues &amp; assessments — </span>
+                allocation share <strong>{u.allocationPercent.toFixed(2)}%</strong> ·{" "}
+                {u.annualDuesUsd != null ? (
+                  <>
+                    total <strong>{usd(u.annualDuesUsd)}/yr</strong>
+                  </>
+                ) : (
+                  <>total <strong>—</strong></>
+                )}{" "}
+                · {u.paymentScheduleLabel}
+                {budget?.isProposed ? " (anticipated)" : ""}
+              </p>
 
               {u.instalments.length > 0 && (
                 <div className="overflow-x-auto">
@@ -111,16 +109,9 @@ export function OwnerFinancialDetail({ data }: { data: OwnerFinancialOverview })
                   </table>
                 </div>
               )}
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="pt-4">
-              <p className="text-sm font-semibold mb-2">Assessments</p>
-              {u.assessments.length === 0 ? (
-                <p className="text-sm text-gray-400">No assessments on file for this unit.</p>
-              ) : (
-                <div className="space-y-2">
+              {u.assessments.length > 0 && (
+                <div className="space-y-2 border-t pt-2">
                   {u.assessments.map((a) => {
                     const st = chargeStatus(a.amountDueUsd, a.amountPaidUsd)
                     return (
@@ -165,46 +156,39 @@ export function OwnerFinancialDetail({ data }: { data: OwnerFinancialOverview })
             </CardContent>
           </Card>
 
+          {/* Charges by quarter */}
           <Card>
             <CardContent className="pt-4">
-              <p className="text-sm font-semibold mb-2">Charges (water, fees)</p>
-              {u.charges.length === 0 ? (
+              <p className="text-sm font-semibold mb-2">Charges by quarter (water, fees)</p>
+              {u.quarterlyCharges.length === 0 ? (
                 <p className="text-sm text-gray-400">
-                  No per-villa charges on file. Quarterly water billing appears here once the Property
-                  Manager enters meter readings.
+                  No charges recorded. Water is billed quarterly — totals appear here, payable at the
+                  end of each quarter, once the Property Manager enters meter readings.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {u.charges.map((c) => {
-                    const st = chargeStatus(c.amountUsd, c.amountPaidUsd)
-                    return (
-                      <div
-                        key={c.id}
-                        className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
-                      >
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold">{c.label}</p>
-                            <span
-                              className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${st.color}`}
-                            >
-                              {st.label}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            Charged {iso(c.chargedOn)}
-                            {c.dueDate ? ` · due ${iso(c.dueDate)}` : ""}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold">{usd(c.amountUsd)}</p>
-                          {c.amountPaidUsd > 0 && (
-                            <p className="text-xs text-green-600">{usd(c.amountPaidUsd)} paid</p>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wide text-gray-400 border-b">
+                        <th className="py-1.5 pr-3 font-medium">Quarter</th>
+                        <th className="py-1.5 pr-3 font-medium">Payable by</th>
+                        <th className="py-1.5 pr-3 font-medium text-right">Total</th>
+                        <th className="py-1.5 font-medium text-right">Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {u.quarterlyCharges.map((q) => (
+                        <tr key={q.label} className="border-b last:border-0">
+                          <td className="py-1.5 pr-3">{q.label}</td>
+                          <td className="py-1.5 pr-3 text-gray-600">{iso(q.dueDate)}</td>
+                          <td className="py-1.5 pr-3 text-right font-medium">{usd(q.totalUsd)}</td>
+                          <td className="py-1.5 text-right text-green-600">
+                            {q.paidUsd > 0 ? usd(q.paidUsd) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </CardContent>

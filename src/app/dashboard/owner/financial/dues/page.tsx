@@ -31,10 +31,10 @@ export default async function OwnerDuesPage() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Financial
         </Link>
-        <h1 className="text-2xl font-bold">Dues &amp; Assessments</h1>
+        <h1 className="text-2xl font-bold">Dues, Assessments and Charges</h1>
         <p className="text-gray-500 mt-1">
-          What your unit owes and when &mdash; anticipated dues by quarter, assessments, and per-villa
-          charges. All amounts in US dollars.
+          What your unit owes and when &mdash; allocation share and the anticipated dues schedule,
+          assessments, and charges totalled by quarter. All amounts in US dollars.
         </p>
       </div>
 

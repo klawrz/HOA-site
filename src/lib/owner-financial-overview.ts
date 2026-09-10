@@ -5,11 +5,11 @@ import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 import { AREA_LABELS } from "@/lib/unit-manager-area"
 import type { DuesFrequency, UnitManagerArea, UnitManagerLevel } from "@/generated/prisma"
 
-// Everything an owner needs to see about money owed on their unit(s) - the
-// anticipated dues schedule from the effective (approved, else proposed)
-// budget, the assessments and per-villa charges, and the "who to contact"
-// trio (Property Manager, the owner-delegated Unit Manager, Security).
-// Shared by the owner dashboard and the Dues & Assessments page.
+// Everything an owner needs to see about their unit(s) on the dashboard and
+// the Dues & Assessments page: the anticipated dues schedule from the
+// effective (approved, else proposed) budget, assessments, per-villa
+// charges grouped by quarter, and the people attached to the unit
+// (Property Manager, the owner-delegated Unit Manager, cleaner, Security).
 
 export interface ContactCard {
   name: string
@@ -21,7 +21,7 @@ export interface ContactCard {
 
 export interface UnitManagerCard {
   name: string
-  assignedBy: string // "Delegated by the owner"
+  assignedBy: string
   phone: string | null
   email: string | null
   notes: string | null
@@ -32,11 +32,24 @@ export interface UnitManagerCard {
   unitName: string
 }
 
+export interface QuarterCharge {
+  label: string // "Q3 2027"
+  dueDate: Date // last day of that quarter
+  totalUsd: number
+  paidUsd: number
+}
+
 export interface OwnerUnitFinance {
   unitId: string
+  unitNumber: string
   unitName: string
+  ownedSince: Date
+  civicRoll: string | null
+  accessCode: string | null
+  accessCodeNotes: string | null
   allocationPercent: number
   duesFrequency: DuesFrequency
+  paymentScheduleLabel: string
   annualDuesUsd: number | null
   instalments: DuesInstalment[]
   assessments: {
@@ -57,21 +70,36 @@ export interface OwnerUnitFinance {
     amountUsd: number
     amountPaidUsd: number
   }[]
+  quarterlyCharges: QuarterCharge[]
+  unitManager: UnitManagerCard | null
+  cleaner: ContactCard | null
 }
 
 export interface OwnerFinancialOverview {
   budget: Awaited<ReturnType<typeof getEffectiveOperatingBudget>>
+  ownerRfc: string | null
   units: OwnerUnitFinance[]
   totalOutstandingUsd: number
   anticipatedDuesTotalUsd: number
   anticipatedAssessmentTotalUsd: number
   propertyManager: ContactCard | null
-  unitManager: UnitManagerCard | null
   security: ContactCard | null
 }
 
 function titleCase(s: string) {
   return s.charAt(0) + s.slice(1).toLowerCase()
+}
+
+const SCHEDULE_LABEL: Record<DuesFrequency, string> = {
+  QUARTERLY: "4 quarterly instalments",
+  SEMI_ANNUAL: "2 semi-annual instalments",
+  ANNUAL: "1 annual payment",
+}
+
+// Last calendar day of the quarter a date falls in, at UTC midnight.
+function endOfQuarter(d: Date): Date {
+  const q = Math.floor(d.getUTCMonth() / 3)
+  return new Date(Date.UTC(d.getUTCFullYear(), q * 3 + 3, 0))
 }
 
 export async function getOwnerFinancialOverview(session: {
@@ -81,55 +109,45 @@ export async function getOwnerFinancialOverview(session: {
 
   const ownerships = await db.unitOwnership.findMany({
     where: { ownerId: session.user.id, isCurrent: true },
-    include: { unit: true },
+    include: {
+      unit: {
+        include: {
+          managers: { include: { user: true, grants: true } },
+          contacts: true,
+        },
+      },
+    },
     orderBy: { unit: { number: "asc" } },
   })
   const unitIds = ownerships.map((o) => o.unitId)
 
-  const [
-    budget,
-    orgUnits,
-    org,
-    unitLabel,
-    assessmentCharges,
-    unitCharges,
-    pmContract,
-    unitManagers,
-    keyContacts,
-  ] = await Promise.all([
-    getEffectiveOperatingBudget(orgId),
-    db.unit.findMany({ where: { orgId }, select: { id: true, allocationPercent: true } }),
-    db.organization.findUnique({
-      where: { id: orgId },
-      select: { baseCurrency: true, currentExchangeRate: true },
-    }),
-    getUnitLabel(orgId),
-    unitIds.length
-      ? db.assessmentCharge.findMany({
-          where: { unitId: { in: unitIds } },
-          include: { assessment: true },
-          orderBy: { assessment: { dueDate: "asc" } },
-        })
-      : Promise.resolve([]),
-    unitIds.length
-      ? db.unitCharge.findMany({
-          where: { unitId: { in: unitIds } },
-          orderBy: { chargedOn: "desc" },
-        })
-      : Promise.resolve([]),
-    db.pMContract.findFirst({
-      where: { orgId, status: "ACTIVE" },
-      include: { company: { include: { emergencyContacts: true } } },
-      orderBy: { startDate: "desc" },
-    }),
-    unitIds.length
-      ? db.unitManagerAssignment.findMany({
-          where: { unitId: { in: unitIds } },
-          include: { user: true, grants: true, unit: true },
-        })
-      : Promise.resolve([]),
-    db.keyContact.findMany({ where: { orgId }, orderBy: { sortOrder: "asc" } }),
-  ])
+  const [budget, orgUnits, org, unitLabel, me, assessmentCharges, unitCharges, pmContract, keyContacts] =
+    await Promise.all([
+      getEffectiveOperatingBudget(orgId),
+      db.unit.findMany({ where: { orgId }, select: { id: true, allocationPercent: true } }),
+      db.organization.findUnique({
+        where: { id: orgId },
+        select: { baseCurrency: true, currentExchangeRate: true },
+      }),
+      getUnitLabel(orgId),
+      db.user.findUnique({ where: { id: session.user.id }, select: { rfc: true } }),
+      unitIds.length
+        ? db.assessmentCharge.findMany({
+            where: { unitId: { in: unitIds } },
+            include: { assessment: true },
+            orderBy: { assessment: { dueDate: "asc" } },
+          })
+        : Promise.resolve([]),
+      unitIds.length
+        ? db.unitCharge.findMany({ where: { unitId: { in: unitIds } }, orderBy: { chargedOn: "asc" } })
+        : Promise.resolve([]),
+      db.pMContract.findFirst({
+        where: { orgId, status: "ACTIVE" },
+        include: { company: { include: { emergencyContacts: true } } },
+        orderBy: { startDate: "desc" },
+      }),
+      db.keyContact.findMany({ where: { orgId }, orderBy: { sortOrder: "asc" } }),
+    ])
 
   const allocations = effectiveAllocations(orgUnits)
   const rate = org?.currentExchangeRate ?? 17.5
@@ -139,15 +157,65 @@ export async function getOwnerFinancialOverview(session: {
   const units: OwnerUnitFinance[] = ownerships.map((o) => {
     const pct = allocations.get(o.unitId) ?? 0
     const annual = budget ? budget.totalUsd * (pct / 100) : null
-    const instalments =
-      budget && annual != null ? duesInstalments(annual, o.unit.duesFrequency, budget.year) : []
+
+    // Charges grouped by the quarter they fall in, each due at quarter-end.
+    const byQuarter = new Map<string, { dueDate: Date; totalUsd: number; paidUsd: number }>()
+    for (const c of unitCharges.filter((x) => x.unitId === o.unitId)) {
+      const on = new Date(c.chargedOn)
+      const q = Math.floor(on.getUTCMonth() / 3) + 1
+      const key = `Q${q} ${on.getUTCFullYear()}`
+      const slot = byQuarter.get(key) ?? { dueDate: endOfQuarter(on), totalUsd: 0, paidUsd: 0 }
+      slot.totalUsd += toUsd(c.amount)
+      slot.paidUsd += toUsd(c.amountPaid)
+      byQuarter.set(key, slot)
+    }
+    const quarterlyCharges: QuarterCharge[] = [...byQuarter.entries()]
+      .map(([label, v]) => ({ label, ...v }))
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+
+    // Unit Manager (first assignment on this unit) - rich card.
+    const asg = o.unit.managers[0]
+    const unitManager: UnitManagerCard | null = asg
+      ? {
+          name: asg.user?.name ?? asg.name ?? asg.user?.email ?? "Unit Manager",
+          assignedBy: "Delegated by the owner",
+          phone: asg.phone ?? null,
+          email: asg.user?.email ?? asg.email ?? null,
+          notes: asg.notes ?? null,
+          accessCode: o.unit.accessCode ?? null,
+          accessCodeNotes: o.unit.accessCodeNotes ?? null,
+          areas: asg.grants.map((g) => ({
+            label: AREA_LABELS[g.area as UnitManagerArea] ?? g.area,
+            level: g.level,
+          })),
+          canCreateTickets: asg.grants.some((g) => g.area === "TICKETS" && g.level === "MANAGE"),
+          unitName: unitDisplayName(unitLabel, o.unit.number, o.unit.building),
+        }
+      : null
+
+    const cleanerContact = o.unit.contacts.find((c) => c.kind === "CLEANER")
+    const cleaner: ContactCard | null = cleanerContact
+      ? {
+          name: cleanerContact.name,
+          phone: cleanerContact.phone,
+          email: cleanerContact.email,
+          note: cleanerContact.notes,
+        }
+      : null
+
     return {
       unitId: o.unitId,
+      unitNumber: o.unit.number,
       unitName: unitDisplayName(unitLabel, o.unit.number, o.unit.building),
+      ownedSince: o.since,
+      civicRoll: o.unit.civicRoll ?? null,
+      accessCode: o.unit.accessCode ?? null,
+      accessCodeNotes: o.unit.accessCodeNotes ?? null,
       allocationPercent: pct,
       duesFrequency: o.unit.duesFrequency,
+      paymentScheduleLabel: SCHEDULE_LABEL[o.unit.duesFrequency],
       annualDuesUsd: annual,
-      instalments,
+      instalments: budget && annual != null ? duesInstalments(annual, o.unit.duesFrequency, budget.year) : [],
       assessments: assessmentCharges
         .filter((c) => c.unitId === o.unitId)
         .map((c) => ({
@@ -170,6 +238,9 @@ export async function getOwnerFinancialOverview(session: {
           amountUsd: toUsd(c.amount),
           amountPaidUsd: toUsd(c.amountPaid),
         })),
+      quarterlyCharges,
+      unitManager,
+      cleaner,
     }
   })
 
@@ -178,18 +249,16 @@ export async function getOwnerFinancialOverview(session: {
     (s, u) => s + u.assessments.filter((a) => a.anticipated).reduce((t, a) => t + a.amountDueUsd, 0),
     0,
   )
-  const totalOutstandingUsd =
-    units.reduce(
-      (s, u) =>
-        s +
-        u.assessments
-          .filter((a) => !a.anticipated)
-          .reduce((t, a) => t + Math.max(a.amountDueUsd - a.amountPaidUsd, 0), 0) +
-        u.charges.reduce((t, c) => t + Math.max(c.amountUsd - c.amountPaidUsd, 0), 0),
-      0,
-    )
+  const totalOutstandingUsd = units.reduce(
+    (s, u) =>
+      s +
+      u.assessments
+        .filter((a) => !a.anticipated)
+        .reduce((t, a) => t + Math.max(a.amountDueUsd - a.amountPaidUsd, 0), 0) +
+      u.charges.reduce((t, c) => t + Math.max(c.amountUsd - c.amountPaidUsd, 0), 0),
+    0,
+  )
 
-  // Property Manager
   const company = pmContract?.company
   const ec = company?.emergencyContacts[0]
   const propertyManager: ContactCard | null = company
@@ -201,48 +270,6 @@ export async function getOwnerFinancialOverview(session: {
         note: ec ? `After-hours: ${ec.name}${ec.phone ? ` · ${ec.phone}` : ""}` : null,
       }
     : null
-
-  // Unit Manager - richer, since it's an owner-delegated role with its own
-  // contact details, the unit access code, notes, and area grants.
-  const firstAssignment = unitManagers[0]
-  const firstOwnedUnit = ownerships[0]?.unit
-  const unitManager: UnitManagerCard | null = firstAssignment
-    ? {
-        name:
-          firstAssignment.user?.name ??
-          firstAssignment.name ??
-          firstAssignment.user?.email ??
-          "Unit Manager",
-        assignedBy:
-          unitManagers.length > 1 ? "Delegated by the owner (multiple units)" : "Delegated by the owner",
-        phone: firstAssignment.phone ?? null,
-        email: firstAssignment.user?.email ?? firstAssignment.email ?? null,
-        notes: firstAssignment.notes ?? null,
-        accessCode: firstAssignment.unit.accessCode ?? null,
-        accessCodeNotes: firstAssignment.unit.accessCodeNotes ?? null,
-        areas: firstAssignment.grants.map((g) => ({
-          label: AREA_LABELS[g.area as UnitManagerArea] ?? g.area,
-          level: g.level,
-        })),
-        canCreateTickets: firstAssignment.grants.some(
-          (g) => g.area === "TICKETS" && g.level === "MANAGE",
-        ),
-        unitName: unitDisplayName(unitLabel, firstAssignment.unit.number, firstAssignment.unit.building),
-      }
-    : firstOwnedUnit
-      ? {
-          name: "Owner-managed",
-          assignedBy: "No Unit Manager delegated",
-          phone: null,
-          email: null,
-          notes: null,
-          accessCode: firstOwnedUnit.accessCode ?? null,
-          accessCodeNotes: firstOwnedUnit.accessCodeNotes ?? null,
-          areas: [],
-          canCreateTickets: false,
-          unitName: unitDisplayName(unitLabel, firstOwnedUnit.number, firstOwnedUnit.building),
-        }
-      : null
 
   const securityContact =
     keyContacts.find((c) => c.category === "SECURITY") ??
@@ -259,12 +286,12 @@ export async function getOwnerFinancialOverview(session: {
 
   return {
     budget,
+    ownerRfc: me?.rfc ?? null,
     units,
     totalOutstandingUsd,
     anticipatedDuesTotalUsd,
     anticipatedAssessmentTotalUsd,
     propertyManager,
-    unitManager,
     security,
   }
 }
