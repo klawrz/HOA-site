@@ -1,11 +1,15 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { ReportNavCards } from "@/components/reports/report-nav-cards"
+import { ArchivedReportsList } from "@/components/reports/archived-reports-list"
+import { loadArchivedReports } from "@/lib/archived-reports"
 import { canPreviewRole } from "@/lib/role-access"
 
 export default async function PropertyManagerReportsPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
+
+  const reports = await loadArchivedReports(session.user.orgId)
 
   return (
     <div className="space-y-6">
@@ -16,6 +20,7 @@ export default async function PropertyManagerReportsPage() {
         </p>
       </div>
       <ReportNavCards basePath="/dashboard/property-manager/reports" />
+      <ArchivedReportsList reports={reports} />
     </div>
   )
 }

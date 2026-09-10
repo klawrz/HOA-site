@@ -5,6 +5,7 @@ export const documentCategoryLabel: Record<string, string> = {
   RESOLUTION: "Resolution",
   CONTRACT: "Contract",
   FINANCIAL: "Financial",
+  REPORT: "Report",
   POLICY: "Policy",
   OTHER: "Other",
 }
@@ -16,6 +17,7 @@ export const documentCategoryColor: Record<string, string> = {
   RESOLUTION: "bg-pink-100 text-pink-800",
   CONTRACT: "bg-orange-100 text-orange-800",
   FINANCIAL: "bg-green-100 text-green-800",
+  REPORT: "bg-amber-100 text-amber-800",
   POLICY: "bg-purple-100 text-purple-800",
   OTHER: "bg-gray-100 text-gray-600",
 }

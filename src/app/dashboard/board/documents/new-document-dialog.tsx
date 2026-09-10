@@ -29,15 +29,19 @@ const categories = Object.keys(documentCategoryLabel) as DocumentCategory[]
 export function NewDocumentDialog({
   meetingId,
   triggerLabel = "+ Add Document",
+  defaultCategory = "OTHER",
 }: {
   // Pre-attaches the new document to a specific meeting (e.g. the AGM) so
   // it shows up in that meeting's own document list, not just the general
   // repository. Omit for the plain repository-wide "Add Document" button.
   meetingId?: string
   triggerLabel?: string
+  // Preselects the category dropdown - e.g. "REPORT" when filing from the
+  // Reports page. The user can still change it.
+  defaultCategory?: DocumentCategory
 }) {
   const [open, setOpen] = useState(false)
-  const [category, setCategory] = useState<DocumentCategory>("OTHER")
+  const [category, setCategory] = useState<DocumentCategory>(defaultCategory)
   const [restricted, setRestricted] = useState(false)
   const [saving, setSaving] = useState(false)
 
