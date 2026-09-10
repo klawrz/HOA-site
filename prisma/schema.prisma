@@ -511,6 +511,7 @@ model ReserveCapitalItem {
 // unlike these, which can repeat per category (e.g. multiple employees).
 enum KeyContactCategory {
   PROPERTY_MANAGER
+  SECURITY
   LAWYER
   ACCOUNTANT
   INSURANCE

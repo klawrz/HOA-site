@@ -1,5 +1,6 @@
 export const keyContactCategoryLabel: Record<string, string> = {
   PROPERTY_MANAGER: "Property Manager",
+  SECURITY: "Security",
   LAWYER: "Lawyer",
   ACCOUNTANT: "Accountant",
   INSURANCE: "Insurance",
@@ -9,6 +10,7 @@ export const keyContactCategoryLabel: Record<string, string> = {
 
 export const keyContactCategoryColor: Record<string, string> = {
   PROPERTY_MANAGER: "bg-purple-100 text-purple-800",
+  SECURITY: "bg-red-100 text-red-800",
   LAWYER: "bg-indigo-100 text-indigo-800",
   ACCOUNTANT: "bg-green-100 text-green-800",
   INSURANCE: "bg-teal-100 text-teal-800",

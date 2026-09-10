@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, ChevronRight, Receipt } from "lucide-react"
 import { billingPeriodLabel } from "@/lib/contract-styles"
 import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
 import { effectiveAllocations } from "@/lib/unit-allocation"
+import { getEffectiveOperatingBudget } from "@/lib/dues-schedule"
 
 // Only meaningful for a fair "per month" comparison across contracts billed
 // on different cadences - not a substitute for the contract's own terms.
@@ -20,7 +21,7 @@ export default async function OwnerFinancialPage() {
   const session = await requireOwnerAccess()
   if (!session) redirect("/dashboard")
 
-  const [ownerships, latestApprovedBudget, unitLabel, orgUnits] = await Promise.all([
+  const [ownerships, effectiveBudget, unitLabel, orgUnits] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -32,13 +33,7 @@ export default async function OwnerFinancialPage() {
         },
       },
     }),
-    session.user.orgId
-      ? db.budget.findFirst({
-          where: { orgId: session.user.orgId, status: "APPROVED", type: "OPERATING" },
-          include: { lineItems: true },
-          orderBy: { year: "desc" },
-        })
-      : Promise.resolve(null),
+    getEffectiveOperatingBudget(session.user.orgId),
     getUnitLabel(session.user.orgId),
     db.unit.findMany({
       where: { orgId: session.user.orgId ?? undefined },
@@ -46,7 +41,9 @@ export default async function OwnerFinancialPage() {
     }),
   ])
 
-  const totalApprovedBudget = latestApprovedBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
+  // USD-normalised total from the approved operating budget, or the
+  // proposed one as a fallback so owners still see an anticipated figure.
+  const budgetTotalUsd = effectiveBudget?.totalUsd ?? null
   const allocationPercents = effectiveAllocations(orgUnits)
 
   const unitIds = ownerships.map((o) => o.unitId)
@@ -159,7 +156,7 @@ export default async function OwnerFinancialPage() {
           <div className="space-y-2">
             {ownerships.map((o) => {
               const percent = allocationPercents.get(o.unit.id) ?? 0
-              const estimatedDues = totalApprovedBudget != null ? totalApprovedBudget * (percent / 100) : null
+              const estimatedDues = budgetTotalUsd != null ? budgetTotalUsd * (percent / 100) : null
               return (
                 <div key={`dues-${o.unit.id}`} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                   <div>
@@ -167,13 +164,15 @@ export default async function OwnerFinancialPage() {
                       HOA Dues — {unitDisplayName(unitLabel, o.unit.number, o.unit.building)}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {estimatedDues != null
-                        ? `Est. from ${latestApprovedBudget!.year} approved budget (${percent.toFixed(2)}% allocation)`
-                        : "No approved budget yet"}
+                      {estimatedDues != null && effectiveBudget
+                        ? `${effectiveBudget.isProposed ? "Anticipated" : "Est."} from the ${
+                            effectiveBudget.label ?? effectiveBudget.year
+                          } ${effectiveBudget.isProposed ? "proposed" : "approved"} budget (${percent.toFixed(2)}% allocation)`
+                        : "No operating budget on file yet"}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-red-700">
-                    {estimatedDues != null ? `-$${estimatedDues.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr` : "—"}
+                    {estimatedDues != null ? `-$${estimatedDues.toLocaleString("en-US", { maximumFractionDigits: 0 })}/yr` : "—"}
                   </p>
                 </div>
               )

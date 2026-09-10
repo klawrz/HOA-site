@@ -93,6 +93,16 @@
   .concern li { margin: 0 0 .35rem; }
   .concern li::marker { color: var(--negative); }
 
+  .welcome {
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    border-radius: 0 3px 3px 0; padding: 1.15rem 1.35rem; margin: 0 0 1.3rem;
+  }
+  .welcome .lbl { display: block; font-family: "Spectral", serif; font-weight: 600; font-size: .62rem;
+    text-transform: uppercase; letter-spacing: .15em; color: var(--accent); margin-bottom: .6rem; }
+  .welcome p { margin: 0 0 .7rem; max-width: none; font-size: 1rem; line-height: 1.72; }
+  .welcome p:last-child { margin-bottom: 0; }
+  .welcome .sign { font-size: .84rem; color: var(--ink-soft); font-style: italic; }
+
   .notice {
     border: 1px solid var(--rule-strong); background: var(--surface);
     border-radius: 3px; padding: 1rem 1.2rem; margin: 0 0 1.4rem; font-size: .88rem;
@@ -242,7 +252,7 @@
     p, li, td, th { color: #000; }
     .sub2, .glance .qual, .kv td:first-child, thead th, caption { color: #333 !important; }
     table, thead { break-inside: avoid; }
-    tr, .decision, .callout, .concern, .notice, ol.alerts > li { break-inside: avoid; }
+    tr, .decision, .callout, .concern, .welcome, .notice, ol.alerts > li { break-inside: avoid; }
     .sec-foot { break-before: avoid; color: #444; }
     a { color: inherit; text-decoration: none; }
     .runfoot {
@@ -278,6 +288,20 @@
       <span>14 villas, San Jos&eacute; del Cabo, BCS</span>
       <span class="meta-sep">&bull;</span>
       <span>Rev&nbsp;A &middot; 2026-09-09</span>
+    </div>
+
+    <div class="welcome">
+      <span class="lbl">A note to owners</span>
+      <p>Our treasure of an enclave in Sampaguita continues to be wonderful and enjoyed by our families
+      and friends, year over year. The weather has been good and our grounds are as beautiful as ever.
+      We are looking forward to a beautiful season of occupancy, and with the support of our new
+      Property Manager, Gabriela Alfaro, everything should be in order. Our maintenance crew, led by
+      Ramon, continues to make our oasis special.</p>
+      <p>At the same time, keeping up with major repairs and rising costs &mdash; as you will see in
+      this report &mdash; means this year's Annual General Meeting brings some difficult decisions.
+      Working through them together now will help put the Association on a more stable footing going
+      forward.</p>
+      <p class="sign">&mdash; From your neighbours on the Sampaguita Board</p>
     </div>
 
     <div class="concern">
