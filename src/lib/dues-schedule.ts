@@ -76,7 +76,12 @@ export function duesInstalments(
 ): DuesInstalment[] {
   const perYear = DUES_FREQUENCY_PER_YEAR[frequency]
   const monthsEach = 12 / perYear
-  const amount = annual / perYear
+
+  // Whole-dollar instalments that sum exactly to the rounded annual total -
+  // the extra cents go on the earliest instalments.
+  const totalRounded = Math.round(annual)
+  const base = Math.floor(totalRounded / perYear)
+  const remainder = totalRounded - base * perYear
 
   const label = (i: number) => {
     if (frequency === "QUARTERLY") return `Q${i + 1} ${year}`
@@ -90,6 +95,6 @@ export function duesInstalments(
   return Array.from({ length: perYear }, (_, i) => ({
     label: label(i),
     dueDate: new Date(Date.UTC(year, Math.round(i * monthsEach), 1)),
-    amount,
+    amount: base + (i < remainder ? 1 : 0),
   }))
 }

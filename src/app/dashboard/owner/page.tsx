@@ -19,6 +19,8 @@ import { AnnouncementList } from "@/components/announcements/announcement-list"
 import { getUpcomingKeyDates } from "@/lib/key-dates"
 import { isVisibleToRoles, notExpiredAnnouncement, isLiveAnnouncement } from "@/lib/audience"
 import { ConfirmTransferButton } from "@/components/units/confirm-transfer-button"
+import { getOwnerFinancialOverview } from "@/lib/owner-financial-overview"
+import { OwnerFinancialDetail } from "@/components/owner/owner-financial-detail"
 import type { Role } from "@/generated/prisma"
 
 function statusLabel(status: string) {
@@ -70,7 +72,7 @@ export default async function OwnerDashboard() {
   const isBoardMember = session.user.isBoardMember
   const viewerRoles: Role[] = isBoardMember ? ["OWNER", "BOARD_MEMBER"] : ["OWNER"]
 
-  const [ownerships, latestMeeting, unitLabel, announcementRows, orgMemberships, pendingSellerConfirmations] = await Promise.all([
+  const [ownerships, latestMeeting, unitLabel, announcementRows, orgMemberships, pendingSellerConfirmations, financialOverview] = await Promise.all([
     db.unitOwnership.findMany({
       where: { ownerId: session.user.id, isCurrent: true },
       include: {
@@ -107,6 +109,7 @@ export default async function OwnerDashboard() {
       where: { ownerId: session.user.id, confirmedAt: null, request: { status: "PENDING" } },
       include: { request: { include: { unit: true } } },
     }),
+    getOwnerFinancialOverview(session),
   ])
 
   const unitIds = ownerships.map((o) => o.unitId)
@@ -403,6 +406,25 @@ export default async function OwnerDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Full money picture - the same detail as the Dues & Assessments
+          page, surfaced on landing per Dara: anticipated quarterly dues +
+          due dates, assessments, charges, and the PM / Unit Manager /
+          Security contacts. */}
+      <div>
+        <div className="flex items-baseline justify-between mb-2">
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <DollarSign className="h-4 w-4" /> Dues, assessments &amp; contacts
+          </h2>
+          <Link
+            href="/dashboard/owner/financial/dues"
+            className="text-xs text-blue-600 hover:underline"
+          >
+            Open Dues &amp; Assessments
+          </Link>
+        </div>
+        <OwnerFinancialDetail data={financialOverview} />
+      </div>
 
       {/* Announcements */}
       <Card>
