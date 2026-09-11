@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 import { downloadCsv } from "@/lib/csv"
+import { formatMoney } from "@/lib/currency"
+import type { Currency } from "@/generated/prisma"
 
 interface ComparisonLineItem {
   label: string
@@ -16,11 +18,8 @@ interface ComparisonBudget {
   year: number
   version: string
   status: string
+  currency: Currency
   lineItems: ComparisonLineItem[]
-}
-
-function money(n: number) {
-  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
 export function BudgetComparisonTable({ budgets }: { budgets: ComparisonBudget[] }) {
@@ -50,7 +49,7 @@ export function BudgetComparisonTable({ budgets }: { budgets: ComparisonBudget[]
   }
 
   function handleExport() {
-    const header = ["Line Item", ...sorted.map((b) => `${b.year} ${b.version} (Budgeted)`), ...sorted.map((b) => `${b.year} ${b.version} (Actual)`)]
+    const header = ["Line Item", ...sorted.map((b) => `${b.year} ${b.version} ${b.currency} (Budgeted)`), ...sorted.map((b) => `${b.year} ${b.version} ${b.currency} (Actual)`)]
     const rows: (string | number)[][] = [header]
     for (const label of labels) {
       const budgetedCells = sorted.map((b) => cellFor(b, label)?.budgetedAmount ?? "")
@@ -70,14 +69,16 @@ export function BudgetComparisonTable({ budgets }: { budgets: ComparisonBudget[]
       </div>
       <Card className="py-0 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
-                <th className="text-left font-medium px-3 py-2">Line Item</th>
+                <th className="text-left font-medium px-3 py-1.5">Line Item</th>
                 {sorted.map((b) => (
-                  <th key={b.id} className="text-right font-medium px-3 py-2">
+                  <th key={b.id} className="text-right font-medium px-2 py-1.5 w-24">
                     <div>{b.year}</div>
-                    <div className="font-normal text-gray-400">{b.version}</div>
+                    <div className="font-normal text-gray-400">
+                      {b.version} · {b.currency}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -85,16 +86,18 @@ export function BudgetComparisonTable({ budgets }: { budgets: ComparisonBudget[]
             <tbody className="divide-y">
               {labels.map((label) => (
                 <tr key={label}>
-                  <td className="px-3 py-2">{label}</td>
+                  <td className="px-3 py-1.5 truncate">{label}</td>
                   {sorted.map((b) => {
                     const item = cellFor(b, label)
                     return (
-                      <td key={b.id} className="text-right px-3 py-2 tabular-nums">
+                      <td key={b.id} className="text-right px-2 py-1.5 tabular-nums">
                         {item ? (
                           <>
-                            {money(item.budgetedAmount)}
+                            {formatMoney(item.budgetedAmount, b.currency)}
                             {item.actualAmount != null && (
-                              <div className="text-xs text-gray-400">actual {money(item.actualAmount)}</div>
+                              <div className="text-xs text-gray-400">
+                                actual {formatMoney(item.actualAmount, b.currency)}
+                              </div>
                             )}
                           </>
                         ) : (
@@ -108,10 +111,10 @@ export function BudgetComparisonTable({ budgets }: { budgets: ComparisonBudget[]
             </tbody>
             <tfoot>
               <tr className="border-t bg-gray-50 font-semibold">
-                <td className="px-3 py-2">Total</td>
+                <td className="px-3 py-1.5">Total</td>
                 {sorted.map((b) => (
-                  <td key={b.id} className="text-right px-3 py-2 tabular-nums">
-                    {money(totalFor(b))}
+                  <td key={b.id} className="text-right px-2 py-1.5 tabular-nums">
+                    {formatMoney(totalFor(b), b.currency)}
                   </td>
                 ))}
               </tr>

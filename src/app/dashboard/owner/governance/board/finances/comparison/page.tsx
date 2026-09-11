@@ -47,6 +47,7 @@ export default async function OwnerBoardBudgetComparisonPage() {
             year: b.year,
             version: b.version,
             status: b.status,
+            currency: b.currency,
             lineItems: b.lineItems.map((i) => ({
               label: i.label,
               budgetedAmount: i.budgetedAmount,
@@ -65,6 +66,7 @@ export default async function OwnerBoardBudgetComparisonPage() {
               year: b.year,
               version: b.version,
               status: b.status,
+              currency: b.currency,
               lineItems: b.lineItems.map((i) => ({
                 label: i.label,
                 budgetedAmount: i.budgetedAmount,
