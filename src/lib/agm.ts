@@ -254,12 +254,66 @@ export async function getAgmConsoleData(orgId: string) {
   return { agm, ownerByUnit, tally, nextYear, checklist, documentItems, availableDocuments }
 }
 
-function loadAgmDocumentItems(agmId: string) {
+export function loadAgmDocumentItems(agmId: string) {
   return db.agmDocumentItem.findMany({
     where: { agmId },
     include: { document: { select: { id: true, title: true, fileUrl: true } } },
     orderBy: { number: "asc" },
   })
+}
+
+// Where each generated manifest item actually lives - these are computed
+// live (never a persisted Document row, see addAgmDocumentItem), so the
+// Document Library can only link out to the page that renders them, not a
+// file. Board-only routes: only shown to a Board/PM viewer, or an owner who
+// is also a Board Member (same three-way check those pages use themselves).
+const GENERATED_DOC_HREF: Record<string, string> = {
+  "at-a-glance": "/dashboard/board/agm/documents/summary",
+  "cover-letter": "/dashboard/board/agm/documents/cover-email",
+  "convocatoria-regime": "/dashboard/board/agm/documents/convocatoria?track=REGIME",
+  "convocatoria-civil": "/dashboard/board/agm/documents/convocatoria?track=CIVIL_ASSOCIATION",
+  dues: "/dashboard/board/agm/documents/dues",
+}
+
+export type AgmLibraryDocumentItem = {
+  id: string
+  number: number
+  title: string
+  revision: string
+  source: "GENERATED" | "UPLOADED"
+  notes: string | null
+  href: string | null
+}
+
+// The AGM package's document manifest, shaped for the general Document
+// Library pages (Board/PM/Owner) rather than the AGM console - the
+// generated items (cover letter, both convocatorias, dues schedule,
+// at-a-glance summary) never get a Document row of their own, so without
+// this they simply never showed up as "documents" anywhere outside the AGM
+// console's own manifest table.
+export async function getAgmDocumentInventoryForLibrary(
+  orgId: string
+): Promise<{ agmYear: number; items: AgmLibraryDocumentItem[] } | null> {
+  const agm = await loadCurrentAgm(orgId)
+  if (!agm) return null
+  const items = await loadAgmDocumentItems(agm.id)
+  if (items.length === 0) return null
+
+  return {
+    agmYear: agm.year,
+    items: items.map((i) => ({
+      id: i.id,
+      number: i.number,
+      title: i.title,
+      revision: i.revision,
+      source: i.source,
+      notes: i.notes,
+      href:
+        i.source === "GENERATED"
+          ? (GENERATED_DOC_HREF[i.generatedKey ?? ""] ?? null)
+          : (i.document?.fileUrl ?? null),
+    })),
+  }
 }
 
 // One of the package links shown in the banner. `setPreference` is only

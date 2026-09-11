@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileText } from "lucide-react"
@@ -11,15 +12,19 @@ import {
 } from "@/lib/document-styles"
 import { canPreviewRole } from "@/lib/role-access"
 import { NewDocumentDialog } from "@/app/dashboard/board/documents/new-document-dialog"
+import { getAgmDocumentInventoryForLibrary } from "@/lib/agm"
 
 export default async function PropertyManagerDocumentsPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "PROPERTY_MANAGER")) redirect("/dashboard")
 
-  const documents = await db.document.findMany({
-    where: { orgId: session.user.orgId ?? undefined },
-    orderBy: { createdAt: "desc" },
-  })
+  const [documents, agmInventory] = await Promise.all([
+    db.document.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      orderBy: { createdAt: "desc" },
+    }),
+    getAgmDocumentInventoryForLibrary(session.user.orgId ?? ""),
+  ])
 
   const grouped = documents.reduce<Record<string, typeof documents>>((acc, d) => {
     if (!acc[d.category]) acc[d.category] = []
@@ -38,6 +43,37 @@ export default async function PropertyManagerDocumentsPage() {
         </div>
         <NewDocumentDialog />
       </div>
+
+      {agmInventory && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4" /> AGM {agmInventory.agmYear} Package
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {agmInventory.items.map((item) => (
+              <div key={item.id} className="flex items-start justify-between gap-3 bg-gray-50 rounded-lg px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    #{item.number} {item.title}
+                    <span className="text-xs text-gray-400 font-normal"> · Rev {item.revision}</span>
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {item.source === "GENERATED" ? "Generated for the package" : "Uploaded"}
+                    {item.notes ? ` · ${item.notes}` : ""}
+                  </p>
+                </div>
+                {item.href && (
+                  <Link href={item.href} target="_blank" className="text-xs text-blue-600 hover:underline shrink-0">
+                    View
+                  </Link>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

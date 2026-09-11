@@ -1,20 +1,25 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { db } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
 import { FileText } from "lucide-react"
 import { NewDocumentDialog } from "./new-document-dialog"
 import { documentCategoryLabel, documentCategoryColor, documentVisibilityLabel, documentVisibilityColor } from "@/lib/document-styles"
 import { canPreviewRole } from "@/lib/role-access"
+import { getAgmDocumentInventoryForLibrary } from "@/lib/agm"
 
 export default async function DocumentsPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
 
-  const documents = await db.document.findMany({
-    where: { orgId: session.user.orgId ?? undefined },
-    orderBy: { createdAt: "desc" },
-  })
+  const [documents, agmInventory] = await Promise.all([
+    db.document.findMany({
+      where: { orgId: session.user.orgId ?? undefined },
+      orderBy: { createdAt: "desc" },
+    }),
+    getAgmDocumentInventoryForLibrary(session.user.orgId ?? ""),
+  ])
 
   const grouped = documents.reduce<Record<string, typeof documents>>(
     (acc, d) => {
@@ -37,6 +42,51 @@ export default async function DocumentsPage() {
         </div>
         <NewDocumentDialog />
       </div>
+
+      {agmInventory && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs px-2 py-1 rounded-full font-medium bg-sky-100 text-sky-800">
+              AGM {agmInventory.agmYear} Package
+            </span>
+            <span className="text-sm text-gray-400">
+              {agmInventory.items.length} document{agmInventory.items.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {agmInventory.items.map((item) => (
+              <Card key={item.id}>
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <FileText className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm">
+                          #{item.number} {item.title}
+                          <span className="text-xs text-gray-400 font-normal"> · Rev {item.revision}</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {item.source === "GENERATED" ? "Generated for the package" : "Uploaded"}
+                          {item.notes ? ` · ${item.notes}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    {item.href && (
+                      <Link
+                        href={item.href}
+                        target="_blank"
+                        className="text-xs text-blue-600 hover:underline shrink-0"
+                      >
+                        View
+                      </Link>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {Object.entries(grouped).map(([category, docs]) => {
         return (
