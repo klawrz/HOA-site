@@ -16,6 +16,15 @@ async function requireCurrentOwner(unitId: string, userId: string) {
   })
 }
 
+// Mirrors requireOwnerAccess (src/lib/require-owner-access.ts): an
+// ACCOUNT_OWNER who has also personally claimed a unit acts as its owner
+// too, same as a plain OWNER-role account - requireCurrentOwner still does
+// the real per-unit authorization below, this just stops that additive
+// role from being rejected before it gets there.
+function isOwnerRole(role: string | null | undefined) {
+  return role === "OWNER" || role === "ACCOUNT_OWNER"
+}
+
 function revalidateUnitPaths(unitId: string) {
   revalidatePath(`/dashboard/owner/units/${unitId}`)
   revalidatePath("/dashboard/owner")
@@ -31,7 +40,7 @@ export async function addUnitContact(data: {
   notes?: string
 }) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") return { success: false }
+  if (!session || !isOwnerRole(session.user.role)) return { success: false }
   if (!(await requireCurrentOwner(data.unitId, session.user.id))) return { success: false }
 
   await db.unitContact.create({
@@ -51,7 +60,7 @@ export async function addUnitContact(data: {
 
 export async function removeUnitContact(contactId: string) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") return { success: false }
+  if (!session || !isOwnerRole(session.user.role)) return { success: false }
 
   const contact = await db.unitContact.findUnique({ where: { id: contactId } })
   if (!contact) return { success: false }
@@ -65,7 +74,7 @@ export async function removeUnitContact(contactId: string) {
 
 export async function assignUnitManager(unitId: string, userEmail: string) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") return { success: false }
+  if (!session || !isOwnerRole(session.user.role)) return { success: false }
   if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
 
   const user = await db.user.findUnique({ where: { email: userEmail.trim().toLowerCase() } })
@@ -91,7 +100,7 @@ export async function assignUnitManager(unitId: string, userEmail: string) {
 // through the Account Owner's org-wide invite panel.
 export async function inviteUnitManager(unitId: string, email: string) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.orgId) return { success: false }
+  if (!session || !isOwnerRole(session.user.role) || !session.user.orgId) return { success: false }
   if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
 
   const trimmedEmail = email.trim().toLowerCase()
@@ -133,7 +142,7 @@ export async function addManualUnitManager(
   data: { name: string; phone?: string; email?: string; notes?: string }
 ) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") return { success: false }
+  if (!session || !isOwnerRole(session.user.role)) return { success: false }
   if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
 
   const name = data.name.trim()
@@ -155,7 +164,7 @@ export async function addManualUnitManager(
 
 export async function setSelfManaged(unitId: string, selfManaged: boolean) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") return { success: false }
+  if (!session || !isOwnerRole(session.user.role)) return { success: false }
   if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
 
   await db.unit.update({ where: { id: unitId }, data: { selfManaged } })
@@ -221,7 +230,7 @@ export async function setUnitAgmDocumentPreference(unitId: string, preference: A
 
 export async function removeUnitManager(assignmentId: string) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") return { success: false }
+  if (!session || !isOwnerRole(session.user.role)) return { success: false }
 
   const assignment = await db.unitManagerAssignment.findUnique({ where: { id: assignmentId } })
   if (!assignment) return { success: false }
@@ -239,7 +248,7 @@ export async function setUnitManagerGrant(
   level: UnitManagerLevel | null
 ) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER") return { success: false }
+  if (!session || !isOwnerRole(session.user.role)) return { success: false }
 
   const assignment = await db.unitManagerAssignment.findUnique({ where: { id: assignmentId } })
   if (!assignment) return { success: false }
@@ -267,7 +276,7 @@ export async function setUnitManagerGrant(
 // apply under their own session.
 export async function getImportedUnitContactData(unitId: string) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.email) return null
+  if (!session || !isOwnerRole(session.user.role) || !session.user.email) return null
   if (!(await requireCurrentOwner(unitId, session.user.id))) return null
 
   const invite = await db.invite.findFirst({
@@ -310,7 +319,7 @@ async function clearImportedUnitContactData(inviteId: string) {
 
 export async function dismissImportedUnitContactData(unitId: string) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.email) return { success: false }
+  if (!session || !isOwnerRole(session.user.role) || !session.user.email) return { success: false }
   if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
 
   const invite = await db.invite.findFirst({
@@ -329,7 +338,7 @@ export async function dismissImportedUnitContactData(unitId: string) {
 // themselves (never overwrites a value they entered).
 export async function applyImportedUnitContactData(unitId: string) {
   const session = await auth()
-  if (!session || session.user.role !== "OWNER" || !session.user.email) return { success: false }
+  if (!session || !isOwnerRole(session.user.role) || !session.user.email) return { success: false }
   if (!(await requireCurrentOwner(unitId, session.user.id))) return { success: false }
 
   const invite = await db.invite.findFirst({
