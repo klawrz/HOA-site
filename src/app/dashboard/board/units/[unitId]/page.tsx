@@ -20,7 +20,7 @@ import { canPreviewRole } from "@/lib/role-access"
 import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
 import { effectiveAllocations } from "@/lib/unit-allocation"
 import { convertToSecondary, formatMoney } from "@/lib/currency"
-import { perPaymentDues, duesPaymentDates, DUES_FREQUENCY_PER_YEAR, DUES_FREQUENCY_LABEL } from "@/lib/dues"
+import { duesPaymentDates, DUES_FREQUENCY_PER_YEAR, DUES_FREQUENCY_LABEL } from "@/lib/dues"
 import { occupancyTypeLabel, occupancyTypeColor } from "@/lib/occupancy-styles"
 import { formatDate } from "@/lib/utils"
 import { Currency } from "@/generated/prisma"
@@ -121,15 +121,17 @@ export default async function BoardUnitDetailPage({
   const duesBudgetCurrency = (duesBudget?.currency ?? org?.baseCurrency ?? "USD") as Currency
   const duesBudgetRate = duesBudget?.exchangeRate ?? org?.currentExchangeRate ?? null
   const duesBudgetIsApproved = !!approvedBudget
-  const annualDues = duesBudgetTotal != null ? duesBudgetTotal * (allocationPercent / 100) : null
-  const perPayment = annualDues != null ? perPaymentDues(annualDues, unit.duesFrequency) : null
-  const paymentsPerYear = DUES_FREQUENCY_PER_YEAR[unit.duesFrequency]
-  const paymentDates =
-    perPayment != null
-      ? duesPaymentDates(unit.duesFrequency, duesBudget?.year ?? new Date().getFullYear())
-      : []
-  const fmtPaymentDate = (d: Date) =>
-    d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
+  const estimatedAnnualDues = duesBudgetTotal != null ? duesBudgetTotal * (allocationPercent / 100) : null
+
+  // Prefer what was actually billed - an ISSUED regular-dues assessment
+  // charge, always in the org's base currency - over the estimate above,
+  // which can drift from the real figure (e.g. it folds in budget lines
+  // that are actually billed through a separate special assessment).
+  const realDuesCharge =
+    unit.assessmentCharges
+      .filter((c) => c.assessment.type === "REGULAR_DUES")
+      .sort((a, b) => b.assessment.dueDate.getTime() - a.assessment.dueDate.getTime())[0] ?? null
+  const orgRate = org?.currentExchangeRate ?? duesBudgetRate
 
   const pesoAmount = (nBase: number): number | null =>
     duesBudgetCurrency === "MXN"
@@ -143,6 +145,29 @@ export default async function BoardUnitDetailPage({
       : duesBudgetRate != null
         ? convertToSecondary(nBase, duesBudgetRate, "MXN")
         : null
+
+  const annualDuesPeso = realDuesCharge
+    ? realDuesCharge.amountDue
+    : estimatedAnnualDues != null
+      ? pesoAmount(estimatedAnnualDues)
+      : null
+  const annualDuesUsd = realDuesCharge
+    ? orgRate != null
+      ? convertToSecondary(realDuesCharge.amountDue, orgRate, "MXN")
+      : null
+    : estimatedAnnualDues != null
+      ? usdAmount(estimatedAnnualDues)
+      : null
+
+  const paymentsPerYear = DUES_FREQUENCY_PER_YEAR[unit.duesFrequency]
+  const perPaymentPeso = annualDuesPeso != null ? annualDuesPeso / paymentsPerYear : null
+  const perPaymentUsd = annualDuesUsd != null ? annualDuesUsd / paymentsPerYear : null
+  const paymentAnchorYear =
+    realDuesCharge?.assessment.dueDate.getUTCFullYear() ?? duesBudget?.year ?? new Date().getFullYear()
+  const paymentDates = perPaymentPeso != null ? duesPaymentDates(unit.duesFrequency, paymentAnchorYear) : []
+  const fmtPaymentDate = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
+
   const fmtPeso = (n: number | null) => (n != null ? formatMoney(n, "MXN") : "—")
   const fmtUsd = (n: number | null) => (n != null ? formatMoney(n, "USD") : "—")
 
@@ -333,23 +358,25 @@ export default async function BoardUnitDetailPage({
 
               <span className="font-medium text-gray-700">
                 Dues total, annual
-                {duesBudget ? (duesBudgetIsApproved ? "" : " (proposed budget)") : " (no budget set)"}
+                {realDuesCharge
+                  ? ""
+                  : duesBudget
+                    ? duesBudgetIsApproved
+                      ? " (estimated)"
+                      : " (proposed budget)"
+                    : " (no budget set)"}
               </span>
-              <span className="text-right font-semibold tabular-nums">
-                {annualDues != null ? fmtPeso(pesoAmount(annualDues)) : "—"}
-              </span>
-              <span className="text-right font-semibold tabular-nums">
-                {annualDues != null ? fmtUsd(usdAmount(annualDues)) : "—"}
-              </span>
+              <span className="text-right font-semibold tabular-nums">{fmtPeso(annualDuesPeso)}</span>
+              <span className="text-right font-semibold tabular-nums">{fmtUsd(annualDuesUsd)}</span>
             </div>
 
-            {perPayment != null && paymentDates.length > 0 && (
+            {perPaymentPeso != null && paymentDates.length > 0 && (
               <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 border-t pt-2">
                 {paymentDates.map((d, i) => (
                   <Fragment key={i}>
                     <span className="text-gray-500">{fmtPaymentDate(d)}</span>
-                    <span className="text-right tabular-nums">{fmtPeso(pesoAmount(perPayment))}</span>
-                    <span className="text-right tabular-nums">{fmtUsd(usdAmount(perPayment))}</span>
+                    <span className="text-right tabular-nums">{fmtPeso(perPaymentPeso)}</span>
+                    <span className="text-right tabular-nums">{fmtUsd(perPaymentUsd)}</span>
                   </Fragment>
                 ))}
               </div>

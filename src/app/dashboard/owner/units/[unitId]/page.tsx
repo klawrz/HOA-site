@@ -16,7 +16,7 @@ import { parseSpecialties } from "@/lib/unit-manager-specialties"
 import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
 import { effectiveAllocations } from "@/lib/unit-allocation"
 import { convertToSecondary, formatMoney } from "@/lib/currency"
-import { perPaymentDues, duesPaymentDates, DUES_FREQUENCY_PER_YEAR } from "@/lib/dues"
+import { duesPaymentDates, DUES_FREQUENCY_PER_YEAR } from "@/lib/dues"
 import { DuesFrequencySelect } from "./dues-frequency-select"
 import { Currency } from "@/generated/prisma"
 import { Receipt } from "lucide-react"
@@ -47,6 +47,10 @@ export default async function UnitDetailPage({
           occupancyEntries: { orderBy: { startDate: "asc" } },
           leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
           occupancyShareLinks: { where: { revokedAt: null }, orderBy: { createdAt: "desc" } },
+          assessmentCharges: {
+            where: { assessment: { status: "ISSUED" } },
+            include: { assessment: true },
+          },
         },
       },
     },
@@ -101,7 +105,7 @@ export default async function UnitDetailPage({
       ? `${duesBudget.year} approved operating budget`
       : `Proposed ${duesBudget.periodLabel || duesBudget.year} — not yet approved`
     : "Operating budget — not yet set"
-  const annualDues = duesBudgetTotal != null ? duesBudgetTotal * (allocationPercent / 100) : null
+  const estimatedAnnualDues = duesBudgetTotal != null ? duesBudgetTotal * (allocationPercent / 100) : null
   // Show pesos and US$ side by side regardless of which is the budget's base.
   const pesoAmount = (nBase: number): number | null =>
     duesBudgetCurrency === "MXN"
@@ -117,12 +121,36 @@ export default async function UnitDetailPage({
         : null
   const fmtPeso = (n: number | null) => (n != null ? formatMoney(n, "MXN") : "—")
   const fmtUsd = (n: number | null) => (n != null ? formatMoney(n, "USD") : "—")
-  const perPayment = annualDues != null ? perPaymentDues(annualDues, unit.duesFrequency) : null
+
+  // Prefer what was actually billed - an ISSUED regular-dues assessment
+  // charge, always in the org's base currency - over the estimate above,
+  // which can drift from the real figure (e.g. it folds in budget lines
+  // that are actually billed through a separate special assessment).
+  const realDuesCharge =
+    unit.assessmentCharges
+      .filter((c) => c.assessment.type === "REGULAR_DUES")
+      .sort((a, b) => b.assessment.dueDate.getTime() - a.assessment.dueDate.getTime())[0] ?? null
+  const orgRate = org?.currentExchangeRate ?? duesBudgetRate
+
+  const annualDuesPeso = realDuesCharge
+    ? realDuesCharge.amountDue
+    : estimatedAnnualDues != null
+      ? pesoAmount(estimatedAnnualDues)
+      : null
+  const annualDuesUsd = realDuesCharge
+    ? orgRate != null
+      ? convertToSecondary(realDuesCharge.amountDue, orgRate, "MXN")
+      : null
+    : estimatedAnnualDues != null
+      ? usdAmount(estimatedAnnualDues)
+      : null
+
   const paymentsPerYear = DUES_FREQUENCY_PER_YEAR[unit.duesFrequency]
-  const paymentDates =
-    perPayment != null
-      ? duesPaymentDates(unit.duesFrequency, duesBudget?.year ?? new Date().getFullYear())
-      : []
+  const perPaymentPeso = annualDuesPeso != null ? annualDuesPeso / paymentsPerYear : null
+  const perPaymentUsd = annualDuesUsd != null ? annualDuesUsd / paymentsPerYear : null
+  const paymentAnchorYear =
+    realDuesCharge?.assessment.dueDate.getUTCFullYear() ?? duesBudget?.year ?? new Date().getFullYear()
+  const paymentDates = perPaymentPeso != null ? duesPaymentDates(unit.duesFrequency, paymentAnchorYear) : []
   const fmtPaymentDate = (d: Date) =>
     d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
 
@@ -261,33 +289,34 @@ export default async function UnitDetailPage({
             <p className="text-right tabular-nums">{duesBudgetTotal != null ? fmtPeso(pesoAmount(duesBudgetTotal)) : "—"}</p>
             <p className="text-right tabular-nums">{duesBudgetTotal != null ? fmtUsd(usdAmount(duesBudgetTotal)) : "—"}</p>
 
-            {annualDues != null && (
+            {annualDuesPeso != null && (
               <>
                 <p className="text-gray-700 font-medium border-t pt-1.5">Dues total, annual</p>
-                <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtPeso(pesoAmount(annualDues))}</p>
-                <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtUsd(usdAmount(annualDues))}</p>
+                <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtPeso(annualDuesPeso)}</p>
+                <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtUsd(annualDuesUsd)}</p>
               </>
             )}
           </div>
 
-          {perPayment != null && paymentDates.length > 0 && (
+          {perPaymentPeso != null && paymentDates.length > 0 && (
             <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 mt-2 border-t pt-2">
               {paymentDates.map((d, i) => (
                 <Fragment key={i}>
                   <p className="text-gray-500">{fmtPaymentDate(d)}</p>
-                  <p className="text-right tabular-nums">{fmtPeso(pesoAmount(perPayment))}</p>
-                  <p className="text-right tabular-nums">{fmtUsd(usdAmount(perPayment))}</p>
+                  <p className="text-right tabular-nums">{fmtPeso(perPaymentPeso)}</p>
+                  <p className="text-right tabular-nums">{fmtUsd(perPaymentUsd)}</p>
                 </Fragment>
               ))}
             </div>
           )}
 
-          {annualDues != null && (
+          {annualDuesPeso != null && (
             <p className="text-xs text-gray-400 pt-2">
-              {allocationPercent.toFixed(2)}% of the {duesBudgetIsApproved ? "approved" : "proposed"}{" "}
-              operating budget
-              {duesBudgetRate != null && `, converted at ${duesBudgetRate} MXN / USD`}
-              {!duesBudgetIsApproved && " — final once the budget is approved"}.
+              {realDuesCharge
+                ? `Billed as ${realDuesCharge.assessment.title}.`
+                : `${allocationPercent.toFixed(2)}% of the ${duesBudgetIsApproved ? "approved" : "proposed"} operating budget${
+                    duesBudgetRate != null ? `, converted at ${duesBudgetRate} MXN / USD` : ""
+                  }${!duesBudgetIsApproved ? " — final once the budget is approved" : ""}.`}
             </p>
           )}
           <Link
