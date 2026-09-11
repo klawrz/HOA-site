@@ -150,9 +150,11 @@ export default async function UnitDetailPage({
   const perPaymentUsd = annualDuesUsd != null ? annualDuesUsd / paymentsPerYear : null
   const paymentAnchorYear =
     realDuesCharge?.assessment.dueDate.getUTCFullYear() ?? duesBudget?.year ?? new Date().getFullYear()
-  const paymentDates = perPaymentPeso != null ? duesPaymentDates(unit.duesFrequency, paymentAnchorYear) : []
-  const fmtPaymentDate = (d: Date) =>
-    d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
+  // Month/day only (no year) - this same cadence applies to every year
+  // shown, so the year belongs on the column header, not repeated per row.
+  const paymentLabels = duesPaymentDates(unit.duesFrequency, paymentAnchorYear).map((d) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+  )
 
   // Forward-looking preview off the proposed (not yet approved) budget, so
   // an owner can see next year's likely cost even before the Board
@@ -179,6 +181,12 @@ export default async function UnitDetailPage({
         : forwardRate != null
           ? convertToSecondary(forwardAnnualEstimate, forwardRate, "MXN")
           : null
+  const forwardPerPaymentPeso = forwardPeso != null ? forwardPeso / paymentsPerYear : null
+  const forwardPerPaymentUsd = forwardUsd != null ? forwardUsd / paymentsPerYear : null
+
+  // USD equivalent for a peso figure that doesn't already have one worked
+  // out (Assessments and Charges are always in the org's base currency).
+  const usdFor = (mxn: number): number | null => (orgRate != null ? convertToSecondary(mxn, orgRate, "MXN") : null)
 
   // Assessments: one-off special levies (a roof project, a cash call) -
   // distinct from recurring dues above. DRAFT ones are shown as a heads-up,
@@ -304,7 +312,7 @@ export default async function UnitDetailPage({
             <Receipt className="h-4 w-4 text-gray-500" /> Dues & Assessments
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm space-y-4">
+        <CardContent className="text-sm space-y-5">
           {/* Dues */}
           <div className="space-y-3">
             <div className="flex items-baseline justify-between">
@@ -312,29 +320,26 @@ export default async function UnitDetailPage({
               <p className="font-semibold tabular-nums">{allocationPercent.toFixed(2)}%</p>
             </div>
 
-            <div className="flex items-center justify-between gap-3 border-t pt-3">
-              <div>
+            <div className="border-t pt-3">
+              <div className="flex items-center justify-between gap-3">
                 <p className="text-gray-500">Payment schedule</p>
-                <p className="text-xs text-gray-400">How you pay your dues — {paymentsPerYear} payment{paymentsPerYear !== 1 ? "s" : ""} a year</p>
+                <DuesFrequencySelect unitId={unit.id} current={unit.duesFrequency} />
               </div>
-              <DuesFrequencySelect unitId={unit.id} current={unit.duesFrequency} />
+              <p className="text-xs text-gray-400 mt-1">
+                {paymentsPerYear} payment{paymentsPerYear !== 1 ? "s" : ""} a year
+              </p>
             </div>
 
             <div
-              className={`grid gap-x-4 gap-y-1.5 border-t pt-3 ${forwardPeso != null ? "grid-cols-[1fr_auto_auto]" : "grid-cols-[1fr_auto]"}`}
+              className={`grid gap-x-3 gap-y-1.5 border-t pt-3 ${forwardPeso != null ? "grid-cols-[minmax(72px,1fr)_auto_auto]" : "grid-cols-[minmax(72px,1fr)_auto]"}`}
             >
               <div />
-              <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">
-                {duesBudget?.year ?? "MXN · US$"}
-                {realDuesCharge ? " (billed)" : duesBudgetIsApproved ? " (estimated)" : duesBudget ? " (proposed)" : ""}
-              </p>
+              <p className="text-right text-xs font-medium text-gray-400 tabular-nums">{duesBudget?.year ?? "—"}</p>
               {forwardPeso != null && (
-                <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">
-                  {forwardBudget?.year} (proposed)
-                </p>
+                <p className="text-right text-xs font-medium text-gray-400 tabular-nums">{forwardBudget?.year}</p>
               )}
 
-              <p className="text-gray-700 font-medium">Dues total, annual</p>
+              <p className="text-gray-700 font-medium">Annual dues</p>
               <p className="text-right tabular-nums">
                 <span className="font-semibold">{fmtPeso(annualDuesPeso)}</span>
                 <span className="block text-xs text-gray-400">{fmtUsd(annualDuesUsd)}</span>
@@ -345,25 +350,30 @@ export default async function UnitDetailPage({
                   <span className="block text-xs text-gray-400">{fmtUsd(forwardUsd)}</span>
                 </p>
               )}
-            </div>
-            {forwardPeso != null && (
-              <p className="text-xs text-gray-400">
-                {forwardBudget?.year} figure is from the proposed budget - not yet approved, for planning
-                only.
-              </p>
-            )}
 
-            {perPaymentPeso != null && paymentDates.length > 0 && (
-              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 border-t pt-2">
-                {paymentDates.map((d, i) => (
-                  <Fragment key={i}>
-                    <p className="text-gray-500">{fmtPaymentDate(d)}</p>
-                    <p className="text-right tabular-nums">{fmtPeso(perPaymentPeso)}</p>
-                    <p className="text-right tabular-nums">{fmtUsd(perPaymentUsd)}</p>
+              {perPaymentPeso != null &&
+                paymentLabels.map((label, i) => (
+                  <Fragment key={label}>
+                    <p className="text-gray-500 border-t pt-1.5">{label}</p>
+                    <p className="text-right tabular-nums border-t pt-1.5">
+                      <span>{fmtPeso(perPaymentPeso)}</span>
+                      <span className="block text-xs text-gray-400">{fmtUsd(perPaymentUsd)}</span>
+                    </p>
+                    {forwardPerPaymentPeso != null && (
+                      <p className="text-right tabular-nums border-t pt-1.5">
+                        <span>{fmtPeso(forwardPerPaymentPeso)}</span>
+                        <span className="block text-xs text-gray-400">{fmtUsd(forwardPerPaymentUsd)}</span>
+                      </p>
+                    )}
                   </Fragment>
                 ))}
-              </div>
-            )}
+            </div>
+            <p className="text-xs text-gray-400">
+              {duesBudget?.year}
+              {realDuesCharge ? " billed" : duesBudgetIsApproved ? " estimated" : duesBudget ? " proposed" : ""}
+              {forwardBudget && `; ${forwardBudget.year} is from the proposed budget - not yet approved, for planning only`}
+              .
+            </p>
 
             <div className="border-t pt-2 flex items-baseline justify-between text-xs">
               <span className="text-gray-400">Currently outstanding</span>
@@ -385,13 +395,14 @@ export default async function UnitDetailPage({
               return (
                 <div key={c.id} className="flex items-start justify-between gap-3 border-b last:border-b-0 pb-2 last:pb-0">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{c.assessment.title}</p>
+                    <p className="font-medium">{c.assessment.title}</p>
                     <p className="text-xs text-gray-400">
                       {isDraft ? "Proposed — not yet issued" : `Due ${formatDateTime(c.assessment.dueDate)}`}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-semibold tabular-nums">{formatMoney(c.amountDue, "MXN")}</p>
+                    <p className="text-xs text-gray-400 tabular-nums">{fmtUsd(usdFor(c.amountDue))}</p>
                     {!isDraft && (
                       <p className={`text-xs tabular-nums ${outstanding > 0.005 ? "text-red-600" : "text-green-700"}`}>
                         {outstanding > 0.005 ? `${formatMoney(outstanding, "MXN")} owed` : "Paid up"}
@@ -414,7 +425,7 @@ export default async function UnitDetailPage({
               return (
                 <div key={c.id} className="flex items-start justify-between gap-3 border-b last:border-b-0 pb-2 last:pb-0">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">
+                    <p className="font-medium">
                       {UNIT_CHARGE_TYPE_LABEL[c.type]}
                       {c.label && ` — ${c.label}`}
                     </p>
@@ -424,6 +435,7 @@ export default async function UnitDetailPage({
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-semibold tabular-nums">{formatMoney(c.amount, "MXN")}</p>
+                    <p className="text-xs text-gray-400 tabular-nums">{fmtUsd(usdFor(c.amount))}</p>
                     <p className={`text-xs tabular-nums ${outstanding > 0.005 ? "text-red-600" : "text-green-700"}`}>
                       {outstanding > 0.005 ? `${formatMoney(outstanding, "MXN")} owed` : "Paid up"}
                     </p>
