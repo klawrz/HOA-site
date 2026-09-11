@@ -85,7 +85,7 @@ export function BoardPriorityTiles({ data }: { data: BoardPriorityTileData }) {
       value: data.activeEmployeeCount > 0 ? `${data.activeEmployeeCount}` : "None",
     },
     {
-      href: "/dashboard/board/key-info/agm",
+      href: "/dashboard/board/agm",
       icon: CalendarDays,
       label: "AGM",
       color: "orange",

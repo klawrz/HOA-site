@@ -416,6 +416,8 @@ model Organization {
   keyContacts         KeyContact[]
   employees           Employee[]
   verificationRequests OrgVerificationRequest[]
+  agms                Agm[]
+  boardIssues         BoardIssue[]
 }
 
 // A User's membership in one Organization, with a role and board-member
@@ -918,6 +920,10 @@ model User {
   createdPMContracts          PMContract[]                @relation("PMContractCreator")
   approvedPMContracts         PMContract[]                @relation("PMContractApprover")
   ownerExpenses               OwnerExpense[]
+  createdAgms                 Agm[]
+  agmParticipationResponses   AgmParticipation[]          @relation("AgmParticipationRespondedBy")
+  agmProxyVerifications       AgmParticipation[]          @relation("AgmParticipationVerifiedBy")
+  createdBoardIssues          BoardIssue[]
 }
 
 model Unit {
@@ -963,6 +969,7 @@ model Unit {
   assessmentCharges   AssessmentCharge[]
   unitCharges         UnitCharge[]
   ownerExpenses       OwnerExpense[]
+  agmParticipation    AgmParticipation[]
 
   @@unique([orgId, number])
 }
@@ -1829,4 +1836,204 @@ model EmployeeGovId {
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])
+}
+
+// ---------------------------------------------------------------------------
+// Annual General Meeting (AGM)
+//
+// Richer than the singleton `KeyDate` (type AGM) that still backs the Key
+// Dates card and the read-only /agm pages: one physical meeting made of two
+// legal TRACKS (the Condominium Property Regime assembly and the Asociación
+// Civil assembly), each carrying its own convocatoria text, agenda, quorum
+// rule and minutes so the meeting produces both required legal acts.
+//
+// Rules encoded here come from the 2013 Regime (Articles II-III) and the
+// 2025 informative package - see the hope_agm_process memory:
+//   - 14 Villas = 100%; each Villa votes its Unit.allocationPercent share.
+//   - Quorum: >=50% of vote weight on first call, whoever's present on second.
+//   - <=35% of owners may be represented by proxy.
+//   - Must be current on dues to vote.
+// ---------------------------------------------------------------------------
+
+enum AgmStatus {
+  DRAFT
+  NOTICE_ISSUED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum AgmTrackKind {
+  REGIME // Asamblea General Anual Ordinaria - Condominium Property Regime
+  CIVIL_ASSOCIATION // Asamblea General de Asociados - Asociacion Civil
+}
+
+enum AgmAgendaItemKind {
+  ITEM // an orden del dia / agenda line
+  MOTION // a motion or resolution to be put to a vote
+}
+
+enum AgmParticipationStatus {
+  NO_RESPONSE
+  ATTENDING_IN_PERSON
+  BY_PROXY
+  NOT_ATTENDING
+}
+
+enum AgmProxyHolderType {
+  OWNER // another owner in the condominium
+  FAMILY // a family member of an owner
+  THIRD_PARTY // a named third party
+}
+
+model Agm {
+  id              String    @id @default(cuid())
+  orgId           String
+  year            Int
+  date            DateTime
+  location        String?
+  callTimes       String? // e.g. "2:00 pm first call / 2:15 pm second call"
+  chairpersonName String?
+  noticeIssuedOn  DateTime?
+  proxyDeadline   DateTime?
+  rsvpDeadline    DateTime?
+  minutesFiledOn  DateTime?
+  zoomInfo        String? // informational; per the Regime, remote attendance alone is not valid participation
+  notes           String?
+  // Where owners send scanned proxy letters - shown in the cover email.
+  proxyContactName  String?
+  proxyContactEmail String?
+  // People who sign the convocatoria / AGM documents, one name per line.
+  // Falls back to chairpersonName when empty.
+  signatoryNames    String?
+  status          AgmStatus @default(DRAFT)
+  createdById     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  org           Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy     User               @relation(fields: [createdById], references: [id])
+  tracks        AgmTrack[]
+  participation AgmParticipation[]
+
+  @@unique([orgId, year])
+}
+
+model AgmTrack {
+  id                 String       @id @default(cuid())
+  agmId              String
+  kind               AgmTrackKind
+  callBodyEs         String? // convocatoria narrative preceding the ORDEN DEL DIA
+  callBodyEn         String?
+  firstCallQuorumPct Float        @default(50) // fraction of total vote weight needed on first call
+  minutes            String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  agm   Agm             @relation(fields: [agmId], references: [id], onDelete: Cascade)
+  items AgmAgendaItem[]
+
+  @@unique([agmId, kind])
+}
+
+model AgmAgendaItem {
+  id              String            @id @default(cuid())
+  trackId         String
+  order           Int
+  numeral         String? // free-text label shown in the agenda, e.g. "I", "V.a"
+  kind            AgmAgendaItemKind @default(ITEM)
+  titleEs         String
+  titleEn         String
+  detailEs        String?
+  detailEn        String?
+  isExtraordinary Boolean           @default(false) // an extraordinary matter folded into the ordinary meeting
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  track AgmTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([trackId, order])
+}
+
+model AgmParticipation {
+  id                  String                 @id @default(cuid())
+  agmId               String
+  unitId              String
+  status              AgmParticipationStatus  @default(NO_RESPONSE)
+  eligibleToVote      Boolean? // null = not yet reviewed; console falls back to a dues-based suggestion
+  eligibilityNote     String?
+  proxyHolderType     AgmProxyHolderType?
+  proxyHolderName     String?
+  proxyHolderRelation String?
+  proxyRegimeDocUrl   String? // signed Regime proxy letter
+  proxyCivilDocUrl    String? // signed Civil Association proxy letter
+  proxyIdDocUrl       String? // passport / ID copy validating the signature
+  proxyVerifiedOn     DateTime?
+  proxyVerifiedById   String?
+  respondedById       String?
+  respondedAt         DateTime?
+  notes               String?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  agm             Agm   @relation(fields: [agmId], references: [id], onDelete: Cascade)
+  unit            Unit  @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  respondedBy     User? @relation("AgmParticipationRespondedBy", fields: [respondedById], references: [id])
+  proxyVerifiedBy User? @relation("AgmParticipationVerifiedBy", fields: [proxyVerifiedById], references: [id])
+
+  @@unique([agmId, unitId])
+}
+
+// ---------------------------------------------------------------------------
+// Board pending-matters tracker
+//
+// Manually-entered issues the Board / PM are working through - legal/tax
+// filings, compliance renewals, transition items, meeting prep. Distinct
+// from getBoardFinancialAlerts (derived from the numbers) and
+// getAttentionItems (hard status flags): these are things only a person
+// knows about. Open ones surface on the Board home as "Pending matters".
+// ---------------------------------------------------------------------------
+
+enum BoardIssueCategory {
+  LEGAL_TAX
+  COMPLIANCE
+  FINANCIAL
+  PROPERTY
+  GOVERNANCE
+  MEETING
+}
+
+enum BoardIssueStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  RESOLVED
+}
+
+enum BoardIssueSeverity {
+  INFO // shown as "Review"
+  ATTENTION
+  CRITICAL
+}
+
+model BoardIssue {
+  id           String             @id @default(cuid())
+  orgId        String
+  title        String
+  detail       String? // context / where it stands
+  category     BoardIssueCategory @default(GOVERNANCE)
+  status       BoardIssueStatus   @default(OPEN)
+  severity     BoardIssueSeverity @default(ATTENTION)
+  owner        String? // free text - who is on it (e.g. "Gabriela", "Accountant")
+  dueDate      DateTime?
+  costEstimate Float? // known estimate, in the org's base currency
+  costPending  Boolean            @default(false) // amount not yet determinable
+  resolvedAt   DateTime?
+  createdById  String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy User         @relation(fields: [createdById], references: [id])
+
+  @@index([orgId, status])
 }

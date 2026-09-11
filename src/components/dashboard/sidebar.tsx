@@ -6,7 +6,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   Building2, Home, Users, Wrench, FileText,
-  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2, Coins,
+  TicketIcon, LayoutDashboard, ChevronRight, ChevronDown, Mail, Settings, ShieldCheck, Landmark, DollarSign, Megaphone, Receipt, PiggyBank, TableProperties, TrendingDown, CalendarDays, FileBarChart, ListChecks, CheckCircle2, Coins, ClipboardList,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Role } from "@/generated/prisma"
@@ -81,6 +81,8 @@ const navByRole: Record<Role, NavEntry[]> = {
       ],
     },
     { label: "Reports", href: "/dashboard/property-manager/reports", icon: FileBarChart },
+    { label: "AGM", href: "/dashboard/property-manager/agm", icon: CalendarDays },
+    { label: "Pending Matters", href: "/dashboard/property-manager/issues", icon: ClipboardList },
     { label: "All Tickets", href: "/dashboard/property-manager/tickets", icon: TicketIcon },
     {
       label: "Units",
@@ -143,10 +145,12 @@ const navByRole: Record<Role, NavEntry[]> = {
       children: [
         { label: "Board Composition", href: "/dashboard/board/board", icon: Landmark },
         { label: "Setup Status", href: "/dashboard/account/setup", icon: ListChecks },
+        { label: "AGM", href: "/dashboard/board/agm", icon: CalendarDays },
         { label: "Meetings", href: "/dashboard/board/meetings", icon: Users },
         { label: "Announcements", href: "/dashboard/board/announcements", icon: Megaphone },
         { label: "Documents", href: "/dashboard/board/documents", icon: FileText },
         { label: "Compliance", href: "/dashboard/board/compliance", icon: ShieldCheck },
+        { label: "Pending Matters", href: "/dashboard/board/issues", icon: ClipboardList },
       ],
     },
     { label: "Units", href: "/dashboard/board/units", icon: Building2 },

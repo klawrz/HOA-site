@@ -7,6 +7,8 @@ import { SuspendedNotice } from "@/components/dashboard/suspended-notice"
 import { OrgDeletionBanner } from "@/components/dashboard/org-deletion-banner"
 import { ProvisionalWorkspaceBanner } from "@/components/dashboard/provisional-workspace-banner"
 import { getUnitsSetupStatus, getMembersSetupStatus, getBoardRosterSetupStatus, getPMSetupStatus } from "@/lib/setup-status"
+import { getAgmBannerInfo } from "@/lib/agm"
+import { AgmBanner } from "@/components/agm/agm-banner"
 
 export async function generateMetadata() {
   const session = await auth()
@@ -44,7 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // who wants it; completeOnboarding() is just a "did the guided pass"
   // marker now, not a hard prerequisite.
 
-  const [memberships, pendingDeletionRequest, ownsUnit, setupProgress] = await Promise.all([
+  const [memberships, pendingDeletionRequest, ownsUnit, setupProgress, agmBanner] = await Promise.all([
     db.membership.findMany({
       where: { userId: session.user.id },
       include: { org: { select: { id: true, name: true } } },
@@ -78,6 +80,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
           pm: pm.state === "done",
         }))
       : Promise.resolve(undefined),
+    getAgmBannerInfo(
+      session.user.orgId,
+      session.user.id,
+      session.user.role,
+      session.user.isBoardMember === true
+    ),
   ])
 
   const isAccountOwnerSlotOpen =
@@ -111,6 +119,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             .map((m) => ({ orgId: m.org.id, orgName: m.org.name, role: m.role }))}
         />
         <main className="flex-1 overflow-y-auto p-6 print:p-0 print:overflow-visible">
+          {agmBanner && <AgmBanner info={agmBanner} />}
           {org && org.verificationStatus === "PROVISIONAL" && (
             <ProvisionalWorkspaceBanner
               orgName={org.name}

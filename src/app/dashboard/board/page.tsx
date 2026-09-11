@@ -11,6 +11,8 @@ import { documentCategoryColor } from "@/lib/document-styles"
 import { getAttentionItems, attentionSeverityLabel } from "@/lib/attention"
 import { getBoardFinancialAlerts } from "@/lib/board-financial-alerts"
 import { BoardFinancialAlerts } from "@/components/board/board-financial-alerts"
+import { getBoardIssueAlerts } from "@/lib/board-issues"
+import { BoardIssuesAlerts } from "@/components/board/board-issues-alerts"
 import { greeting } from "@/lib/greeting"
 import { BoardRosterPrompt } from "@/components/dashboard/board-roster-prompt"
 import { canPreviewRole } from "@/lib/role-access"
@@ -33,13 +35,14 @@ export default async function BoardDashboard() {
   // lives in the Board layout so it sits on every Board page - this home
   // page keeps just the "As a Board Member..." card (greeting + what needs
   // attention right now) and the recent meetings/documents.
-  const [agm, minutesPending, attentionItems, financialAlerts, recentMeetings, recentDocs, ownBoardPosition] = await Promise.all([
+  const [agm, minutesPending, attentionItems, financialAlerts, issueAlerts, recentMeetings, recentDocs, ownBoardPosition] = await Promise.all([
     session.user.orgId
       ? db.keyDate.findUnique({ where: { orgId_type: { orgId: session.user.orgId, type: "AGM" } } })
       : Promise.resolve(null),
     db.meeting.count({ where: { orgId, date: { lte: now }, minutes: null } }),
     session.user.orgId ? getAttentionItems(session.user.orgId, "/dashboard/board") : Promise.resolve([]),
     session.user.orgId ? getBoardFinancialAlerts(session.user.orgId, "/dashboard/board") : Promise.resolve([]),
+    session.user.orgId ? getBoardIssueAlerts(session.user.orgId, "/dashboard/board") : Promise.resolve([]),
     db.meeting.findMany({ where: { orgId }, orderBy: { date: "desc" }, take: 4 }),
     db.document.findMany({ where: { orgId }, orderBy: { createdAt: "desc" }, take: 5 }),
     db.boardPosition.findFirst({ where: { orgId, userId: session.user.id }, select: { id: true } }),
@@ -71,6 +74,7 @@ export default async function BoardDashboard() {
   return (
     <div className="space-y-6">
       <BoardFinancialAlerts alerts={financialAlerts} />
+      <BoardIssuesAlerts alerts={issueAlerts} />
 
       {!ownBoardPosition && <BoardRosterPrompt href="/dashboard/board/board" />}
 
