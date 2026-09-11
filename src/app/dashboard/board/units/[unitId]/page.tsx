@@ -1,3 +1,4 @@
+import { Fragment } from "react"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect, notFound } from "next/navigation"
@@ -19,7 +20,7 @@ import { canPreviewRole } from "@/lib/role-access"
 import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
 import { effectiveAllocations } from "@/lib/unit-allocation"
 import { convertToSecondary, formatMoney } from "@/lib/currency"
-import { perPaymentDues, DUES_FREQUENCY_PER_YEAR, DUES_FREQUENCY_LABEL } from "@/lib/dues"
+import { perPaymentDues, duesPaymentDates, DUES_FREQUENCY_PER_YEAR, DUES_FREQUENCY_LABEL } from "@/lib/dues"
 import { occupancyTypeLabel, occupancyTypeColor } from "@/lib/occupancy-styles"
 import { formatDate } from "@/lib/utils"
 import { Currency } from "@/generated/prisma"
@@ -105,7 +106,6 @@ export default async function BoardUnitDetailPage({
   if (!unit) notFound()
 
   const unitName = unitDisplayName(unitLabel, unit.number, unit.building)
-  const owners = unit.ownerships.map((o) => o.owner)
   const primaryOwnership = unit.ownerships[0] ?? null
   const earliestSince = unit.ownerships.reduce<Date | null>(
     (min, o) => (min === null || o.since < min ? o.since : min),
@@ -124,6 +124,12 @@ export default async function BoardUnitDetailPage({
   const annualDues = duesBudgetTotal != null ? duesBudgetTotal * (allocationPercent / 100) : null
   const perPayment = annualDues != null ? perPaymentDues(annualDues, unit.duesFrequency) : null
   const paymentsPerYear = DUES_FREQUENCY_PER_YEAR[unit.duesFrequency]
+  const paymentDates =
+    perPayment != null
+      ? duesPaymentDates(unit.duesFrequency, duesBudget?.year ?? new Date().getFullYear())
+      : []
+  const fmtPaymentDate = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
 
   const pesoAmount = (nBase: number): number | null =>
     duesBudgetCurrency === "MXN"
@@ -235,167 +241,145 @@ export default async function BoardUnitDetailPage({
         </div>
       )}
 
-      {/* Ownership */}
+      {/* Unit Details: address, ownership, and dues standing all in one place */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Home className="h-4 w-4 text-gray-500" /> Ownership
+            <Home className="h-4 w-4 text-gray-500" /> Unit Details
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          {owners.length === 0 && <p className="text-gray-400">No current owner on record.</p>}
-          {unit.ownerships.map((o) => (
-            <div key={o.id} className="border-b last:border-b-0 pb-3 last:pb-0">
-              <p className="font-semibold">{o.owner.name ?? o.owner.email ?? "Unnamed owner"}</p>
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-gray-600 mt-0.5">
-                {o.owner.email && (
-                  <span className="flex items-center gap-1">
-                    <Mail className="h-3.5 w-3.5" /> {o.owner.email}
-                  </span>
-                )}
-                {o.owner.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="h-3.5 w-3.5" /> {o.owner.phone}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                Since {formatDate(o.since)}
-                {o.rentalPolicy && ` · ${rentalPolicyLabel[o.rentalPolicy] ?? o.rentalPolicy}`}
-              </p>
+        <CardContent className="space-y-4 text-sm">
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-600">
+              {unit.bedrooms != null && <span>{unit.bedrooms} bed</span>}
+              {unit.bathrooms != null && <span>{unit.bathrooms} bath</span>}
+              {unit.sqft != null && <span>{unit.sqft.toLocaleString()} sqft</span>}
+              {unit.floor != null && <span>Floor {unit.floor}</span>}
+              {unit.building && <span>Building {unit.building}</span>}
             </div>
-          ))}
-          <div className="border-t pt-3">
+            {unit.description && <p className="text-gray-600">{unit.description}</p>}
+            <div>
+              <p className="font-medium text-gray-700">{unitName}</p>
+              {propertyLines.length > 0 ? (
+                propertyLines.map((line, i) => (
+                  <p key={i} className="text-gray-500">
+                    {line}
+                  </p>
+                ))
+              ) : (
+                <p className="text-gray-400">Property address not on file.</p>
+              )}
+            </div>
+            {unit.civicRoll && (
+              <p className="text-xs text-gray-400">Civic roll number: {unit.civicRoll}</p>
+            )}
+            {(unit.accessCode || unit.accessCodeNotes) && (
+              <div className="flex items-start gap-2 rounded-lg bg-gray-50 border px-3 py-2 mt-1">
+                <KeyRound className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                <div>
+                  {unit.accessCode && (
+                    <p className="font-mono text-gray-700">{unit.accessCode}</p>
+                  )}
+                  {unit.accessCodeNotes && (
+                    <p className="text-xs text-gray-500">{unit.accessCodeNotes}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Ownership */}
+          <div className="border-t pt-4">
             <UnitOwnersEditor
               unitId={unit.id}
               owners={unit.ownerships.map((o) => ({
                 ownershipId: o.id,
                 name: o.owner.name,
                 email: o.owner.email,
+                phone: o.owner.phone,
+                sinceLabel: formatDate(o.since),
+                rentalPolicyLabel: o.rentalPolicy
+                  ? rentalPolicyLabel[o.rentalPolicy] ?? o.rentalPolicy
+                  : null,
               }))}
-              heading="Manage owners"
+              heading="Ownership"
             />
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Unit facts */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Unit Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-600">
-            {unit.bedrooms != null && <span>{unit.bedrooms} bed</span>}
-            {unit.bathrooms != null && <span>{unit.bathrooms} bath</span>}
-            {unit.sqft != null && <span>{unit.sqft.toLocaleString()} sqft</span>}
-            {unit.floor != null && <span>Floor {unit.floor}</span>}
-            {unit.building && <span>Building {unit.building}</span>}
-          </div>
-          {unit.description && <p className="text-gray-600">{unit.description}</p>}
-          <div>
-            <p className="font-medium text-gray-700">{unitName}</p>
-            {propertyLines.length > 0 ? (
-              propertyLines.map((line, i) => (
-                <p key={i} className="text-gray-500">
-                  {line}
-                </p>
-              ))
-            ) : (
-              <p className="text-gray-400">Property address not on file.</p>
-            )}
-          </div>
-          {unit.civicRoll && (
-            <p className="text-xs text-gray-400">Civic roll number: {unit.civicRoll}</p>
-          )}
-          {(unit.accessCode || unit.accessCodeNotes) && (
-            <div className="flex items-start gap-2 rounded-lg bg-gray-50 border px-3 py-2 mt-1">
-              <KeyRound className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
-              <div>
-                {unit.accessCode && (
-                  <p className="font-mono text-gray-700">{unit.accessCode}</p>
-                )}
-                {unit.accessCodeNotes && (
-                  <p className="text-xs text-gray-500">{unit.accessCodeNotes}</p>
-                )}
-              </div>
+          {/* Dues & Financial Standing */}
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
+              <Receipt className="h-3.5 w-3.5" /> Dues &amp; Financial Standing
+            </p>
+            <div className="flex items-baseline justify-between">
+              <span className="text-gray-500">Allocation share</span>
+              <span className="font-semibold tabular-nums">{allocationPercent.toFixed(2)}%</span>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="flex items-baseline justify-between">
+              <span className="text-gray-500">Payment schedule</span>
+              <span className="tabular-nums">
+                {DUES_FREQUENCY_LABEL[unit.duesFrequency]} ({paymentsPerYear}&times;/yr)
+              </span>
+            </div>
 
-      {/* Dues standing */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-gray-500" /> Dues &amp; Financial Standing
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm space-y-3">
-          <div className="flex items-baseline justify-between">
-            <span className="text-gray-500">Allocation share</span>
-            <span className="font-semibold tabular-nums">{allocationPercent.toFixed(2)}%</span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-gray-500">Payment schedule</span>
-            <span className="tabular-nums">
-              {DUES_FREQUENCY_LABEL[unit.duesFrequency]} ({paymentsPerYear}&times;/yr)
-            </span>
-          </div>
+            <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1.5 border-t pt-3">
+              <div />
+              <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">
+                MXN
+              </p>
+              <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">
+                US$
+              </p>
 
-          <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1.5 border-t pt-3">
-            <div />
-            <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">
-              MXN
-            </p>
-            <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">
-              US$
-            </p>
+              <span className="font-medium text-gray-700">
+                Dues total, annual
+                {duesBudget ? (duesBudgetIsApproved ? "" : " (proposed budget)") : " (no budget set)"}
+              </span>
+              <span className="text-right font-semibold tabular-nums">
+                {annualDues != null ? fmtPeso(pesoAmount(annualDues)) : "—"}
+              </span>
+              <span className="text-right font-semibold tabular-nums">
+                {annualDues != null ? fmtUsd(usdAmount(annualDues)) : "—"}
+              </span>
+            </div>
 
-            <span className="text-gray-500">
-              Annual dues
-              {duesBudget ? (duesBudgetIsApproved ? "" : " (proposed budget)") : " (no budget set)"}
-            </span>
-            <span className="text-right tabular-nums">
-              {annualDues != null ? fmtPeso(pesoAmount(annualDues)) : "—"}
-            </span>
-            <span className="text-right tabular-nums">
-              {annualDues != null ? fmtUsd(usdAmount(annualDues)) : "—"}
-            </span>
-
-            {perPayment != null && (
-              <>
-                <span className="text-gray-500">Each payment</span>
-                <span className="text-right tabular-nums">{fmtPeso(pesoAmount(perPayment))}</span>
-                <span className="text-right tabular-nums">{fmtUsd(usdAmount(perPayment))}</span>
-              </>
+            {perPayment != null && paymentDates.length > 0 && (
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 border-t pt-2">
+                {paymentDates.map((d, i) => (
+                  <Fragment key={i}>
+                    <span className="text-gray-500">{fmtPaymentDate(d)}</span>
+                    <span className="text-right tabular-nums">{fmtPeso(pesoAmount(perPayment))}</span>
+                    <span className="text-right tabular-nums">{fmtUsd(usdAmount(perPayment))}</span>
+                  </Fragment>
+                ))}
+              </div>
             )}
-          </div>
 
-          <div className="border-t pt-3 flex items-baseline justify-between">
-            <span className="text-gray-500">Currently outstanding</span>
-            <span
-              className={`font-semibold tabular-nums ${totalOutstanding > 0.005 ? "text-red-600" : "text-green-700"}`}
+            <div className="border-t pt-3 flex items-baseline justify-between">
+              <span className="text-gray-500">Currently outstanding</span>
+              <span
+                className={`font-semibold tabular-nums ${totalOutstanding > 0.005 ? "text-red-600" : "text-green-700"}`}
+              >
+                {totalOutstanding > 0.005
+                  ? formatMoney(totalOutstanding, duesBudgetCurrency)
+                  : "Paid up"}
+              </span>
+            </div>
+            {totalOutstanding > 0.005 && (
+              <p className="text-xs text-gray-400">
+                {formatMoney(assessmentOutstanding, duesBudgetCurrency)} in dues &amp; assessments
+                {unitChargeOutstanding > 0.005 &&
+                  ` · ${formatMoney(unitChargeOutstanding, duesBudgetCurrency)} in other charges`}
+                {nextDue && ` · next due ${formatDate(nextDue.assessment.dueDate)}`}
+              </p>
+            )}
+            <Link
+              href="/dashboard/board/finances/dues"
+              className="text-xs text-blue-600 hover:underline inline-block"
             >
-              {totalOutstanding > 0.005
-                ? formatMoney(totalOutstanding, duesBudgetCurrency)
-                : "Paid up"}
-            </span>
+              View the full dues roster
+            </Link>
           </div>
-          {totalOutstanding > 0.005 && (
-            <p className="text-xs text-gray-400">
-              {formatMoney(assessmentOutstanding, duesBudgetCurrency)} in dues &amp; assessments
-              {unitChargeOutstanding > 0.005 &&
-                ` · ${formatMoney(unitChargeOutstanding, duesBudgetCurrency)} in other charges`}
-              {nextDue && ` · next due ${formatDate(nextDue.assessment.dueDate)}`}
-            </p>
-          )}
-          <Link
-            href="/dashboard/board/finances/dues"
-            className="text-xs text-blue-600 hover:underline inline-block"
-          >
-            View the full dues roster
-          </Link>
         </CardContent>
       </Card>
 

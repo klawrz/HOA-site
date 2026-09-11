@@ -2,12 +2,19 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Pencil, Plus, X, Check } from "lucide-react"
+import { Pencil, Plus, X, Check, Phone, Mail } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { addUnitCoOwner, editUnitCoOwner, removeUnitCoOwner } from "@/app/actions/unit-ownership"
 
-type OwnerRow = { ownershipId: string; name: string | null; email: string | null }
+type OwnerRow = {
+  ownershipId: string
+  name: string | null
+  email: string | null
+  phone?: string | null
+  sinceLabel?: string | null
+  rentalPolicyLabel?: string | null
+}
 
 export function UnitOwnersEditor({
   unitId,
@@ -50,10 +57,12 @@ export function UnitOwnersEditor({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-gray-700">
-        {heading}
-        {owners.length > 1 && <span className="text-gray-400 font-normal"> · {owners.length} co-owners</span>}
-      </p>
+      {heading && (
+        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+          {heading}
+          {owners.length > 1 && <span className="normal-case"> · {owners.length} co-owners</span>}
+        </p>
+      )}
 
       <div className="divide-y rounded-lg border">
         {owners.length === 0 && (
@@ -92,10 +101,28 @@ export function UnitOwnersEditor({
               </div>
             </div>
           ) : (
-            <div key={o.ownershipId} className="flex items-center justify-between gap-3 px-3 py-2.5">
+            <div key={o.ownershipId} className="flex items-start justify-between gap-3 px-3 py-2.5">
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{o.name ?? "Unnamed owner"}</p>
-                <p className="text-xs text-gray-400 truncate">{o.email ?? "No email on file"}</p>
+                <p className="text-sm font-semibold truncate">{o.name ?? "Unnamed owner"}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mt-0.5">
+                  {o.email && (
+                    <span className="flex items-center gap-1 truncate">
+                      <Mail className="h-3.5 w-3.5 shrink-0" /> {o.email}
+                    </span>
+                  )}
+                  {o.phone && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3.5 w-3.5 shrink-0" /> {o.phone}
+                    </span>
+                  )}
+                </div>
+                {(o.sinceLabel || o.rentalPolicyLabel) && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {[o.sinceLabel && `Since ${o.sinceLabel}`, o.rentalPolicyLabel]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <Button

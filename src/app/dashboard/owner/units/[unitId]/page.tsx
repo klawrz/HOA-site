@@ -1,3 +1,4 @@
+import { Fragment } from "react"
 import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/db"
@@ -15,7 +16,7 @@ import { parseSpecialties } from "@/lib/unit-manager-specialties"
 import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
 import { effectiveAllocations } from "@/lib/unit-allocation"
 import { convertToSecondary, formatMoney } from "@/lib/currency"
-import { perPaymentDues, DUES_FREQUENCY_PER_YEAR } from "@/lib/dues"
+import { perPaymentDues, duesPaymentDates, DUES_FREQUENCY_PER_YEAR } from "@/lib/dues"
 import { DuesFrequencySelect } from "./dues-frequency-select"
 import { Currency } from "@/generated/prisma"
 import { Receipt } from "lucide-react"
@@ -118,6 +119,12 @@ export default async function UnitDetailPage({
   const fmtUsd = (n: number | null) => (n != null ? formatMoney(n, "USD") : "—")
   const perPayment = annualDues != null ? perPaymentDues(annualDues, unit.duesFrequency) : null
   const paymentsPerYear = DUES_FREQUENCY_PER_YEAR[unit.duesFrequency]
+  const paymentDates =
+    perPayment != null
+      ? duesPaymentDates(unit.duesFrequency, duesBudget?.year ?? new Date().getFullYear())
+      : []
+  const fmtPaymentDate = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
 
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
@@ -256,16 +263,24 @@ export default async function UnitDetailPage({
 
             {annualDues != null && (
               <>
-                <p className="text-gray-500 border-t pt-1.5">This unit&apos;s dues — annual</p>
+                <p className="text-gray-700 font-medium border-t pt-1.5">Dues total, annual</p>
                 <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtPeso(pesoAmount(annualDues))}</p>
                 <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtUsd(usdAmount(annualDues))}</p>
-
-                <p className="text-gray-500">Each payment ({paymentsPerYear}&times;/yr)</p>
-                <p className="text-right font-semibold tabular-nums">{fmtPeso(pesoAmount(perPayment!))}</p>
-                <p className="text-right font-semibold tabular-nums">{fmtUsd(usdAmount(perPayment!))}</p>
               </>
             )}
           </div>
+
+          {perPayment != null && paymentDates.length > 0 && (
+            <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 mt-2 border-t pt-2">
+              {paymentDates.map((d, i) => (
+                <Fragment key={i}>
+                  <p className="text-gray-500">{fmtPaymentDate(d)}</p>
+                  <p className="text-right tabular-nums">{fmtPeso(pesoAmount(perPayment))}</p>
+                  <p className="text-right tabular-nums">{fmtUsd(usdAmount(perPayment))}</p>
+                </Fragment>
+              ))}
+            </div>
+          )}
 
           {annualDues != null && (
             <p className="text-xs text-gray-400 pt-2">

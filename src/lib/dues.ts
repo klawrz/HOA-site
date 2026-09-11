@@ -24,3 +24,11 @@ export function annualDues(allocationPercent: number, budgetTotal: number): numb
 export function perPaymentDues(annual: number, frequency: DuesFrequency): number {
   return annual / DUES_FREQUENCY_PER_YEAR[frequency]
 }
+
+// The due date of each payment in the cadence, evenly spaced from Jan 1 of
+// the given year - e.g. quarterly gives Jan 1 / Apr 1 / Jul 1 / Oct 1.
+export function duesPaymentDates(frequency: DuesFrequency, year: number): Date[] {
+  const perYear = DUES_FREQUENCY_PER_YEAR[frequency]
+  const monthsApart = 12 / perYear
+  return Array.from({ length: perYear }, (_, i) => new Date(Date.UTC(year, i * monthsApart, 1)))
+}
