@@ -21,6 +21,7 @@ export function DuesRoster({
   budgetCurrency = "USD",
   exchangeRate = null,
   budgetLabel,
+  realAnnualByUnit = {},
 }: {
   unitLabel: string
   units: RosterUnit[]
@@ -28,6 +29,10 @@ export function DuesRoster({
   budgetCurrency?: Currency
   exchangeRate?: number | null
   budgetLabel: string
+  // What was actually billed per unit (always in the org's base
+  // currency), pre-converted to both peso and USD - takes precedence over
+  // the budget-based estimate for that unit when present.
+  realAnnualByUnit?: Record<string, { peso: number; usd: number }>
 }) {
   const alloc = effectiveAllocations(units)
   const ordered = [...units].sort(compareUnitNumbers)
@@ -40,6 +45,15 @@ export function DuesRoster({
   const u = (n: number | null) => (n != null ? formatMoney(n, "USD") : "—")
 
   const totalPercent = ordered.reduce((s, unit) => s + (alloc.get(unit.id) ?? 0), 0)
+  const annualFor = (unit: RosterUnit): { peso: number | null; usd: number | null } => {
+    const real = realAnnualByUnit[unit.id]
+    if (real) return real
+    const pct = alloc.get(unit.id) ?? 0
+    const est = budgetTotal != null ? annualDues(pct, budgetTotal) : null
+    return { peso: est != null ? peso(est) : null, usd: est != null ? usd(est) : null }
+  }
+  const totalPeso = ordered.reduce((s, unit) => s + (annualFor(unit).peso ?? 0), 0)
+  const totalUsd = ordered.reduce((s, unit) => s + (annualFor(unit).usd ?? 0), 0)
 
   return (
     <Card>
@@ -68,20 +82,21 @@ export function DuesRoster({
             <tbody className="divide-y">
               {ordered.map((unit) => {
                 const pct = alloc.get(unit.id) ?? 0
-                const annual = budgetTotal != null ? annualDues(pct, budgetTotal) : null
-                const per = annual != null ? perPaymentDues(annual, unit.duesFrequency) : null
+                const { peso: annualPeso, usd: annualUsd } = annualFor(unit)
+                const perPeso = annualPeso != null ? perPaymentDues(annualPeso, unit.duesFrequency) : null
+                const perUsd = annualUsd != null ? perPaymentDues(annualUsd, unit.duesFrequency) : null
                 return (
                   <tr key={unit.id}>
                     <td className="py-2 pr-3 font-medium">{unitDisplayName(unitLabel, unit.number, unit.building)}</td>
                     <td className="py-2 px-3 text-right tabular-nums">{pct.toFixed(2)}%</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{annual != null ? p(peso(annual)) : "—"}</td>
-                    <td className="py-2 px-3 text-right tabular-nums text-gray-500">{annual != null ? u(usd(annual)) : "—"}</td>
+                    <td className="py-2 px-3 text-right tabular-nums">{p(annualPeso)}</td>
+                    <td className="py-2 px-3 text-right tabular-nums text-gray-500">{u(annualUsd)}</td>
                     <td className="py-2 px-3">
                       {DUES_FREQUENCY_LABEL[unit.duesFrequency]}
                       <span className="text-gray-400"> · &times;{DUES_FREQUENCY_PER_YEAR[unit.duesFrequency]}/yr</span>
                     </td>
-                    <td className="py-2 px-3 text-right tabular-nums font-medium">{per != null ? p(peso(per)) : "—"}</td>
-                    <td className="py-2 pl-3 text-right tabular-nums text-gray-500">{per != null ? u(usd(per)) : "—"}</td>
+                    <td className="py-2 px-3 text-right tabular-nums font-medium">{p(perPeso)}</td>
+                    <td className="py-2 pl-3 text-right tabular-nums text-gray-500">{u(perUsd)}</td>
                   </tr>
                 )
               })}
@@ -90,12 +105,14 @@ export function DuesRoster({
               <tr className="border-t font-semibold">
                 <td className="py-2 pr-3">Total</td>
                 <td className="py-2 px-3 text-right tabular-nums">{totalPercent.toFixed(2)}%</td>
-                <td className="py-2 px-3 text-right tabular-nums">{budgetTotal != null ? p(peso(budgetTotal)) : "—"}</td>
+                <td className="py-2 px-3 text-right tabular-nums">{totalPeso > 0 ? p(totalPeso) : "—"}</td>
                 <td className="py-2 px-3 text-right tabular-nums text-gray-500 font-normal">
-                  {budgetTotal != null ? u(usd(budgetTotal)) : "—"}
+                  {totalUsd > 0 ? u(totalUsd) : "—"}
                 </td>
                 <td colSpan={3} className="py-2 px-3 text-xs font-normal text-gray-400">
-                  {budgetTotal == null && "Approve or propose an operating budget to see dues amounts."}
+                  {budgetTotal == null &&
+                    Object.keys(realAnnualByUnit).length === 0 &&
+                    "Approve or propose an operating budget to see dues amounts."}
                 </td>
               </tr>
             </tfoot>

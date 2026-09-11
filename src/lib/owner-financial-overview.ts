@@ -156,7 +156,21 @@ export async function getOwnerFinancialOverview(session: {
 
   const units: OwnerUnitFinance[] = ownerships.map((o) => {
     const pct = allocations.get(o.unitId) ?? 0
-    const annual = budget ? budget.totalUsd * (pct / 100) : null
+    // Prefer what was actually billed - an ISSUED regular-dues assessment
+    // charge - over the budget-based estimate, which can drift from the
+    // real figure (e.g. it folds in budget lines billed through a
+    // separate special assessment). Same rule as the unit detail pages.
+    const realDuesCharge = assessmentCharges
+      .filter(
+        (c) => c.unitId === o.unitId && c.assessment.type === "REGULAR_DUES" && c.assessment.status === "ISSUED"
+      )
+      .sort((a, b) => b.assessment.dueDate.getTime() - a.assessment.dueDate.getTime())[0]
+    const annual = realDuesCharge
+      ? toUsd(realDuesCharge.amountDue)
+      : budget
+        ? budget.totalUsd * (pct / 100)
+        : null
+    const instalmentYear = realDuesCharge?.assessment.dueDate.getUTCFullYear() ?? budget?.year
 
     // Charges grouped by the quarter they fall in, each due at quarter-end.
     const byQuarter = new Map<string, { dueDate: Date; totalUsd: number; paidUsd: number }>()
@@ -215,7 +229,10 @@ export async function getOwnerFinancialOverview(session: {
       duesFrequency: o.unit.duesFrequency,
       paymentScheduleLabel: SCHEDULE_LABEL[o.unit.duesFrequency],
       annualDuesUsd: annual,
-      instalments: budget && annual != null ? duesInstalments(annual, o.unit.duesFrequency, budget.year) : [],
+      instalments:
+        instalmentYear != null && annual != null
+          ? duesInstalments(annual, o.unit.duesFrequency, instalmentYear)
+          : [],
       assessments: assessmentCharges
         .filter((c) => c.unitId === o.unitId)
         .map((c) => ({

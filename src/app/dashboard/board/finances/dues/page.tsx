@@ -10,24 +10,34 @@ import { canPreviewRole } from "@/lib/role-access"
 export default async function BoardDuesPage() {
   const session = await auth()
   if (!session || !canPreviewRole(session.user.role, "BOARD_MEMBER")) redirect("/dashboard")
+  const orgId = session.user.orgId ?? undefined
 
-  const [approvedBudget, proposedBudget, units, org, unitLabel] = await Promise.all([
+  const [approvedBudget, proposedBudget, units, org, unitLabel, realDuesCharges] = await Promise.all([
     db.budget.findFirst({
-      where: { orgId: session.user.orgId ?? undefined, status: "APPROVED", type: "OPERATING" },
+      where: { orgId, status: "APPROVED", type: "OPERATING" },
       include: { lineItems: true },
       orderBy: { year: "desc" },
     }),
     db.budget.findFirst({
-      where: { orgId: session.user.orgId ?? undefined, status: "DRAFT", type: "OPERATING" },
+      where: { orgId, status: "DRAFT", type: "OPERATING" },
       include: { lineItems: true },
       orderBy: [{ year: "desc" }, { updatedAt: "desc" }],
     }),
     db.unit.findMany({
-      where: { orgId: session.user.orgId ?? undefined },
+      where: { orgId },
       select: { id: true, number: true, building: true, allocationPercent: true, duesFrequency: true },
     }),
-    db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
+    db.organization.findUnique({ where: { id: orgId } }),
     getUnitLabel(session.user.orgId),
+    // What was actually billed - takes precedence over the budget-based
+    // estimate below, same rule as the unit detail pages (an approved
+    // budget can drift from the real per-unit figure, e.g. it folds in
+    // lines billed through a separate special assessment).
+    db.assessmentCharge.findMany({
+      where: { assessment: { orgId, type: "REGULAR_DUES", status: "ISSUED" } },
+      include: { assessment: true },
+      orderBy: { assessment: { dueDate: "desc" } },
+    }),
   ])
 
   const duesBudget = approvedBudget ?? proposedBudget
@@ -37,6 +47,14 @@ export default async function BoardDuesPage() {
       ? `the ${duesBudget.year} approved operating budget`
       : `the proposed ${duesBudget.periodLabel || duesBudget.year} operating budget (not yet approved)`
     : "the operating budget"
+
+  const rate = org?.currentExchangeRate ?? duesBudget?.exchangeRate ?? null
+  const realAnnualByUnit: Record<string, { peso: number; usd: number }> = {}
+  for (const c of realDuesCharges) {
+    // Already sorted newest-first; keep only the first (most recent) charge per unit.
+    if (realAnnualByUnit[c.unitId]) continue
+    realAnnualByUnit[c.unitId] = { peso: c.amountDue, usd: rate != null ? c.amountDue / rate : c.amountDue }
+  }
 
   return (
     <div className="space-y-6">
@@ -60,6 +78,7 @@ export default async function BoardDuesPage() {
         budgetCurrency={duesBudget?.currency ?? org?.baseCurrency ?? "USD"}
         exchangeRate={duesBudget?.exchangeRate ?? org?.currentExchangeRate ?? null}
         budgetLabel={duesBudgetLabel}
+        realAnnualByUnit={realAnnualByUnit}
       />
     </div>
   )
