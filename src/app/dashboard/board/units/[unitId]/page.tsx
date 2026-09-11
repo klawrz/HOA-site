@@ -5,7 +5,6 @@ import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft,
-  Home,
   UserCog,
   Phone,
   Mail,
@@ -318,11 +317,6 @@ export default async function BoardUnitDetailPage({
 
       {/* Top summary: address, owners (side by side), unit manager, dues at a glance */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Home className="h-4 w-4 text-gray-500" /> Unit Details
-          </CardTitle>
-        </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="space-y-1.5">
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-600">

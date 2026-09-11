@@ -3,10 +3,11 @@ import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TicketIcon, DollarSign, UserCog, FileWarning, Megaphone } from "lucide-react"
+import { TicketIcon, DollarSign, UserCog, FileWarning, Megaphone, Phone, Mail, Receipt, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { occupancyTypeLabel } from "@/lib/occupancy-styles"
-import { getUnitLabel, unitDisplayName } from "@/lib/unit-label"
+import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-label"
+import { formatDate } from "@/lib/utils"
 import { AnnouncementList } from "@/components/announcements/announcement-list"
 import { KeyDatesCard } from "@/components/key-info/key-dates-card"
 import { getUpcomingKeyDates } from "@/lib/key-dates"
@@ -14,9 +15,20 @@ import { isVisibleToRoles, notExpiredAnnouncement, isLiveAnnouncement } from "@/
 import { ConfirmTransferButton } from "@/components/units/confirm-transfer-button"
 import { getOwnerFinancialOverview } from "@/lib/owner-financial-overview"
 import { OwnerFinancialDetail } from "@/components/owner/owner-financial-detail"
-import { UnitDetailsCard } from "@/components/owner/unit-details-card"
+import { UnitOwnersEditor } from "@/components/units/unit-owners-editor"
 import { priorityColor, statusColor, statusLabel as ticketStatusLabel } from "@/lib/ticket-styles"
 import type { Role } from "@/generated/prisma"
+
+const rentalPolicyLabel: Record<string, string> = {
+  ANYONE: "Rents to anyone",
+  FRIENDS_FAMILY_ONLY: "Friends & family only",
+  SHORT_TERM_RENTAL: "Short-term rental",
+  NOT_RENTING: "Not renting",
+}
+
+function usd(n: number) {
+  return `$${Math.round(n).toLocaleString("en-US")}`
+}
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
@@ -58,7 +70,7 @@ export default async function OwnerDashboard() {
   const isBoardMember = session.user.isBoardMember
   const viewerRoles: Role[] = isBoardMember ? ["OWNER", "BOARD_MEMBER"] : ["OWNER"]
 
-  const [ownerships, latestMeeting, unitLabel, announcementRows, orgMemberships, pendingSellerConfirmations, financialOverview] =
+  const [ownerships, latestMeeting, unitLabel, announcementRows, orgMemberships, pendingSellerConfirmations, financialOverview, org] =
     await Promise.all([
       db.unitOwnership.findMany({
         where: { ownerId: session.user.id, isCurrent: true },
@@ -72,8 +84,9 @@ export default async function OwnerDashboard() {
                 orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
               },
               occupancyEntries: { orderBy: { startDate: "asc" } },
-              managers: true,
+              managers: { include: { user: true } },
               contracts: true,
+              ownerships: { where: { isCurrent: true }, include: { owner: true } },
             },
           },
         },
@@ -98,6 +111,7 @@ export default async function OwnerDashboard() {
         include: { request: { include: { unit: true } } },
       }),
       getOwnerFinancialOverview(session),
+      db.organization.findUnique({ where: { id: session.user.orgId ?? undefined } }),
     ])
 
   const yearStart = new Date(now.getFullYear(), 0, 1)
@@ -194,6 +208,8 @@ export default async function OwnerDashboard() {
     })
   }
 
+  const financeByUnit = new Map(financialOverview.units.map((u) => [u.unitId, u]))
+
   const ownedUnitNames = ownerships.map((o) => unitDisplayName(unitLabel, o.unit.number, o.unit.building))
   const ownerBlockTitle =
     ownedUnitNames.length === 0
@@ -277,27 +293,135 @@ export default async function OwnerDashboard() {
         </CardContent>
       </Card>
 
-      {/* Unit details */}
-      {financialOverview.units.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold mb-2">Unit details</h2>
-          <div className="space-y-3">
-            {financialOverview.units.map((u) => (
-              <UnitDetailsCard
-                key={u.unitId}
-                unitName={u.unitName}
-                unitHref={`/dashboard/owner/units/${u.unitId}`}
-                occupancy={occByUnit.get(u.unitId) ?? { label: "—", detail: null }}
-                ownedSince={u.ownedSince}
-                ownerRfc={financialOverview.ownerRfc}
-                civicRoll={u.civicRoll}
-                accessCode={u.accessCode}
-                accessCodeNotes={u.accessCodeNotes}
-                unitManager={u.unitManager}
-                cleaner={u.cleaner}
-              />
-            ))}
-          </div>
+      {/* Unit details - tightened to match the per-unit page's top summary */}
+      {ownerships.length > 0 && (
+        <div className="space-y-3">
+          {ownerships.map((o) => {
+            const unit = o.unit
+            const unitName = unitDisplayName(unitLabel, unit.number, unit.building)
+            const finance = financeByUnit.get(o.unitId)
+            const occ = occByUnit.get(o.unitId) ?? { label: "—", detail: null }
+            const { propertyLines } = unitAddressLines(
+              org ?? {
+                addressLine1: null,
+                addressLine2: null,
+                city: null,
+                state: null,
+                postalCode: null,
+                country: null,
+              },
+              unitName
+            )
+            return (
+              <Card key={o.unitId}>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="space-y-1.5">
+                    <Link
+                      href={`/dashboard/owner/units/${o.unitId}`}
+                      className="flex items-center justify-between group"
+                    >
+                      <span className="font-medium text-gray-700 group-hover:underline">{unitName}</span>
+                      <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                        {occ.label}
+                        {occ.detail ? ` · ${occ.detail}` : ""}
+                        <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
+                      </span>
+                    </Link>
+                    {propertyLines.length > 0 ? (
+                      propertyLines.map((line, i) => (
+                        <p key={i} className="text-gray-500">
+                          {line}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-gray-400">Property address not on file.</p>
+                    )}
+                    {(unit.civicRoll || financialOverview.ownerRfc) && (
+                      <p className="text-xs text-gray-400">
+                        {unit.civicRoll && `Civic Roll Number: ${unit.civicRoll}`}
+                        {unit.civicRoll && financialOverview.ownerRfc ? " · " : ""}
+                        {financialOverview.ownerRfc && `RFC ${financialOverview.ownerRfc}`}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Owners - side by side to save space */}
+                  <div className="border-t pt-3">
+                    <UnitOwnersEditor
+                      unitId={unit.id}
+                      owners={unit.ownerships.map((ow) => ({
+                        ownershipId: ow.id,
+                        name: ow.owner.name,
+                        email: ow.owner.email,
+                        phone: ow.owner.phone,
+                        sinceLabel: formatDate(ow.since),
+                        rentalPolicyLabel: ow.rentalPolicy
+                          ? rentalPolicyLabel[ow.rentalPolicy] ?? ow.rentalPolicy
+                          : null,
+                      }))}
+                      heading="Ownership"
+                      layout="grid"
+                    />
+                  </div>
+
+                  {/* Unit Manager - compact, one line per manager */}
+                  <div className="border-t pt-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5 flex items-center gap-1.5">
+                      <UserCog className="h-3.5 w-3.5" /> Unit Manager
+                    </p>
+                    {unit.managers.length === 0 ? (
+                      <p className="text-gray-400">
+                        {unit.selfManaged ? "Self-managed by you." : "No unit manager assigned."}
+                      </p>
+                    ) : (
+                      <div className="space-y-1">
+                        {unit.managers.map((m) => {
+                          const name = m.user?.name ?? m.name
+                          const email = m.user?.email ?? m.email
+                          const phone = m.user?.phone ?? m.phone
+                          return (
+                            <div key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                              <span className="font-medium">{name ?? email ?? "Unit manager"}</span>
+                              {phone && (
+                                <span className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Phone className="h-3.5 w-3.5" /> {phone}
+                                </span>
+                              )}
+                              {email && (
+                                <span className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Mail className="h-3.5 w-3.5" /> {email}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dues at a glance - full breakdown is in the section below */}
+                  {finance && (
+                    <div className="border-t pt-3 flex items-baseline justify-between">
+                      <span className="text-gray-500 flex items-center gap-1.5">
+                        <Receipt className="h-3.5 w-3.5 text-gray-400" /> Dues
+                        {financialOverview.budget ? ` (${financialOverview.budget.year})` : ""}
+                      </span>
+                      <span className="text-right">
+                        <span className="font-semibold tabular-nums">
+                          {finance.annualDuesUsd != null ? usd(finance.annualDuesUsd) : "—"}
+                        </span>
+                        <span
+                          className={`ml-2 text-xs font-medium ${finance.duesOutstandingUsd > 0.005 ? "text-red-600" : "text-green-700"}`}
+                        >
+                          {finance.duesOutstandingUsd > 0.005 ? "owing" : "paid up"}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 

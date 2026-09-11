@@ -51,6 +51,7 @@ export interface OwnerUnitFinance {
   duesFrequency: DuesFrequency
   paymentScheduleLabel: string
   annualDuesUsd: number | null
+  duesOutstandingUsd: number
   instalments: DuesInstalment[]
   assessments: {
     id: string
@@ -171,6 +172,9 @@ export async function getOwnerFinancialOverview(session: {
         ? budget.totalUsd * (pct / 100)
         : null
     const instalmentYear = realDuesCharge?.assessment.dueDate.getUTCFullYear() ?? budget?.year
+    const duesOutstandingUsd = realDuesCharge
+      ? toUsd(Math.max(realDuesCharge.amountDue - realDuesCharge.amountPaid, 0))
+      : 0
 
     // Charges grouped by the quarter they fall in, each due at quarter-end.
     const byQuarter = new Map<string, { dueDate: Date; totalUsd: number; paidUsd: number }>()
@@ -229,6 +233,7 @@ export async function getOwnerFinancialOverview(session: {
       duesFrequency: o.unit.duesFrequency,
       paymentScheduleLabel: SCHEDULE_LABEL[o.unit.duesFrequency],
       annualDuesUsd: annual,
+      duesOutstandingUsd,
       instalments:
         instalmentYear != null && annual != null
           ? duesInstalments(annual, o.unit.duesFrequency, instalmentYear)

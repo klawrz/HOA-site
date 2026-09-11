@@ -7,7 +7,7 @@ import { formatDateTime, formatDate } from "@/lib/utils"
 import { UnitContacts } from "./unit-contacts"
 import { UnitManagers } from "./unit-managers"
 import { UnitOwnersEditor } from "@/components/units/unit-owners-editor"
-import { UserCog, Phone, Mail, Home, Wrench, KeyRound } from "lucide-react"
+import { UserCog, Phone, Mail, Wrench } from "lucide-react"
 import { ContractList } from "@/components/contracts/contract-list"
 import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
 import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
@@ -264,11 +264,6 @@ export default async function UnitDetailPage({
 
       {/* Top summary: address, owners (side by side), unit manager, AGM package, dues at a glance */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Home className="h-4 w-4 text-gray-500" /> Unit Details
-          </CardTitle>
-        </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="space-y-1.5">
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-600">
