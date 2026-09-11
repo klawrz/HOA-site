@@ -17,6 +17,7 @@ import { getUnitLabel, unitDisplayName, unitAddressLines } from "@/lib/unit-labe
 import { effectiveAllocations } from "@/lib/unit-allocation"
 import { convertToSecondary, formatMoney } from "@/lib/currency"
 import { duesPaymentDates, DUES_FREQUENCY_PER_YEAR } from "@/lib/dues"
+import { UNIT_CHARGE_TYPE_LABEL } from "@/lib/charges"
 import { DuesFrequencySelect } from "./dues-frequency-select"
 import { Currency } from "@/generated/prisma"
 import { Receipt } from "lucide-react"
@@ -47,10 +48,14 @@ export default async function UnitDetailPage({
           occupancyEntries: { orderBy: { startDate: "asc" } },
           leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
           occupancyShareLinks: { where: { revokedAt: null }, orderBy: { createdAt: "desc" } },
+          // Both ISSUED and DRAFT charges - DRAFT special assessments are
+          // shown as forward-looking heads-up items, never counted toward
+          // what's actually owed.
           assessmentCharges: {
-            where: { assessment: { status: "ISSUED" } },
             include: { assessment: true },
+            orderBy: { assessment: { dueDate: "asc" } },
           },
+          unitCharges: { orderBy: { dueDate: "asc" } },
         },
       },
     },
@@ -100,11 +105,6 @@ export default async function UnitDetailPage({
   const duesBudgetCurrency = (duesBudget?.currency ?? org?.baseCurrency ?? "USD") as Currency
   const duesBudgetRate = duesBudget?.exchangeRate ?? org?.currentExchangeRate ?? null
   const duesBudgetIsApproved = !!approvedBudget
-  const duesBudgetLabel = duesBudget
-    ? duesBudgetIsApproved
-      ? `${duesBudget.year} approved operating budget`
-      : `Proposed ${duesBudget.periodLabel || duesBudget.year} — not yet approved`
-    : "Operating budget — not yet set"
   const estimatedAnnualDues = duesBudgetTotal != null ? duesBudgetTotal * (allocationPercent / 100) : null
   // Show pesos and US$ side by side regardless of which is the budget's base.
   const pesoAmount = (nBase: number): number | null =>
@@ -128,7 +128,7 @@ export default async function UnitDetailPage({
   // that are actually billed through a separate special assessment).
   const realDuesCharge =
     unit.assessmentCharges
-      .filter((c) => c.assessment.type === "REGULAR_DUES")
+      .filter((c) => c.assessment.type === "REGULAR_DUES" && c.assessment.status === "ISSUED")
       .sort((a, b) => b.assessment.dueDate.getTime() - a.assessment.dueDate.getTime())[0] ?? null
   const orgRate = org?.currentExchangeRate ?? duesBudgetRate
 
@@ -153,6 +153,45 @@ export default async function UnitDetailPage({
   const paymentDates = perPaymentPeso != null ? duesPaymentDates(unit.duesFrequency, paymentAnchorYear) : []
   const fmtPaymentDate = (d: Date) =>
     d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
+
+  // Forward-looking preview off the proposed (not yet approved) budget, so
+  // an owner can see next year's likely cost even before the Board
+  // approves it - a distinct year, shown alongside the current one.
+  const forwardBudget = proposedBudget && proposedBudget.year !== duesBudget?.year ? proposedBudget : null
+  const forwardBudgetTotal = forwardBudget?.lineItems.reduce((s, i) => s + i.budgetedAmount, 0) ?? null
+  const forwardAnnualEstimate =
+    forwardBudgetTotal != null ? forwardBudgetTotal * (allocationPercent / 100) : null
+  const forwardCurrency = (forwardBudget?.currency ?? "MXN") as Currency
+  const forwardRate = forwardBudget?.exchangeRate ?? org?.currentExchangeRate ?? null
+  const forwardPeso =
+    forwardAnnualEstimate == null
+      ? null
+      : forwardCurrency === "MXN"
+        ? forwardAnnualEstimate
+        : forwardRate != null
+          ? convertToSecondary(forwardAnnualEstimate, forwardRate, "USD")
+          : null
+  const forwardUsd =
+    forwardAnnualEstimate == null
+      ? null
+      : forwardCurrency === "USD"
+        ? forwardAnnualEstimate
+        : forwardRate != null
+          ? convertToSecondary(forwardAnnualEstimate, forwardRate, "MXN")
+          : null
+
+  // Assessments: one-off special levies (a roof project, a cash call) -
+  // distinct from recurring dues above. DRAFT ones are shown as a heads-up,
+  // never counted toward what's actually owed.
+  const specialCharges = unit.assessmentCharges
+    .filter((c) => c.assessment.type === "SPECIAL")
+    .sort((a, b) => a.assessment.dueDate.getTime() - b.assessment.dueDate.getTime())
+  const duesOutstanding = realDuesCharge ? Math.max(realDuesCharge.amountDue - realDuesCharge.amountPaid, 0) : 0
+  const specialOutstanding = specialCharges
+    .filter((c) => c.assessment.status === "ISSUED")
+    .reduce((s, c) => s + Math.max(c.amountDue - c.amountPaid, 0), 0)
+  const chargeOutstanding = unit.unitCharges.reduce((s, c) => s + Math.max(c.amount - c.amountPaid, 0), 0)
+  const totalOutstanding = duesOutstanding + specialOutstanding + chargeOutstanding
 
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
@@ -265,60 +304,142 @@ export default async function UnitDetailPage({
             <Receipt className="h-4 w-4 text-gray-500" /> Dues & Assessments
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm">
-          <div className="flex items-baseline justify-between">
-            <p className="text-gray-500">Allocation share</p>
-            <p className="font-semibold tabular-nums">{allocationPercent.toFixed(2)}%</p>
-          </div>
-          <p className="text-xs text-gray-400 mt-0.5">Owner-approved share of the common budget</p>
-
-          <div className="flex items-center justify-between gap-3 mt-3 border-t pt-3">
-            <div>
-              <p className="text-gray-500">Payment schedule</p>
-              <p className="text-xs text-gray-400">How you pay your dues — {paymentsPerYear} payment{paymentsPerYear !== 1 ? "s" : ""} a year</p>
+        <CardContent className="text-sm space-y-4">
+          {/* Dues */}
+          <div className="space-y-3">
+            <div className="flex items-baseline justify-between">
+              <p className="text-gray-500">Allocation share</p>
+              <p className="font-semibold tabular-nums">{allocationPercent.toFixed(2)}%</p>
             </div>
-            <DuesFrequencySelect unitId={unit.id} current={unit.duesFrequency} />
-          </div>
 
-          <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1.5">
-            <div />
-            <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">Pesos (MXN)</p>
-            <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">US$</p>
+            <div className="flex items-center justify-between gap-3 border-t pt-3">
+              <div>
+                <p className="text-gray-500">Payment schedule</p>
+                <p className="text-xs text-gray-400">How you pay your dues — {paymentsPerYear} payment{paymentsPerYear !== 1 ? "s" : ""} a year</p>
+              </div>
+              <DuesFrequencySelect unitId={unit.id} current={unit.duesFrequency} />
+            </div>
 
-            <p className="text-gray-500">{duesBudgetLabel}</p>
-            <p className="text-right tabular-nums">{duesBudgetTotal != null ? fmtPeso(pesoAmount(duesBudgetTotal)) : "—"}</p>
-            <p className="text-right tabular-nums">{duesBudgetTotal != null ? fmtUsd(usdAmount(duesBudgetTotal)) : "—"}</p>
+            <div
+              className={`grid gap-x-4 gap-y-1.5 border-t pt-3 ${forwardPeso != null ? "grid-cols-[1fr_auto_auto]" : "grid-cols-[1fr_auto]"}`}
+            >
+              <div />
+              <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">
+                {duesBudget?.year ?? "MXN · US$"}
+                {realDuesCharge ? " (billed)" : duesBudgetIsApproved ? " (estimated)" : duesBudget ? " (proposed)" : ""}
+              </p>
+              {forwardPeso != null && (
+                <p className="text-right text-xs font-medium uppercase tracking-wide text-gray-400">
+                  {forwardBudget?.year} (proposed)
+                </p>
+              )}
 
-            {annualDuesPeso != null && (
-              <>
-                <p className="text-gray-700 font-medium border-t pt-1.5">Dues total, annual</p>
-                <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtPeso(annualDuesPeso)}</p>
-                <p className="text-right font-semibold tabular-nums border-t pt-1.5">{fmtUsd(annualDuesUsd)}</p>
-              </>
+              <p className="text-gray-700 font-medium">Dues total, annual</p>
+              <p className="text-right tabular-nums">
+                <span className="font-semibold">{fmtPeso(annualDuesPeso)}</span>
+                <span className="block text-xs text-gray-400">{fmtUsd(annualDuesUsd)}</span>
+              </p>
+              {forwardPeso != null && (
+                <p className="text-right tabular-nums">
+                  <span className="font-semibold">{fmtPeso(forwardPeso)}</span>
+                  <span className="block text-xs text-gray-400">{fmtUsd(forwardUsd)}</span>
+                </p>
+              )}
+            </div>
+            {forwardPeso != null && (
+              <p className="text-xs text-gray-400">
+                {forwardBudget?.year} figure is from the proposed budget - not yet approved, for planning
+                only.
+              </p>
             )}
+
+            {perPaymentPeso != null && paymentDates.length > 0 && (
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 border-t pt-2">
+                {paymentDates.map((d, i) => (
+                  <Fragment key={i}>
+                    <p className="text-gray-500">{fmtPaymentDate(d)}</p>
+                    <p className="text-right tabular-nums">{fmtPeso(perPaymentPeso)}</p>
+                    <p className="text-right tabular-nums">{fmtUsd(perPaymentUsd)}</p>
+                  </Fragment>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t pt-2 flex items-baseline justify-between text-xs">
+              <span className="text-gray-400">Currently outstanding</span>
+              <span className={`font-medium tabular-nums ${duesOutstanding > 0.005 ? "text-red-600" : "text-green-700"}`}>
+                {duesOutstanding > 0.005 ? formatMoney(duesOutstanding, "MXN") : "Paid up"}
+              </span>
+            </div>
           </div>
 
-          {perPaymentPeso != null && paymentDates.length > 0 && (
-            <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 mt-2 border-t pt-2">
-              {paymentDates.map((d, i) => (
-                <Fragment key={i}>
-                  <p className="text-gray-500">{fmtPaymentDate(d)}</p>
-                  <p className="text-right tabular-nums">{fmtPeso(perPaymentPeso)}</p>
-                  <p className="text-right tabular-nums">{fmtUsd(perPaymentUsd)}</p>
-                </Fragment>
-              ))}
-            </div>
-          )}
+          {/* Assessments */}
+          <div className="border-t pt-4 space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Assessments</p>
+            {specialCharges.length === 0 && (
+              <p className="text-gray-400">No special assessments for this unit.</p>
+            )}
+            {specialCharges.map((c) => {
+              const outstanding = Math.max(c.amountDue - c.amountPaid, 0)
+              const isDraft = c.assessment.status !== "ISSUED"
+              return (
+                <div key={c.id} className="flex items-start justify-between gap-3 border-b last:border-b-0 pb-2 last:pb-0">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{c.assessment.title}</p>
+                    <p className="text-xs text-gray-400">
+                      {isDraft ? "Proposed — not yet issued" : `Due ${formatDateTime(c.assessment.dueDate)}`}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-semibold tabular-nums">{formatMoney(c.amountDue, "MXN")}</p>
+                    {!isDraft && (
+                      <p className={`text-xs tabular-nums ${outstanding > 0.005 ? "text-red-600" : "text-green-700"}`}>
+                        {outstanding > 0.005 ? `${formatMoney(outstanding, "MXN")} owed` : "Paid up"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
 
-          {annualDuesPeso != null && (
-            <p className="text-xs text-gray-400 pt-2">
-              {realDuesCharge
-                ? `Billed as ${realDuesCharge.assessment.title}.`
-                : `${allocationPercent.toFixed(2)}% of the ${duesBudgetIsApproved ? "approved" : "proposed"} operating budget${
-                    duesBudgetRate != null ? `, converted at ${duesBudgetRate} MXN / USD` : ""
-                  }${!duesBudgetIsApproved ? " — final once the budget is approved" : ""}.`}
-            </p>
-          )}
+          {/* Charges */}
+          <div className="border-t pt-4 space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Charges</p>
+            {unit.unitCharges.length === 0 && (
+              <p className="text-gray-400">No other charges for this unit.</p>
+            )}
+            {unit.unitCharges.map((c) => {
+              const outstanding = Math.max(c.amount - c.amountPaid, 0)
+              return (
+                <div key={c.id} className="flex items-start justify-between gap-3 border-b last:border-b-0 pb-2 last:pb-0">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">
+                      {UNIT_CHARGE_TYPE_LABEL[c.type]}
+                      {c.label && ` — ${c.label}`}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {c.dueDate ? `Due ${formatDateTime(c.dueDate)}` : `Charged ${formatDateTime(c.chargedOn)}`}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-semibold tabular-nums">{formatMoney(c.amount, "MXN")}</p>
+                    <p className={`text-xs tabular-nums ${outstanding > 0.005 ? "text-red-600" : "text-green-700"}`}>
+                      {outstanding > 0.005 ? `${formatMoney(outstanding, "MXN")} owed` : "Paid up"}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Overall standing */}
+          <div className="border-t pt-4 flex items-baseline justify-between">
+            <span className="text-gray-500">Total currently outstanding</span>
+            <span className={`font-semibold tabular-nums ${totalOutstanding > 0.005 ? "text-red-600" : "text-green-700"}`}>
+              {totalOutstanding > 0.005 ? formatMoney(totalOutstanding, "MXN") : "Paid up"}
+            </span>
+          </div>
           <Link
             href="/dashboard/owner/financial/dues"
             className="text-xs text-blue-600 hover:underline inline-block pt-2"
