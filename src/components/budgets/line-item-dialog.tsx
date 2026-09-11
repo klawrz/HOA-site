@@ -188,14 +188,14 @@ export function LineItemDialog({
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Previous Year Actual (optional)</Label>
+            <Label>Previous Year Actual, USD (optional)</Label>
             <Input
               name="previousYearActual"
               type="number"
               min="0"
               step="0.01"
               defaultValue={item?.previousYearActual ?? undefined}
-              placeholder="Reference figure for Owners"
+              placeholder="Reference figure for Owners, in USD"
             />
           </div>
           <div className="flex gap-2 justify-end">

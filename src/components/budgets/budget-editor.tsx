@@ -152,7 +152,7 @@ export function BudgetEditor({
   }
 
   function handleExport() {
-    const headers = ["#", "Category", "Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual"]
+    const headers = ["#", "Category", "Line Item", "Budgeted", "Actual", "Variance", "Prior Year Actual (USD)"]
     if (budgetedRate || actualRate) headers.push(`Budgeted (${secondary})`, `Actual (${secondary})`)
     const rows: (string | number)[][] = [headers]
     for (const g of groups) {
@@ -344,7 +344,7 @@ export function BudgetEditor({
                 <th className="text-right font-medium px-3 py-2">Actual{showSecondary && ` (${currency})`}</th>
                 {showSecondary && <th className="text-right font-medium px-3 py-2">Actual ({secondary})</th>}
                 <th className="text-right font-medium px-3 py-2">Variance</th>
-                <th className="text-right font-medium px-3 py-2">Prior Year</th>
+                <th className="text-right font-medium px-3 py-2">Prior Year (USD)</th>
                 {canManage && <th className="px-3 py-2"></th>}
               </tr>
             </thead>
@@ -383,7 +383,7 @@ export function BudgetEditor({
                         {showSecondary && <td className="px-3 py-1.5"></td>}
                         <td className="px-3 py-1.5"></td>
                         <td className="text-right px-3 py-1.5 tabular-nums text-gray-400 font-normal">
-                          {g.priorTotal != null ? money(g.priorTotal) : ""}
+                          {g.priorTotal != null ? formatMoney(g.priorTotal, "USD") : ""}
                         </td>
                         {canManage && <td className="px-3 py-1.5"></td>}
                       </tr>
@@ -422,7 +422,7 @@ export function BudgetEditor({
                               {variance != null ? `${variance > 0 ? "+" : ""}${money(variance)}` : "—"}
                             </td>
                             <td className="text-right px-3 py-2 tabular-nums text-gray-500">
-                              {item.previousYearActual != null ? money(item.previousYearActual) : "—"}
+                              {item.previousYearActual != null ? formatMoney(item.previousYearActual, "USD") : "—"}
                             </td>
                             {canManage && (
                               <td className="px-3 py-2">
@@ -479,7 +479,7 @@ export function BudgetEditor({
                     {totalVariance != null ? `${totalVariance > 0 ? "+" : ""}${money(totalVariance)}` : "—"}
                   </td>
                   <td className="text-right px-3 py-2 tabular-nums text-gray-500">
-                    {totals.hasPreviousYear ? money(totals.previousYear) : "—"}
+                    {totals.hasPreviousYear ? formatMoney(totals.previousYear, "USD") : "—"}
                   </td>
                   {canManage && <td></td>}
                 </tr>
