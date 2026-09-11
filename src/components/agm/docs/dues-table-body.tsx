@@ -14,6 +14,7 @@ export function DuesTableBody({
   totalPct,
   totalAnnual,
   sourceNote,
+  collapsed = false,
 }: {
   fyLabel: number
   unitLabel: string
@@ -23,7 +24,30 @@ export function DuesTableBody({
   totalPct: number
   totalAnnual: number
   sourceNote?: string
+  // The lite package's version: the total only, not the full per-unit
+  // table - an owner's own share is in the full package or their portal.
+  collapsed?: boolean
 }) {
+  if (collapsed) {
+    return (
+      <div>
+        <p className="text-center font-semibold mb-1">
+          {`Cuotas Condominales ${fyLabel} · ${fyLabel} Homeowners' Association Dues`}
+        </p>
+        <p className="text-center mt-2">
+          Presupuesto operativo total / Total operating budget:{" "}
+          <span className="font-semibold">{totalFormatted}</span>
+        </p>
+        {sourceNote && <p className="text-center text-[11px] text-gray-400 mt-1">{sourceNote}</p>}
+        <p className="text-center text-xs text-gray-500 mt-3">
+          Tu cuota individual está en el paquete completo o en tu portal de HOPE.
+          <br />
+          Your individual share is in the full package or your HOPE portal.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div>
       <p className="text-center font-semibold mb-1">

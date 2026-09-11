@@ -339,6 +339,7 @@ export async function getAgmPacketData(orgId: string) {
       items: t.items.map((i) => ({
         id: i.id,
         numeral: i.numeral,
+        kind: i.kind,
         titleEs: i.titleEs,
         titleEn: i.titleEn,
         isExtraordinary: i.isExtraordinary,
@@ -379,6 +380,10 @@ export async function getAgmPacketData(orgId: string) {
       callTimes: agm.callTimes,
       chairpersonName: agm.chairpersonName,
       zoomInfo: agm.zoomInfo,
+      proxyDeadlineISO: agm.proxyDeadline ? agm.proxyDeadline.toISOString() : null,
+      rsvpDeadlineISO: agm.rsvpDeadline ? agm.rsvpDeadline.toISOString() : null,
+      proxyContactName: agm.proxyContactName,
+      proxyContactEmail: agm.proxyContactEmail,
     },
     noticeDateLabel,
     signatories,

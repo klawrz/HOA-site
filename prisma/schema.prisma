@@ -58,6 +58,16 @@ enum DuesFrequency {
   ANNUAL
 }
 
+// Which AGM document an owner gets from "Get your package": the short
+// plain-language summary (+ required convocatorias, collapsed dues) or the
+// full informative package. Defaults to SUMMARY - most owners just want
+// the essentials (Board feedback, 2026-09-11); an owner can switch to FULL
+// from their unit page any time.
+enum AgmDocumentPreference {
+  SUMMARY
+  FULL
+}
+
 enum TicketStatus {
   ACTIVE
   DEFERRED
@@ -951,6 +961,8 @@ model Unit {
   allocationPercent Float?
   // Payment cadence the owner has chosen for their dues.
   duesFrequency     DuesFrequency @default(QUARTERLY)
+  // Which AGM document this unit's owner gets from "Get your package".
+  agmDocumentPreference AgmDocumentPreference @default(SUMMARY)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 

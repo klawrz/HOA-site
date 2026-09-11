@@ -19,6 +19,7 @@ import { convertToSecondary, formatMoney } from "@/lib/currency"
 import { duesPaymentDates, DUES_FREQUENCY_PER_YEAR } from "@/lib/dues"
 import { UNIT_CHARGE_TYPE_LABEL } from "@/lib/charges"
 import { DuesFrequencySelect } from "./dues-frequency-select"
+import { AgmDocumentPreferenceSelect } from "./agm-document-preference-select"
 import { Currency } from "@/generated/prisma"
 import { Receipt } from "lucide-react"
 import Link from "next/link"
@@ -303,6 +304,15 @@ export default async function UnitDetailPage({
           {unit.civicRoll && (
             <p className="text-xs text-gray-400 pt-1">Civic Roll Number: {unit.civicRoll}</p>
           )}
+          <div className="flex items-center justify-between gap-3 border-t pt-3 mt-2">
+            <div>
+              <p className="text-gray-500">AGM package</p>
+              <p className="text-xs text-gray-400">
+                Which document &quot;Get your package&quot; gives you for the annual meeting
+              </p>
+            </div>
+            <AgmDocumentPreferenceSelect unitId={unit.id} current={unit.agmDocumentPreference} />
+          </div>
         </CardContent>
       </Card>
 

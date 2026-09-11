@@ -2,6 +2,7 @@ import type { getAgmPacketData } from "@/lib/agm"
 import { ConvocatoriaBody } from "./convocatoria-body"
 import { DuesTableBody } from "./dues-table-body"
 import { CoverLetterBody } from "./cover-letter-body"
+import { AtAGlanceBody } from "./at-a-glance-body"
 
 type PacketData = NonNullable<Awaited<ReturnType<typeof getAgmPacketData>>>
 
@@ -70,6 +71,9 @@ export function AgmPacketDocument({ data }: { data: PacketData }) {
 
           <div className="pk-contents">
             <p className="pk-contents-h">Contenido / Contents</p>
+            <p className="pk-contents-lead">
+              → Lea esto primero, en la página siguiente / Start here, next page
+            </p>
             <ol>
               {contents.map((c) => (
                 <li key={c.n}>
@@ -90,6 +94,18 @@ export function AgmPacketDocument({ data }: { data: PacketData }) {
               {data.signatories.join(" · ")} — Consejo Directivo / Board of Directors
             </p>
           )}
+        </section>
+
+        {/* ---- At a glance: read-this-first plain-language summary ---- */}
+        <section className="pk-section">
+          <div className="pk-divider">
+            <span className="pk-divider-num">★</span>
+            <div>
+              <p className="pk-divider-es">Lo esencial</p>
+              <p className="pk-divider-en">The essentials</p>
+            </div>
+          </div>
+          <AtAGlanceBody data={data} />
         </section>
 
         {/* ---- 1. Cover letter ---- */}
@@ -172,7 +188,7 @@ function coverDate(data: PacketData): string {
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-const PACKET_CSS = `
+export const PACKET_CSS = `
   @page { size: A4; margin: 18mm 18mm 16mm; }
   html, body { background:#fff !important; }
   .pk { color:#0f172a; font-size:10.5pt; line-height:1.55; background:#fff; }
@@ -181,7 +197,8 @@ const PACKET_CSS = `
   }
 
   .pk-cover { text-align:center; padding:16mm 0 0; break-after:page; }
-  .pk-org { font-size:9pt; letter-spacing:.18em; font-weight:600; color:#334155; margin:0; }
+  .pk-lite-title { text-align:center; font-size:16pt; font-weight:700; margin:8px 0 20px; color:#0f172a; }
+  .pk-org { font-size:9pt; letter-spacing:.18em; font-weight:600; color:#334155; margin:0; text-align:center; }
   .pk-rule { width:64px; height:2px; background:#1e293b; margin:14px auto 20px; }
   .pk-title { font-size:26pt; font-weight:700; line-height:1.15; margin:0; color:#0f172a; }
   .pk-title-sub { display:block; font-size:13pt; font-weight:500; color:#64748b; margin-top:4px; }
@@ -193,6 +210,7 @@ const PACKET_CSS = `
 
   .pk-contents { margin:0 auto; max-width:150mm; text-align:left; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; padding:16px 0; }
   .pk-contents-h { font-size:8.5pt; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; margin:0 0 8px; }
+  .pk-contents-lead { font-size:9pt; font-weight:600; color:#0f172a; margin:0 0 10px; }
   .pk-contents ol { margin:0; padding-left:22px; }
   .pk-contents li { margin:6px 0; }
   .pk-c-es { display:block; font-size:10pt; color:#0f172a; }

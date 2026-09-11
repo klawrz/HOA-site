@@ -98,16 +98,28 @@ export function AgmManager({
       {docBasePath && canManage && (
         <div className="bg-white border rounded-xl p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-2">Meeting documents</h2>
-          <a
-            href={`${docBasePath}/documents/packet`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-gray-900 bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-800"
-          >
-            <FileText className="h-3.5 w-3.5" /> Combined package (one PDF)
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`${docBasePath}/documents/packet`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-900 bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+            >
+              <FileText className="h-3.5 w-3.5" /> Combined package (one PDF)
+            </a>
+            <a
+              href={`${docBasePath}/documents/summary`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+            >
+              <FileText className="h-3.5 w-3.5 text-gray-400" /> Quick summary (one PDF)
+            </a>
+          </div>
           <p className="text-[11px] text-gray-400 mt-1.5 mb-2">
-            Cover letter + both convocatorias + dues schedule in one file. Or open a single section:
+            Full package: cover letter + both convocatorias + dues schedule. Quick summary: a
+            plain-language overview + both convocatorias + a collapsed dues total. Or open a single
+            section:
           </p>
           <div className="flex flex-wrap gap-2">
             {[

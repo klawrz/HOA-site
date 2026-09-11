@@ -6,6 +6,7 @@ import type {
   AgmTrackKind,
   AgmParticipationStatus,
   AgmProxyHolderType,
+  AgmDocumentPreference,
 } from "@/generated/prisma"
 
 // Client-safe AGM constants, seed types and tally types - no imports from
@@ -21,6 +22,12 @@ export const AGM_TRACK_LABEL: Record<AgmTrackKind, { es: string; en: string }> =
     es: "Asamblea General de Asociados - Asociación de Condóminos Sampaguita Villas A.C.",
     en: "Annual General Associates Meeting - Asociación de Condóminos Sampaguita Villas A.C.",
   },
+}
+
+export const AGM_DOCUMENT_PREFERENCES: AgmDocumentPreference[] = ["SUMMARY", "FULL"]
+export const AGM_DOCUMENT_PREFERENCE_LABEL: Record<AgmDocumentPreference, string> = {
+  SUMMARY: "Quick summary",
+  FULL: "Full package",
 }
 
 // Fraction of the total number of owners (villas) that may be represented

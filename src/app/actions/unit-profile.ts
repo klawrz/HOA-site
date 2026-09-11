@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
-import { UnitContactKind, UnitManagerArea, UnitManagerLevel, DuesFrequency } from "@/generated/prisma"
+import { UnitContactKind, UnitManagerArea, UnitManagerLevel, DuesFrequency, AgmDocumentPreference } from "@/generated/prisma"
 import { DUES_FREQUENCIES } from "@/lib/dues"
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
@@ -188,6 +188,34 @@ export async function setUnitDuesFrequency(unitId: string, frequency: DuesFreque
   revalidateUnitPaths(unitId)
   revalidatePath("/dashboard/board/finances/assessments")
   revalidatePath("/dashboard/property-manager/finances/assessments")
+  return { success: true }
+}
+
+// Which AGM document ("Get your package") this unit's owner gets - the
+// short summary or the full informative package. Same access rule as dues
+// frequency: the current owner, or Board/PM/Account Owner.
+export async function setUnitAgmDocumentPreference(unitId: string, preference: AgmDocumentPreference) {
+  const session = await auth()
+  if (!session?.user?.id) return { success: false }
+  if (preference !== "SUMMARY" && preference !== "FULL") {
+    return { success: false, error: "Invalid preference" }
+  }
+
+  const unit = await db.unit.findUnique({ where: { id: unitId }, select: { orgId: true } })
+  if (!unit || unit.orgId !== session.user.orgId) return { success: false }
+
+  const isOwner = !!(await requireCurrentOwner(unitId, session.user.id))
+  const isBoardOrPm =
+    session.user.role === "BOARD_MEMBER" ||
+    session.user.role === "PROPERTY_MANAGER" ||
+    session.user.isBoardMember ||
+    session.user.role === "ACCOUNT_OWNER"
+  if (!isOwner && !isBoardOrPm) return { success: false }
+
+  await db.unit.update({ where: { id: unitId }, data: { agmDocumentPreference: preference } })
+
+  revalidateUnitPaths(unitId)
+  revalidatePath("/dashboard/owner/governance/agm")
   return { success: true }
 }
 
