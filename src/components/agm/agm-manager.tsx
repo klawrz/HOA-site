@@ -1,6 +1,7 @@
 "use client"
 
-import { CalendarDays, MapPin, User, Video, FileText, CheckCircle2, Circle } from "lucide-react"
+import Link from "next/link"
+import { CalendarDays, MapPin, User, Video, FileText, CheckCircle2, Circle, Send, ArrowRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTab, TabsIndicator, TabsPanel } from "@/components/ui/tabs"
 import { formatDateISO } from "@/lib/utils"
@@ -125,6 +126,24 @@ export function AgmManager({
       </div>
 
       {canManage && checklist && checklist.length > 0 && <ChecklistStrip items={checklist} />}
+
+      {canManage && (
+        <Link
+          href="/dashboard/board/agm/call"
+          className="flex items-center justify-between gap-3 bg-white border rounded-xl p-4 hover:border-gray-300"
+        >
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+              <Send className="h-3.5 w-3.5 text-gray-400" /> Send the call
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Proactively issue every owner a no-login link to their own personalized package -
+              required, not just available for pickup.
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-gray-400 shrink-0" />
+        </Link>
+      )}
 
       <ParticipationConsole
         agmId={agm.id}

@@ -982,6 +982,7 @@ model Unit {
   unitCharges         UnitCharge[]
   ownerExpenses       OwnerExpense[]
   agmParticipation    AgmParticipation[]
+  agmPackageLinks     AgmPackageLink[]
 
   @@unique([orgId, number])
 }
@@ -1926,8 +1927,30 @@ model Agm {
   createdBy     User               @relation(fields: [createdById], references: [id])
   tracks        AgmTrack[]
   participation AgmParticipation[]
+  packageLinks  AgmPackageLink[]
 
   @@unique([orgId, year])
+}
+
+// A no-login-required, per-unit link to that unit's own personalized AGM
+// package (their preferred summary/detailed doc + their pre-filled proxy
+// letters) - the Board's proactive "send the call" needs a link an owner
+// can open cold, not one that requires them to already be signed in.
+// Unscoped to a specific owner (a unit can have co-owners) - same "the
+// unguessable token is the credential" shape as OccupancyShareLink.
+model AgmPackageLink {
+  id        String    @id @default(cuid())
+  agmId     String
+  unitId    String
+  token     String    @unique
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+  openedAt  DateTime? // first visit - a lightweight read receipt
+
+  agm  Agm  @relation(fields: [agmId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([agmId, unitId])
 }
 
 model AgmTrack {

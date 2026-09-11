@@ -463,10 +463,12 @@ export async function getAgmPacketData(orgId: string) {
 
 // An owner's pre-filled proxy letters (Regime + Civil Association) for each
 // villa they currently own - or just one when unitId is given. Board / PM
-// (privileged) may fetch for any villa.
+// (privileged) may fetch for any villa. `userId` is only needed to resolve
+// "the villas this person owns" - omit it (with unitId + privileged) for a
+// unit-scoped lookup with no signed-in user at all, e.g. a no-login magic link.
 export async function getOwnerProxyLetters(
   orgId: string,
-  userId: string,
+  userId: string | undefined,
   opts: { unitId?: string; privileged?: boolean } = {}
 ) {
   const agm = await loadCurrentAgm(orgId)
@@ -477,6 +479,7 @@ export async function getOwnerProxyLetters(
   // Board/PM can pull one villa's letters). With no unitId, everyone -
   // privileged or not - gets only the villas they themselves own.
   const restrictToOwn = !(opts.privileged && opts.unitId)
+  if (restrictToOwn && !userId) return null
   const units = await db.unit.findMany({
     where: {
       orgId,
@@ -512,5 +515,72 @@ export async function getOwnerProxyLetters(
         ),
       }
     }),
+  }
+}
+
+// ------------------------------------------------------------
+// AgmPackageLink - no-login "send the call" magic links.
+//
+// The 2013 Regime requires the HOA to proactively issue the call notice to
+// owners, not just leave it for them to find - so the Board needs a link
+// per unit that opens straight to that unit's own personalized package
+// (their preferred summary/detailed doc + their pre-filled proxy letters)
+// with zero sign-in friction, the same "unguessable token is the
+// credential" shape as OccupancyShareLink's "Share with a contact".
+// ------------------------------------------------------------
+
+// The Board/PM roster of who has (and hasn't) opened their call - unit,
+// owner names, the link itself, sent/opened timestamps.
+export async function getAgmCallRoster(orgId: string) {
+  const agm = await loadCurrentAgm(orgId)
+  if (!agm) return null
+
+  const [links, allUnits, unitLabel] = await Promise.all([
+    db.agmPackageLink.findMany({ where: { agmId: agm.id } }),
+    db.unit.findMany({
+      where: { orgId },
+      include: { ownerships: { where: { isCurrent: true }, include: { owner: true } } },
+    }),
+    getUnitLabel(orgId),
+  ])
+  const linkByUnitId = new Map(links.map((l) => [l.unitId, l]))
+  allUnits.sort(compareUnitNumbers)
+
+  return {
+    agmYear: agm.year,
+    rows: allUnits.map((u) => {
+      const link = linkByUnitId.get(u.id)
+      const ownerNames =
+        u.ownerships.map((o) => o.owner.name ?? o.owner.email).filter(Boolean).join(" y ") ||
+        "No owner on file"
+      return {
+        unitId: u.id,
+        label: unitDisplayName(unitLabel, u.number),
+        ownerNames,
+        token: link?.token ?? null,
+        sentAt: link?.sentAt?.toISOString() ?? null,
+        openedAt: link?.openedAt?.toISOString() ?? null,
+      }
+    }),
+  }
+}
+
+// Public resolver for the no-login package page - the token alone is the
+// credential, scoped to exactly one unit's own AGM package.
+export async function resolveAgmPackageLink(token: string) {
+  const link = await db.agmPackageLink.findUnique({
+    where: { token },
+    include: { unit: { select: { agmDocumentPreference: true, orgId: true } } },
+  })
+  if (!link) return null
+
+  if (!link.openedAt) {
+    await db.agmPackageLink.update({ where: { id: link.id }, data: { openedAt: new Date() } })
+  }
+
+  return {
+    orgId: link.unit.orgId,
+    unitId: link.unitId,
+    wantsFull: link.unit.agmDocumentPreference === "FULL",
   }
 }

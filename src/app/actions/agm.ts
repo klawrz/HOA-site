@@ -1,9 +1,11 @@
 "use server"
 
+import { randomUUID } from "crypto"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { saveUploadedFile } from "@/lib/file-upload"
+import { loadCurrentAgm } from "@/lib/agm"
 import {
   agendaSeedFor,
   convocatoriaFullText,
@@ -58,6 +60,44 @@ export async function setViewerAgmDocumentPreference(preference: AgmDocumentPref
   })
 
   revalidateAgmPaths()
+  return { success: true }
+}
+
+// Board/PM "send the call" - the 2013 Regime requires the HOA to
+// proactively issue the call notice, not just leave it for owners to find.
+// Ensures every unit has a no-login magic link to its own personalized
+// package and marks them all sent; re-sending doesn't invalidate a link an
+// owner already has (and keeps its open receipt). Also marks the AGM's
+// notice as issued, same as the "Package issuance" checklist step.
+export async function issueAgmCall() {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageAgm(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Not allowed" }
+  }
+
+  const agm = await loadCurrentAgm(session.user.orgId)
+  if (!agm) return { success: false, error: "No AGM found" }
+
+  const units = await db.unit.findMany({ where: { orgId: session.user.orgId }, select: { id: true } })
+  if (units.length === 0) return { success: false, error: "No units on file" }
+
+  const now = new Date()
+  await db.$transaction([
+    ...units.map((u) =>
+      db.agmPackageLink.upsert({
+        where: { agmId_unitId: { agmId: agm.id, unitId: u.id } },
+        create: { agmId: agm.id, unitId: u.id, token: randomUUID(), sentAt: now },
+        update: { sentAt: now },
+      })
+    ),
+    db.agm.update({
+      where: { id: agm.id },
+      data: { noticeIssuedOn: agm.noticeIssuedOn ?? now },
+    }),
+  ])
+
+  revalidateAgmPaths()
+  revalidatePath("/dashboard/board/agm/call")
   return { success: true }
 }
 
