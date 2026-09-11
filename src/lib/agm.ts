@@ -199,14 +199,22 @@ export async function getAgmConsoleData(orgId: string) {
   return { agm, ownerByUnit, tally, nextYear }
 }
 
+// One of the package links shown in the banner. `setPreference` is only
+// set for a real unit owner's own package link - clicking it updates their
+// villa(s)' default before opening the document, so the choice sticks.
+export type AgmBannerPackageLink = {
+  href: string
+  cta: string
+  setPreference?: "SUMMARY" | "FULL"
+}
+
 export type AgmBannerInfo = {
   year: number
   dateISO: string
   daysUntil: number
   href: string | null // null = informational only (renter / contractor / unit manager)
   cta: string | null
-  secondaryHref: string | null
-  secondaryCta: string | null
+  packageLinks: AgmBannerPackageLink[]
   needsAction: boolean // owner still owes an RSVP, or Board/PM notice not issued
 }
 
@@ -241,8 +249,10 @@ export async function getAgmBannerInfo(
       daysUntil,
       href: "/dashboard/board/agm",
       cta: "Prepare the meeting",
-      secondaryHref: "/dashboard/board/agm/documents/packet",
-      secondaryCta: "Package",
+      packageLinks: [
+        { href: "/dashboard/board/agm/documents/summary", cta: "Summary package" },
+        { href: "/dashboard/board/agm/documents/packet", cta: "Detailed package" },
+      ],
       needsAction: !agm.noticeIssuedOn,
     }
   }
@@ -253,8 +263,7 @@ export async function getAgmBannerInfo(
       daysUntil,
       href: "/dashboard/property-manager/agm",
       cta: "Run the AGM",
-      secondaryHref: null,
-      secondaryCta: null,
+      packageLinks: [],
       needsAction: !agm.noticeIssuedOn,
     }
   }
@@ -276,14 +285,22 @@ export async function getAgmBannerInfo(
       })
       needsAction = responded < villas.length
     }
+    // Same URL for both - the packet route reads the villa's own
+    // preference, which each link sets right before opening it.
+    const packetHref = "/dashboard/owner/governance/agm/packet"
     return {
       year: agm.year,
       dateISO: agm.date.toISOString(),
       daysUntil,
       href: "/dashboard/owner/governance/agm",
       cta: needsAction ? "Confirm your attendance" : "View the AGM",
-      secondaryHref: villas.length > 0 ? "/dashboard/owner/governance/agm/packet" : null,
-      secondaryCta: villas.length > 0 ? "Get your package" : null,
+      packageLinks:
+        villas.length > 0
+          ? [
+              { href: packetHref, cta: "Summary package", setPreference: "SUMMARY" as const },
+              { href: packetHref, cta: "Detailed package", setPreference: "FULL" as const },
+            ]
+          : [],
       needsAction,
     }
   }
@@ -296,8 +313,7 @@ export async function getAgmBannerInfo(
     daysUntil,
     href: null,
     cta: null,
-    secondaryHref: null,
-    secondaryCta: null,
+    packageLinks: [],
     needsAction: false,
   }
 }

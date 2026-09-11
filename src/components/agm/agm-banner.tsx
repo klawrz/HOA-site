@@ -2,6 +2,7 @@ import Link from "next/link"
 import { CalendarClock, ArrowRight } from "lucide-react"
 import { formatDateISO } from "@/lib/utils"
 import type { AgmBannerInfo } from "@/lib/agm"
+import { PackageLink } from "./package-link"
 
 // Dashboard-wide "the AGM is coming" banner - shown to every role during
 // the ~3 months before the meeting, since that window is where most of the
@@ -35,16 +36,13 @@ export function AgmBanner({ info }: { info: AgmBannerInfo }) {
         </span>
       </p>
       <div className="flex items-center gap-3">
-        {info.secondaryHref && info.secondaryCta && (
-          <a
-            href={info.secondaryHref}
-            target="_blank"
-            rel="noopener noreferrer"
+        {info.packageLinks.map((link) => (
+          <PackageLink
+            key={link.cta}
+            link={link}
             className="text-sm font-medium text-indigo-700/80 hover:text-indigo-900 underline decoration-indigo-300 underline-offset-2"
-          >
-            {info.secondaryCta}
-          </a>
-        )}
+          />
+        ))}
         {info.href && info.cta && (
           <Link
             href={info.href}

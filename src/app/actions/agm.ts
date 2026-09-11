@@ -9,7 +9,7 @@ import {
   convocatoriaFullText,
   agmMeetingDateStrings,
 } from "@/lib/agm-shared"
-import type { AgmTrackKind, AgmParticipationStatus, AgmProxyHolderType } from "@/generated/prisma"
+import type { AgmTrackKind, AgmParticipationStatus, AgmProxyHolderType, AgmDocumentPreference } from "@/generated/prisma"
 
 type Result = { success: boolean; error?: string }
 
@@ -36,6 +36,29 @@ function revalidateAgmPaths() {
   ]) {
     revalidatePath(p)
   }
+}
+
+// Clicking "Summary package" / "Detailed package" from the AGM banner sets
+// this as the default for every villa the viewer currently owns (not just
+// one) - so their choice sticks the next time they hit "Get your package"
+// from anywhere, not just this click.
+export async function setViewerAgmDocumentPreference(preference: AgmDocumentPreference) {
+  const session = await auth()
+  if (!session?.user?.id || !session.user.orgId) return { success: false }
+  if (preference !== "SUMMARY" && preference !== "FULL") {
+    return { success: false, error: "Invalid preference" }
+  }
+
+  await db.unit.updateMany({
+    where: {
+      orgId: session.user.orgId,
+      ownerships: { some: { isCurrent: true, ownerId: session.user.id } },
+    },
+    data: { agmDocumentPreference: preference },
+  })
+
+  revalidateAgmPaths()
+  return { success: true }
 }
 
 function combineDateTime(date: string, time: string | null): Date | null {
