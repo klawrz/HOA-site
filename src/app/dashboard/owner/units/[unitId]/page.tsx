@@ -3,10 +3,11 @@ import { requireOwnerAccess } from "@/lib/require-owner-access"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatDateTime } from "@/lib/utils"
+import { formatDateTime, formatDate } from "@/lib/utils"
 import { UnitContacts } from "./unit-contacts"
 import { UnitManagers } from "./unit-managers"
-import { UserCog, Phone, Mail } from "lucide-react"
+import { UnitOwnersEditor } from "@/components/units/unit-owners-editor"
+import { UserCog, Phone, Mail, Home, Wrench, KeyRound } from "lucide-react"
 import { ContractList } from "@/components/contracts/contract-list"
 import { NewContractDialog } from "@/components/contracts/new-contract-dialog"
 import { OccupancyCalendar } from "@/components/occupancy/occupancy-calendar"
@@ -29,6 +30,19 @@ import { getImportedUnitContactData } from "@/app/actions/unit-profile"
 import { ImportedContactPrompt } from "./imported-contact-prompt"
 import { ConfirmTransferButton } from "@/components/units/confirm-transfer-button"
 
+const rentalPolicyLabel: Record<string, string> = {
+  ANYONE: "Rents to anyone",
+  FRIENDS_FAMILY_ONLY: "Friends & family only",
+  SHORT_TERM_RENTAL: "Short-term rental",
+  NOT_RENTING: "Not renting",
+}
+
+const ticketStatusColors: Record<string, string> = {
+  ACTIVE: "bg-red-100 text-red-700",
+  DEFERRED: "bg-amber-100 text-amber-700",
+  CLOSED: "bg-green-100 text-green-700",
+}
+
 export default async function UnitDetailPage({
   params,
 }: {
@@ -49,6 +63,8 @@ export default async function UnitDetailPage({
           occupancyEntries: { orderBy: { startDate: "asc" } },
           leases: { where: { isActive: true }, include: { renter: true }, take: 1 },
           occupancyShareLinks: { where: { revokedAt: null }, orderBy: { createdAt: "desc" } },
+          ownerships: { where: { isCurrent: true }, include: { owner: true } },
+          tickets: { orderBy: { createdAt: "desc" } },
           // Both ISSUED and DRAFT charges - DRAFT special assessments are
           // shown as forward-looking heads-up items, never counted toward
           // what's actually owed.
@@ -202,6 +218,10 @@ export default async function UnitDetailPage({
   const chargeOutstanding = unit.unitCharges.reduce((s, c) => s + Math.max(c.amount - c.amountPaid, 0), 0)
   const totalOutstanding = duesOutstanding + specialOutstanding + chargeOutstanding
 
+  // --- tickets -----------------------------------------------------------
+  const openTickets = unit.tickets.filter((t) => t.status !== "CLOSED")
+  const recentClosedTickets = unit.tickets.filter((t) => t.status === "CLOSED").slice(0, 3)
+
   // A shared directory, same as the Contractor directory below - anyone who
   // has ever become a Unit Manager (via invite or assignment elsewhere) and
   // opted into directoryVisible is visible here so other Owners can pick
@@ -242,69 +262,105 @@ export default async function UnitDetailPage({
         </p>
       </div>
 
-      {unit.managers.length > 0 && (
-        <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-          <p className="text-xs font-semibold text-teal-800 flex items-center gap-1.5 mb-2">
-            <UserCog className="h-3.5 w-3.5" /> Unit Manager
-          </p>
-          <div className="space-y-2">
-            {unit.managers.map((m) => {
-              const name = m.user?.name ?? m.name
-              const phone = m.user?.phone ?? m.phone
-              const email = m.user?.email ?? m.email
-              return (
-                <div key={m.id}>
-                  <p className="font-semibold text-teal-900">{name ?? email}</p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-teal-800">
-                    {phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3.5 w-3.5" /> {phone}
-                      </span>
-                    )}
-                    {email && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3.5 w-3.5" /> {email}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
+      {/* Top summary: address, owners (side by side), unit manager, AGM package, dues at a glance */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Unit Details</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Home className="h-4 w-4 text-gray-500" /> Unit Details
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 text-sm">
-          <div className="flex gap-4 text-gray-500">
-            {unit.bedrooms && <span>{unit.bedrooms} bed</span>}
-            {unit.bathrooms && <span>{unit.bathrooms} bath</span>}
-            {unit.sqft && <span>{unit.sqft.toLocaleString()} sqft</span>}
+        <CardContent className="space-y-3 text-sm">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-600">
+              {unit.bedrooms != null && <span>{unit.bedrooms} bed</span>}
+              {unit.bathrooms != null && <span>{unit.bathrooms} bath</span>}
+              {unit.sqft != null && <span>{unit.sqft.toLocaleString()} sqft</span>}
+              {unit.floor != null && <span>Floor {unit.floor}</span>}
+              {unit.building && <span>Building {unit.building}</span>}
+            </div>
+            {unit.description && <p className="text-gray-600">{unit.description}</p>}
+            {(() => {
+              const { unitName: name, propertyLines } = unitAddressLines(org ?? {
+                addressLine1: null, addressLine2: null, city: null, state: null, postalCode: null, country: null,
+              }, unitName)
+              return (
+                <div>
+                  <p className="font-medium text-gray-700">{name}</p>
+                  {propertyLines.length > 0 ? (
+                    propertyLines.map((line, i) => (
+                      <p key={i} className="text-gray-500">
+                        {line}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-gray-400">
+                      Property address not on file - the Account Holder can add one from the dashboard.
+                    </p>
+                  )}
+                </div>
+              )
+            })()}
+            {unit.civicRoll && (
+              <p className="text-xs text-gray-400">Civic Roll Number: {unit.civicRoll}</p>
+            )}
           </div>
-          {(() => {
-            const { unitName: name, propertyLines } = unitAddressLines(org ?? {
-              addressLine1: null, addressLine2: null, city: null, state: null, postalCode: null, country: null,
-            }, unitName)
-            return (
-              <div>
-                <p className="font-medium text-gray-700">{name}</p>
-                {propertyLines.length > 0 ? (
-                  propertyLines.map((line, i) => <p key={i}>{line}</p>)
-                ) : (
-                  <p className="text-gray-400">
-                    Property address not on file - the Account Holder can add one from the dashboard.
-                  </p>
-                )}
+
+          {/* Owners - side by side to save space */}
+          <div className="border-t pt-3">
+            <UnitOwnersEditor
+              unitId={unit.id}
+              owners={unit.ownerships.map((o) => ({
+                ownershipId: o.id,
+                name: o.owner.name,
+                email: o.owner.email,
+                phone: o.owner.phone,
+                sinceLabel: formatDate(o.since),
+                rentalPolicyLabel: o.rentalPolicy
+                  ? rentalPolicyLabel[o.rentalPolicy] ?? o.rentalPolicy
+                  : null,
+              }))}
+              heading="Ownership"
+              layout="grid"
+            />
+          </div>
+
+          {/* Unit Manager - compact, one line per manager */}
+          <div className="border-t pt-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5 flex items-center gap-1.5">
+              <UserCog className="h-3.5 w-3.5" /> Unit Manager
+            </p>
+            {unit.managers.length === 0 ? (
+              <p className="text-gray-400">
+                {unit.selfManaged ? "Self-managed by you." : "No unit manager assigned."}
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {unit.managers.map((m) => {
+                  const name = m.user?.name ?? m.name
+                  const email = m.user?.email ?? m.email
+                  const phone = m.user?.phone ?? m.phone
+                  return (
+                    <div key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                      <span className="font-medium">{name ?? email ?? "Unit manager"}</span>
+                      {phone && (
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Phone className="h-3.5 w-3.5" /> {phone}
+                        </span>
+                      )}
+                      {email && (
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Mail className="h-3.5 w-3.5" /> {email}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })()}
-          {unit.civicRoll && (
-            <p className="text-xs text-gray-400 pt-1">Civic Roll Number: {unit.civicRoll}</p>
-          )}
-          <div className="flex items-center justify-between gap-3 border-t pt-3 mt-2">
+            )}
+          </div>
+
+          {/* AGM package preference */}
+          <div className="flex items-center justify-between gap-3 border-t pt-3">
             <div>
               <p className="text-gray-500">AGM package</p>
               <p className="text-xs text-gray-400">
@@ -313,13 +369,113 @@ export default async function UnitDetailPage({
             </div>
             <AgmDocumentPreferenceSelect unitId={unit.id} current={unit.agmDocumentPreference} />
           </div>
+
+          {/* Dues at a glance - full breakdown is its own block below */}
+          <div className="border-t pt-3 flex items-baseline justify-between">
+            <span className="text-gray-500 flex items-center gap-1.5">
+              <Receipt className="h-3.5 w-3.5 text-gray-400" /> Dues ({duesBudget?.year ?? "—"})
+            </span>
+            <span className="text-right">
+              <span className="font-semibold tabular-nums">{fmtPeso(annualDuesPeso)}</span>
+              <span className="text-xs text-gray-400 tabular-nums"> / {fmtUsd(annualDuesUsd)}</span>
+              <span
+                className={`ml-2 text-xs font-medium ${duesOutstanding > 0.005 ? "text-red-600" : "text-green-700"}`}
+              >
+                {duesOutstanding > 0.005 ? "owing" : "paid up"}
+              </span>
+            </span>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Maintenance */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-gray-500" /> Dues & Assessments
+            <Wrench className="h-4 w-4 text-gray-500" /> Maintenance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm space-y-3">
+          {openTickets.length === 0 && recentClosedTickets.length === 0 && (
+            <p className="text-gray-400">No trouble tickets for this unit.</p>
+          )}
+          {openTickets.map((t) => (
+            <div key={t.id} className="flex items-start justify-between gap-3 border-b last:border-b-0 pb-2 last:pb-0">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{t.title}</p>
+                <p className="text-xs text-gray-400">
+                  {t.priority} priority · opened {formatDate(t.createdAt)}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${ticketStatusColors[t.status] ?? "bg-gray-100 text-gray-500"}`}
+              >
+                {t.status.replace(/_/g, " ")}
+              </span>
+            </div>
+          ))}
+          {recentClosedTickets.length > 0 && (
+            <div className="pt-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">
+                Recently closed
+              </p>
+              {recentClosedTickets.map((t) => (
+                <p key={t.id} className="text-xs text-gray-500">
+                  {t.title} &mdash; {t.status.toLowerCase()}{" "}
+                  {t.resolvedAt ? formatDate(t.resolvedAt) : formatDate(t.updatedAt)}
+                </p>
+              ))}
+            </div>
+          )}
+          <Link
+            href="/dashboard/owner/tickets"
+            className="text-xs text-blue-600 hover:underline inline-block"
+          >
+            View all tickets
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card id="occupancy-calendar">
+        <CardHeader>
+          <CardTitle className="text-base">Occupancy Calendar</CardTitle>
+          <p className="text-xs text-gray-400">
+            Log who&apos;s staying and when - your own family, a trusted guest, a renter, or vacant.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <OccupancyCalendar
+            unitId={unit.id}
+            entries={unit.occupancyEntries}
+            canManage
+            activeLease={
+              activeLease
+                ? { renterName: activeLease.renter.name, startDate: activeLease.startDate, endDate: activeLease.endDate }
+                : null
+            }
+          />
+        </CardContent>
+      </Card>
+
+      <OccupancyVisibilityForm
+        ownershipId={ownership.id}
+        visibleToBoard={ownership.occupancyVisibleToBoard}
+        visibleToPM={ownership.occupancyVisibleToPM}
+        poolMember={ownership.rentalPoolMember}
+        occupancyPolicy={org?.occupancyVisibilityPolicy ?? null}
+        poolGuidelines={org?.rentalPoolGuidelines ?? null}
+      />
+
+      <ShareLinksPanel
+        unitId={unit.id}
+        links={unit.occupancyShareLinks.map((l) => ({ id: l.id, token: l.token, label: l.label }))}
+      />
+
+      {/* Dues, Assessments & Charges - the full breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-gray-500" /> Dues, Assessments &amp; Charges
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm space-y-5">
@@ -470,41 +626,6 @@ export default async function UnitDetailPage({
           </Link>
         </CardContent>
       </Card>
-
-      <Card id="occupancy-calendar">
-        <CardHeader>
-          <CardTitle className="text-base">Occupancy Calendar</CardTitle>
-          <p className="text-xs text-gray-400">
-            Log who&apos;s staying and when - your own family, a trusted guest, a renter, or vacant.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <OccupancyCalendar
-            unitId={unit.id}
-            entries={unit.occupancyEntries}
-            canManage
-            activeLease={
-              activeLease
-                ? { renterName: activeLease.renter.name, startDate: activeLease.startDate, endDate: activeLease.endDate }
-                : null
-            }
-          />
-        </CardContent>
-      </Card>
-
-      <OccupancyVisibilityForm
-        ownershipId={ownership.id}
-        visibleToBoard={ownership.occupancyVisibleToBoard}
-        visibleToPM={ownership.occupancyVisibleToPM}
-        poolMember={ownership.rentalPoolMember}
-        occupancyPolicy={org?.occupancyVisibilityPolicy ?? null}
-        poolGuidelines={org?.rentalPoolGuidelines ?? null}
-      />
-
-      <ShareLinksPanel
-        unitId={unit.id}
-        links={unit.occupancyShareLinks.map((l) => ({ id: l.id, token: l.token, label: l.label }))}
-      />
 
       <Card>
         <CardHeader>

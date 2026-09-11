@@ -46,11 +46,12 @@ const rentalPolicyLabel: Record<string, string> = {
   NOT_RENTING: "Not renting",
 }
 
-// A read-only, whole-picture view of a single unit for Board Members -
-// ownership, physical facts, dues standing, occupancy (only where the owner
-// has shared it), the unit manager, and open maintenance. Every action
-// (transfers, editing, occupancy logging) stays on the pages that own it;
-// this page never mutates anything.
+// A read-only, whole-picture view of a single unit for Board Members and
+// the Property Manager (same page, same URL - PM's units list links here
+// too) - ownership, physical facts, dues standing, occupancy (only where
+// the owner has shared it), the unit manager, and open maintenance. Every
+// action (transfers, editing, occupancy logging) stays on the pages that
+// own it; this page never mutates anything.
 export default async function BoardUnitDetailPage({
   params,
 }: {
@@ -59,9 +60,16 @@ export default async function BoardUnitDetailPage({
   const { unitId } = await params
   const session = await auth()
   if (!session?.user.orgId) redirect("/login")
-  if (!canPreviewRole(session.user.role, "BOARD_MEMBER") && !session.user.isBoardMember) {
+  const isPmViewer = session.user.role === "PROPERTY_MANAGER" && !session.user.isBoardMember
+  if (
+    !canPreviewRole(session.user.role, "BOARD_MEMBER") &&
+    !canPreviewRole(session.user.role, "PROPERTY_MANAGER") &&
+    !session.user.isBoardMember
+  ) {
     redirect("/dashboard")
   }
+  // Same layout for Board and PM - just the surrounding nav differs.
+  const basePath = isPmViewer ? "/dashboard/property-manager" : "/dashboard/board"
 
   const [unit, unitLabel, org, orgUnits, approvedBudget, proposedBudget] = await Promise.all([
     db.unit.findFirst({
@@ -226,11 +234,13 @@ export default async function BoardUnitDetailPage({
   const chargeOutstanding = unit.unitCharges.reduce((s, c) => s + Math.max(c.amount - c.amountPaid, 0), 0)
   const totalOutstanding = duesOutstanding + specialOutstanding + chargeOutstanding
 
-  // --- occupancy (only where the owner has shared it with the Board) ------
-  // Mirrors the Board Occupancy page exactly: if the owner hasn't opted in,
-  // there is deliberately no way to tell "kept private" from "nothing
-  // logged" - both show as no current occupancy.
-  const occupancyShared = primaryOwnership?.occupancyVisibleToBoard ?? false
+  // --- occupancy (only where the owner has shared it) ----------------------
+  // If the owner hasn't opted in, there is deliberately no way to tell
+  // "kept private" from "nothing logged" - both show as no current
+  // occupancy. PM and Board each check their own visibility flag.
+  const occupancyShared = isPmViewer
+    ? (primaryOwnership?.occupancyVisibleToPM ?? false)
+    : (primaryOwnership?.occupancyVisibleToBoard ?? false)
   const now = new Date()
   const currentEntry = occupancyShared
     ? unit.occupancyEntries.find((e) => e.startDate <= now && e.endDate >= now) ?? null
@@ -264,7 +274,7 @@ export default async function BoardUnitDetailPage({
     <div className="max-w-2xl space-y-4">
       <div>
         <Link
-          href="/dashboard/board/units"
+          href={`${basePath}/units`}
           className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Units
@@ -298,7 +308,7 @@ export default async function BoardUnitDetailPage({
             Buyer: {pending.invite?.acceptedAt ? "✓ confirmed" : "waiting"}
           </p>
           <Link
-            href="/dashboard/board/units"
+            href={`${basePath}/units`}
             className="text-amber-800 underline text-xs mt-1 inline-block"
           >
             Manage transfers on the Units list
@@ -306,15 +316,15 @@ export default async function BoardUnitDetailPage({
         </div>
       )}
 
-      {/* Unit Details: address, ownership, and dues standing all in one place */}
+      {/* Top summary: address, owners (side by side), unit manager, dues at a glance */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Home className="h-4 w-4 text-gray-500" /> Unit Details
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="space-y-2">
+        <CardContent className="space-y-3 text-sm">
+          <div className="space-y-1.5">
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-600">
               {unit.bedrooms != null && <span>{unit.bedrooms} bed</span>}
               {unit.bathrooms != null && <span>{unit.bathrooms} bath</span>}
@@ -339,7 +349,7 @@ export default async function BoardUnitDetailPage({
               <p className="text-xs text-gray-400">Civic roll number: {unit.civicRoll}</p>
             )}
             {(unit.accessCode || unit.accessCodeNotes) && (
-              <div className="flex items-start gap-2 rounded-lg bg-gray-50 border px-3 py-2 mt-1">
+              <div className="flex items-start gap-2 rounded-lg bg-gray-50 border px-3 py-2">
                 <KeyRound className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
                 <div>
                   {unit.accessCode && (
@@ -353,8 +363,8 @@ export default async function BoardUnitDetailPage({
             )}
           </div>
 
-          {/* Ownership */}
-          <div className="border-t pt-4">
+          {/* Owners - side by side to save space */}
+          <div className="border-t pt-3">
             <UnitOwnersEditor
               unitId={unit.id}
               owners={unit.ownerships.map((o) => ({
@@ -368,14 +378,178 @@ export default async function BoardUnitDetailPage({
                   : null,
               }))}
               heading="Ownership"
+              layout="grid"
             />
           </div>
 
-          {/* Dues */}
-          <div className="border-t pt-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
-              <Receipt className="h-3.5 w-3.5" /> Dues
+          {/* Unit Manager - compact, one line per manager */}
+          <div className="border-t pt-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5 flex items-center gap-1.5">
+              <UserCog className="h-3.5 w-3.5" /> Unit Manager
             </p>
+            {unit.managers.length === 0 ? (
+              <p className="text-gray-400">
+                {unit.selfManaged ? "Self-managed by the owner." : "No unit manager assigned."}
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {unit.managers.map((m) => {
+                  const name = m.user?.name ?? m.name
+                  const email = m.user?.email ?? m.email
+                  const phone = m.user?.phone ?? m.phone
+                  return (
+                    <div key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                      <span className="font-medium">{name ?? email ?? "Unit manager"}</span>
+                      {phone && (
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Phone className="h-3.5 w-3.5" /> {phone}
+                        </span>
+                      )}
+                      {email && (
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Mail className="h-3.5 w-3.5" /> {email}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Dues at a glance - full breakdown is its own block below */}
+          <div className="border-t pt-3 flex items-baseline justify-between">
+            <span className="text-gray-500 flex items-center gap-1.5">
+              <Receipt className="h-3.5 w-3.5 text-gray-400" /> Dues ({duesBudget?.year ?? "—"})
+            </span>
+            <span className="text-right">
+              <span className="font-semibold tabular-nums">{fmtPeso(annualDuesPeso)}</span>
+              <span className="text-xs text-gray-400 tabular-nums"> / {fmtUsd(annualDuesUsd)}</span>
+              <span
+                className={`ml-2 text-xs font-medium ${duesOutstanding > 0.005 ? "text-red-600" : "text-green-700"}`}
+              >
+                {duesOutstanding > 0.005 ? "owing" : "paid up"}
+              </span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Maintenance */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-gray-500" /> Maintenance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm space-y-3">
+          {openTickets.length === 0 && recentClosedTickets.length === 0 && (
+            <p className="text-gray-400">No trouble tickets for this unit.</p>
+          )}
+          {openTickets.map((t) => (
+            <div key={t.id} className="flex items-start justify-between gap-3 border-b last:border-b-0 pb-2 last:pb-0">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{t.title}</p>
+                <p className="text-xs text-gray-400">
+                  {t.priority} priority · opened {formatDate(t.createdAt)}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${ticketStatusColors[t.status] ?? "bg-gray-100 text-gray-500"}`}
+              >
+                {t.status.replace(/_/g, " ")}
+              </span>
+            </div>
+          ))}
+          {recentClosedTickets.length > 0 && (
+            <div className="pt-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">
+                Recently closed
+              </p>
+              {recentClosedTickets.map((t) => (
+                <p key={t.id} className="text-xs text-gray-500">
+                  {t.title} &mdash; {t.status.toLowerCase()}{" "}
+                  {t.resolvedAt ? formatDate(t.resolvedAt) : formatDate(t.updatedAt)}
+                </p>
+              ))}
+            </div>
+          )}
+          <Link
+            href={`${basePath}/tickets`}
+            className="text-xs text-blue-600 hover:underline inline-block"
+          >
+            View all tickets
+          </Link>
+        </CardContent>
+      </Card>
+
+      {/* Occupancy */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-gray-500" /> Occupancy
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm space-y-2">
+          {!occupancyShared && (
+            <p className="text-gray-400">
+              No current occupancy on record. Owners choose whether to share their occupancy
+              calendar with the {isPmViewer ? "Property Manager" : "Board"}.
+            </p>
+          )}
+          {occupancyShared && (
+            <>
+              {currentEntry ? (
+                <div>
+                  <span
+                    className={`text-xs font-medium px-2 py-1 rounded-full ${occupancyTypeColor[currentEntry.type] ?? "bg-gray-100 text-gray-600"}`}
+                  >
+                    {occupancyTypeLabel[currentEntry.type] ?? currentEntry.type}
+                  </span>
+                  <p className="text-gray-600 mt-1.5">
+                    {currentEntry.occupantName ? `${currentEntry.occupantName} · ` : ""}
+                    {formatDate(currentEntry.startDate)} &ndash; {formatDate(currentEntry.endDate)}
+                  </p>
+                </div>
+              ) : leaseVisible ? (
+                <p className="text-gray-600">
+                  Leased to {leaseVisible.renter.name ?? leaseVisible.renter.email} since{" "}
+                  {formatDate(leaseVisible.startDate)}
+                  {leaseVisible.endDate ? `, through ${formatDate(leaseVisible.endDate)}` : ""}
+                  {" "}
+                  <span className="text-gray-400">(no calendar entry for today)</span>
+                </p>
+              ) : (
+                <p className="text-gray-400">Nothing logged for today.</p>
+              )}
+              {nextEntry && (
+                <p className="text-xs text-gray-400">
+                  Next: {occupancyTypeLabel[nextEntry.type] ?? nextEntry.type} from{" "}
+                  {formatDate(nextEntry.startDate)}
+                </p>
+              )}
+              <Link
+                href={`${basePath}/occupancy`}
+                className="text-xs text-blue-600 hover:underline inline-block"
+              >
+                View all occupancy
+              </Link>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dues, Assessments & Charges - the full breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-gray-500" /> Dues, Assessments &amp; Charges
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          {/* Dues */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Dues</p>
             <div className="flex items-baseline justify-between">
               <span className="text-gray-500">Allocation share</span>
               <span className="font-semibold tabular-nums">{allocationPercent.toFixed(2)}%</span>
@@ -512,157 +686,10 @@ export default async function BoardUnitDetailPage({
             </span>
           </div>
           <Link
-            href="/dashboard/board/finances/dues"
+            href={`${basePath}/finances/dues`}
             className="text-xs text-blue-600 hover:underline inline-block"
           >
             View the full dues roster
-          </Link>
-        </CardContent>
-      </Card>
-
-      {/* Occupancy */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-gray-500" /> Occupancy
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm space-y-2">
-          {!occupancyShared && (
-            <p className="text-gray-400">
-              No current occupancy on record. Owners choose whether to share their occupancy
-              calendar with the Board.
-            </p>
-          )}
-          {occupancyShared && (
-            <>
-              {currentEntry ? (
-                <div>
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded-full ${occupancyTypeColor[currentEntry.type] ?? "bg-gray-100 text-gray-600"}`}
-                  >
-                    {occupancyTypeLabel[currentEntry.type] ?? currentEntry.type}
-                  </span>
-                  <p className="text-gray-600 mt-1.5">
-                    {currentEntry.occupantName ? `${currentEntry.occupantName} · ` : ""}
-                    {formatDate(currentEntry.startDate)} &ndash; {formatDate(currentEntry.endDate)}
-                  </p>
-                </div>
-              ) : leaseVisible ? (
-                <p className="text-gray-600">
-                  Leased to {leaseVisible.renter.name ?? leaseVisible.renter.email} since{" "}
-                  {formatDate(leaseVisible.startDate)}
-                  {leaseVisible.endDate ? `, through ${formatDate(leaseVisible.endDate)}` : ""}
-                  {" "}
-                  <span className="text-gray-400">(no calendar entry for today)</span>
-                </p>
-              ) : (
-                <p className="text-gray-400">Nothing logged for today.</p>
-              )}
-              {nextEntry && (
-                <p className="text-xs text-gray-400">
-                  Next: {occupancyTypeLabel[nextEntry.type] ?? nextEntry.type} from{" "}
-                  {formatDate(nextEntry.startDate)}
-                </p>
-              )}
-              <Link
-                href="/dashboard/board/occupancy"
-                className="text-xs text-blue-600 hover:underline inline-block"
-              >
-                View all occupancy
-              </Link>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Unit Manager */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <UserCog className="h-4 w-4 text-gray-500" /> Unit Manager
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm space-y-3">
-          {unit.managers.length === 0 && (
-            <p className="text-gray-400">
-              {unit.selfManaged ? "Self-managed by the owner." : "No unit manager assigned."}
-            </p>
-          )}
-          {unit.managers.map((m) => {
-            const name = m.user?.name ?? m.name
-            const email = m.user?.email ?? m.email
-            const phone = m.user?.phone ?? m.phone
-            return (
-              <div key={m.id}>
-                <p className="font-semibold">{name ?? email ?? "Unit manager"}</p>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-gray-600 mt-0.5">
-                  {phone && (
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-3.5 w-3.5" /> {phone}
-                    </span>
-                  )}
-                  {email && (
-                    <span className="flex items-center gap-1">
-                      <Mail className="h-3.5 w-3.5" /> {email}
-                    </span>
-                  )}
-                </div>
-                {m.grants.length > 0 && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Access: {m.grants.map((g) => `${g.area.toLowerCase()} (${g.level.toLowerCase()})`).join(", ")}
-                  </p>
-                )}
-              </div>
-            )
-          })}
-        </CardContent>
-      </Card>
-
-      {/* Maintenance */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Wrench className="h-4 w-4 text-gray-500" /> Maintenance
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm space-y-3">
-          {openTickets.length === 0 && recentClosedTickets.length === 0 && (
-            <p className="text-gray-400">No trouble tickets for this unit.</p>
-          )}
-          {openTickets.map((t) => (
-            <div key={t.id} className="flex items-start justify-between gap-3 border-b last:border-b-0 pb-2 last:pb-0">
-              <div className="min-w-0">
-                <p className="font-medium truncate">{t.title}</p>
-                <p className="text-xs text-gray-400">
-                  {t.priority} priority · opened {formatDate(t.createdAt)}
-                </p>
-              </div>
-              <span
-                className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${ticketStatusColors[t.status] ?? "bg-gray-100 text-gray-500"}`}
-              >
-                {t.status.replace(/_/g, " ")}
-              </span>
-            </div>
-          ))}
-          {recentClosedTickets.length > 0 && (
-            <div className="pt-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">
-                Recently closed
-              </p>
-              {recentClosedTickets.map((t) => (
-                <p key={t.id} className="text-xs text-gray-500">
-                  {t.title} &mdash; {t.status.toLowerCase()}{" "}
-                  {t.resolvedAt ? formatDate(t.resolvedAt) : formatDate(t.updatedAt)}
-                </p>
-              ))}
-            </div>
-          )}
-          <Link
-            href="/dashboard/board/tickets"
-            className="text-xs text-blue-600 hover:underline inline-block"
-          >
-            View all tickets
           </Link>
         </CardContent>
       </Card>

@@ -20,10 +20,15 @@ export function UnitOwnersEditor({
   unitId,
   owners,
   heading = "Owners",
+  layout = "list",
 }: {
   unitId: string
   owners: OwnerRow[]
   heading?: string
+  // "grid" places owners side by side (2 columns) to save vertical space
+  // when this sits inside a tightly-packed top summary block; an owner
+  // being edited always spans the full width since the form needs room.
+  layout?: "list" | "grid"
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
@@ -64,13 +69,22 @@ export function UnitOwnersEditor({
         </p>
       )}
 
-      <div className="divide-y rounded-lg border">
+      <div
+        className={
+          layout === "grid"
+            ? "grid grid-cols-1 sm:grid-cols-2 gap-2"
+            : "divide-y rounded-lg border"
+        }
+      >
         {owners.length === 0 && (
-          <p className="px-3 py-2.5 text-sm text-gray-400">No owners on record.</p>
+          <p className="px-3 py-2.5 text-sm text-gray-400 rounded-lg border">No owners on record.</p>
         )}
         {owners.map((o) =>
           editingId === o.ownershipId ? (
-            <div key={o.ownershipId} className="p-3 space-y-2 bg-gray-50">
+            <div
+              key={o.ownershipId}
+              className={`p-3 space-y-2 bg-gray-50 rounded-lg border ${layout === "grid" ? "sm:col-span-2" : ""}`}
+            >
               <Input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
@@ -101,7 +115,10 @@ export function UnitOwnersEditor({
               </div>
             </div>
           ) : (
-            <div key={o.ownershipId} className="flex items-start justify-between gap-3 px-3 py-2.5">
+            <div
+              key={o.ownershipId}
+              className={`flex items-start justify-between gap-3 px-3 py-2.5 ${layout === "grid" ? "rounded-lg border" : ""}`}
+            >
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate">{o.name ?? "Unnamed owner"}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mt-0.5">

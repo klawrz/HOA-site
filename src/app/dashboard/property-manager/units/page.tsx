@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { db } from "@/lib/db"
 import { RentalPolicy, UnitStatus } from "@/generated/prisma"
 import { getUnitLabel, compareUnitNumbers } from "@/lib/unit-label"
@@ -102,7 +103,9 @@ export default async function UnitAvailabilityPage() {
               return (
                 <tr key={unit.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-semibold">
-                    {unit.number}
+                    <Link href={`/dashboard/board/units/${unit.id}`} className="hover:underline">
+                      {unit.number}
+                    </Link>
                     {unit.building && (
                       <span className="font-normal text-gray-400 ml-1">
                         Bldg {unit.building}
