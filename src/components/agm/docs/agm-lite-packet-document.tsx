@@ -11,29 +11,70 @@ type PacketData = NonNullable<Awaited<ReturnType<typeof getAgmPacketData>>>
 // Drops the long-form cover-letter narrative and collapses the per-unit
 // dues table to a single total, but keeps the two convocatorias in full -
 // those are the actual legally required notice + agenda for each meeting,
-// not something a "lite" version can cut.
+// not something a "lite" version can cut. Which sections actually appear -
+// and their inventory number/revision - comes from data.inventory, same
+// manifest the full package reads (see AgmDocumentItem).
 export function AgmLitePacketDocument({ data }: { data: PacketData }) {
+  const included = (key: string) => data.inventory.sectionIncluded(key, "summary")
   const trackByKind = Object.fromEntries(data.tracks.map((t) => [t.kind, t]))
+
+  // Whichever section actually ends up last gets the closing note - avoids
+  // an extra near-blank page if e.g. Dues is excluded from this package.
+  const order = [
+    "at-a-glance",
+    trackByKind.REGIME && "convocatoria-regime",
+    trackByKind.CIVIL_ASSOCIATION && "convocatoria-civil",
+    "dues",
+  ].filter((k): k is string => !!k && included(k))
+  const lastKey = order[order.length - 1]
+
+  const DocTag = ({ docKey }: { docKey: string }) => {
+    const t = data.inventory.sectionTag(docKey)
+    return t ? <p className="pk-doctag">{t}</p> : null
+  }
+
+  const Closing = () =>
+    data.inventory.attachmentsSummary.length > 0 || data.signatories.length > 0 ? (
+      <>
+        {data.inventory.attachmentsSummary.length > 0 && (
+          <p className="pk-contents-note" style={{ textAlign: "center", marginTop: "16px" }}>
+            Se adjuntan por separado / Attached separately:{" "}
+            {data.inventory.attachmentsSummary
+              .map((a) => `${a.title} (#${a.number} · Rev ${a.revision})`)
+              .join(" · ")}
+          </p>
+        )}
+        {data.signatories.length > 0 && (
+          <p className="pk-cover-sign" style={{ textAlign: "center", marginTop: "12px" }}>
+            {data.signatories.join(" · ")} — Consejo Directivo / Board of Directors
+          </p>
+        )}
+      </>
+    ) : null
 
   return (
     <>
       <style>{PACKET_CSS}</style>
 
       <div className="pk">
-        <section className="pk-section">
-          <p className="pk-org">ASOCIACIÓN DE CONDÓMINOS SAMPAGUITA VILLAS A.C.</p>
-          <p className="pk-lite-title">
-            Reunión General Anual {data.agm.year}
-            <span className="pk-title-sub">{data.agm.year} Annual General Meeting</span>
-          </p>
-          <p className="pk-kicker" style={{ textAlign: "center", marginBottom: "16px" }}>
-            Paquete Resumen · Summary Package
-          </p>
-          <AtAGlanceBody data={data} />
-        </section>
+        {included("at-a-glance") && (
+          <section className={`pk-section${lastKey === "at-a-glance" ? " pk-last" : ""}`}>
+            <p className="pk-org">ASOCIACIÓN DE CONDÓMINOS SAMPAGUITA VILLAS A.C.</p>
+            <p className="pk-lite-title">
+              Reunión General Anual {data.agm.year}
+              <span className="pk-title-sub">{data.agm.year} Annual General Meeting</span>
+            </p>
+            <p className="pk-kicker" style={{ textAlign: "center", marginBottom: "16px" }}>
+              Paquete Resumen · Summary Package
+            </p>
+            <AtAGlanceBody data={data} />
+            <DocTag docKey="at-a-glance" />
+            {lastKey === "at-a-glance" && <Closing />}
+          </section>
+        )}
 
-        {trackByKind.REGIME && (
-          <section className="pk-section">
+        {trackByKind.REGIME && included("convocatoria-regime") && (
+          <section className={`pk-section${lastKey === "convocatoria-regime" ? " pk-last" : ""}`}>
             <div className="pk-divider">
               <div>
                 <p className="pk-divider-es">Convocatoria — Régimen</p>
@@ -48,11 +89,13 @@ export function AgmLitePacketDocument({ data }: { data: PacketData }) {
               noticeDateLabel={data.noticeDateLabel}
               signatories={data.signatories}
             />
+            <DocTag docKey="convocatoria-regime" />
+            {lastKey === "convocatoria-regime" && <Closing />}
           </section>
         )}
 
-        {trackByKind.CIVIL_ASSOCIATION && (
-          <section className="pk-section">
+        {trackByKind.CIVIL_ASSOCIATION && included("convocatoria-civil") && (
+          <section className={`pk-section${lastKey === "convocatoria-civil" ? " pk-last" : ""}`}>
             <div className="pk-divider">
               <div>
                 <p className="pk-divider-es">Convocatoria — Asociación Civil</p>
@@ -67,33 +110,34 @@ export function AgmLitePacketDocument({ data }: { data: PacketData }) {
               noticeDateLabel={data.noticeDateLabel}
               signatories={data.signatories}
             />
+            <DocTag docKey="convocatoria-civil" />
+            {lastKey === "convocatoria-civil" && <Closing />}
           </section>
         )}
 
-        <section className="pk-section pk-last">
-          <div className="pk-divider">
-            <div>
-              <p className="pk-divider-es">Cuotas {data.dues.fyLabel}</p>
-              <p className="pk-divider-en">{data.dues.fyLabel} Dues</p>
+        {included("dues") && (
+          <section className={`pk-section${lastKey === "dues" ? " pk-last" : ""}`}>
+            <div className="pk-divider">
+              <div>
+                <p className="pk-divider-es">Cuotas {data.dues.fyLabel}</p>
+                <p className="pk-divider-en">{data.dues.fyLabel} Dues</p>
+              </div>
             </div>
-          </div>
-          <DuesTableBody
-            fyLabel={data.dues.fyLabel}
-            unitLabel={data.dues.unitLabel}
-            currency={data.dues.currency}
-            totalFormatted={data.dues.totalFormatted}
-            rows={data.dues.rows}
-            totalPct={data.dues.totalPct}
-            totalAnnual={data.dues.totalAnnual}
-            sourceNote={data.dues.sourceNote}
-            collapsed
-          />
-          {data.signatories.length > 0 && (
-            <p className="pk-cover-sign" style={{ textAlign: "center", marginTop: "24px" }}>
-              {data.signatories.join(" · ")} — Consejo Directivo / Board of Directors
-            </p>
-          )}
-        </section>
+            <DuesTableBody
+              fyLabel={data.dues.fyLabel}
+              unitLabel={data.dues.unitLabel}
+              currency={data.dues.currency}
+              totalFormatted={data.dues.totalFormatted}
+              rows={data.dues.rows}
+              totalPct={data.dues.totalPct}
+              totalAnnual={data.dues.totalAnnual}
+              sourceNote={data.dues.sourceNote}
+              collapsed
+            />
+            <DocTag docKey="dues" />
+            {lastKey === "dues" && <Closing />}
+          </section>
+        )}
       </div>
     </>
   )

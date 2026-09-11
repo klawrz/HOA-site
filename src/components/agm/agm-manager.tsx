@@ -12,6 +12,7 @@ import { AgmView, TRACK_SHORT, STATUS_LABEL } from "./types"
 import { AgmDetailsDialog } from "./agm-details-dialog"
 import { AgendaEditor } from "./agenda-editor"
 import { ParticipationConsole } from "./participation-console"
+import { PackageDocumentsManager, type PackageDocumentItem, type AvailableDocument } from "./package-documents-manager"
 
 function ChecklistStrip({ items }: { items: AgmChecklistItem[] }) {
   const doneCount = items.filter((i) => i.done).length
@@ -64,6 +65,8 @@ export function AgmManager({
   canManage,
   docBasePath,
   checklist,
+  documentItems,
+  availableDocuments,
 }: {
   agm: AgmView
   tally: AgmTally
@@ -72,6 +75,8 @@ export function AgmManager({
   // When set (Board view), shows the "Meeting documents" generators.
   docBasePath?: string
   checklist?: AgmChecklistItem[]
+  documentItems?: PackageDocumentItem[]
+  availableDocuments?: AvailableDocument[]
 }) {
   const meetingDate = new Date(agm.date)
 
@@ -151,6 +156,10 @@ export function AgmManager({
         ownerByUnit={ownerByUnit}
         canManage={canManage}
       />
+
+      {canManage && documentItems && (
+        <PackageDocumentsManager items={documentItems} availableDocuments={availableDocuments ?? []} />
+      )}
 
       {docBasePath && canManage && (
         <div className="bg-white border rounded-xl p-4">

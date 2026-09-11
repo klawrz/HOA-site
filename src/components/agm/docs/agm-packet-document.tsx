@@ -9,15 +9,32 @@ type PacketData = NonNullable<Awaited<ReturnType<typeof getAgmPacketData>>>
 // Executive layout for the combined AGM package: a cover page, numbered
 // bilingual section dividers, and a running header/footer. Print-first
 // (A4, generous margins). Used by both the in-app packet route and the
-// headless-Chrome PDF render.
+// headless-Chrome PDF render. Which sections actually appear - and their
+// inventory number/revision - comes from data.inventory, the package
+// preparer's document manifest (see AgmDocumentItem); a brand-new AGM with
+// no manifest yet defaults every section to included.
 export function AgmPacketDocument({ data }: { data: PacketData }) {
-  const contents = [
-    { n: 1, es: "Carta de presentación", en: "Cover letter" },
-    { n: 2, es: "Convocatoria — Asamblea General Anual Ordinaria (Régimen)", en: "Call notice — General Annual Ordinary Meeting (Regime)" },
-    { n: 3, es: "Convocatoria — Asamblea General de Asociados (Asociación Civil)", en: "Call notice — Annual General Associates Meeting (Civil Association)" },
-    { n: 4, es: `Cuotas ${data.dues.fyLabel} — calendario trimestral`, en: `${data.dues.fyLabel} dues — quarterly schedule` },
-  ]
+  const included = (key: string) => data.inventory.sectionIncluded(key, "detailed")
+  const tag = (key: string) => data.inventory.sectionTag(key)
   const trackByKind = Object.fromEntries(data.tracks.map((t) => [t.kind, t]))
+
+  const contents = [
+    included("cover-letter") && { es: "Carta de presentación", en: "Cover letter" },
+    trackByKind.REGIME &&
+      included("convocatoria-regime") && {
+        es: "Convocatoria — Asamblea General Anual Ordinaria (Régimen)",
+        en: "Call notice — General Annual Ordinary Meeting (Regime)",
+      },
+    trackByKind.CIVIL_ASSOCIATION &&
+      included("convocatoria-civil") && {
+        es: "Convocatoria — Asamblea General de Asociados (Asociación Civil)",
+        en: "Call notice — Annual General Associates Meeting (Civil Association)",
+      },
+    included("dues") && {
+      es: `Cuotas ${data.dues.fyLabel} — calendario trimestral`,
+      en: `${data.dues.fyLabel} dues — quarterly schedule`,
+    },
+  ].filter((c): c is { es: string; en: string } => !!c)
 
   const Divider = ({ n, es, en }: { n: number; es: string; en: string }) => (
     <div className="pk-divider">
@@ -28,6 +45,16 @@ export function AgmPacketDocument({ data }: { data: PacketData }) {
       </div>
     </div>
   )
+
+  // Document control stamp - inventory number + revision, small type at
+  // the bottom of the section it belongs to (common document-control
+  // practice). Not a true repeating page footer: Chrome's headless print
+  // doesn't reliably position a fixed-position footer per physical page,
+  // so this sits at the end of the section's own content instead.
+  const DocTag = ({ docKey }: { docKey: string }) => {
+    const t = tag(docKey)
+    return t ? <p className="pk-doctag">{t}</p> : null
+  }
 
   return (
     <>
@@ -75,18 +102,20 @@ export function AgmPacketDocument({ data }: { data: PacketData }) {
               → Lea esto primero, en la página siguiente / Start here, next page
             </p>
             <ol>
-              {contents.map((c) => (
-                <li key={c.n}>
+              {contents.map((c, i) => (
+                <li key={i}>
                   <span className="pk-c-es">{c.es}</span>
                   <span className="pk-c-en">{c.en}</span>
                 </li>
               ))}
             </ol>
-            <p className="pk-contents-note">
-              Se adjuntan por separado / Attached separately: Reporte financiero {data.agm.year} ·
-              Propuesta de presupuesto {data.dues.fyLabel} · Cartas poder (una por propietario /
-              proxy letters, one set per owner).
-            </p>
+            {data.inventory.attachmentsDetailed.length > 0 && (
+              <p className="pk-contents-note">
+                Se adjuntan por separado / Attached separately:{" "}
+                {data.inventory.attachmentsDetailed.map((a) => `${a.title} (#${a.number} · Rev ${a.revision})`).join(" · ")}
+                {" · "}Cartas poder (una por propietario / proxy letters, one set per owner).
+              </p>
+            )}
           </div>
 
           {data.signatories.length > 0 && (
@@ -97,32 +126,42 @@ export function AgmPacketDocument({ data }: { data: PacketData }) {
         </section>
 
         {/* ---- At a glance: read-this-first plain-language summary ---- */}
-        <section className="pk-section">
-          <div className="pk-divider">
-            <span className="pk-divider-num">★</span>
-            <div>
-              <p className="pk-divider-es">Lo esencial</p>
-              <p className="pk-divider-en">The essentials</p>
-            </div>
-          </div>
-          <AtAGlanceBody data={data} />
-        </section>
-
-        {/* ---- 1. Cover letter ---- */}
-        <section className="pk-section">
-          <Divider n={1} es={contents[0].es} en={contents[0].en} />
-          <CoverLetterBody
-            subject={data.email.subject}
-            bodyEs={data.email.bodyEs}
-            bodyEn={data.email.bodyEn}
-            zoomInfo={data.agm.zoomInfo}
-          />
-        </section>
-
-        {/* ---- 2. Regime convocatoria ---- */}
-        {trackByKind.REGIME && (
+        {included("at-a-glance") && (
           <section className="pk-section">
-            <Divider n={2} es={contents[1].es} en={contents[1].en} />
+            <div className="pk-divider">
+              <span className="pk-divider-num">★</span>
+              <div>
+                <p className="pk-divider-es">Lo esencial</p>
+                <p className="pk-divider-en">The essentials</p>
+              </div>
+            </div>
+            <AtAGlanceBody data={data} />
+            <DocTag docKey="at-a-glance" />
+          </section>
+        )}
+
+        {/* ---- Cover letter ---- */}
+        {included("cover-letter") && (
+          <section className="pk-section">
+            <Divider n={1} es="Carta de presentación" en="Cover letter" />
+            <CoverLetterBody
+              subject={data.email.subject}
+              bodyEs={data.email.bodyEs}
+              bodyEn={data.email.bodyEn}
+              zoomInfo={data.agm.zoomInfo}
+            />
+            <DocTag docKey="cover-letter" />
+          </section>
+        )}
+
+        {/* ---- Regime convocatoria ---- */}
+        {trackByKind.REGIME && included("convocatoria-regime") && (
+          <section className="pk-section">
+            <Divider
+              n={2}
+              es="Convocatoria — Asamblea General Anual Ordinaria (Régimen)"
+              en="Call notice — General Annual Ordinary Meeting (Regime)"
+            />
             <ConvocatoriaBody
               kind="REGIME"
               bodyEs={trackByKind.REGIME.bodyEs}
@@ -131,13 +170,18 @@ export function AgmPacketDocument({ data }: { data: PacketData }) {
               noticeDateLabel={data.noticeDateLabel}
               signatories={data.signatories}
             />
+            <DocTag docKey="convocatoria-regime" />
           </section>
         )}
 
-        {/* ---- 3. Civil Association convocatoria ---- */}
-        {trackByKind.CIVIL_ASSOCIATION && (
+        {/* ---- Civil Association convocatoria ---- */}
+        {trackByKind.CIVIL_ASSOCIATION && included("convocatoria-civil") && (
           <section className="pk-section">
-            <Divider n={3} es={contents[2].es} en={contents[2].en} />
+            <Divider
+              n={3}
+              es="Convocatoria — Asamblea General de Asociados (Asociación Civil)"
+              en="Call notice — Annual General Associates Meeting (Civil Association)"
+            />
             <ConvocatoriaBody
               kind="CIVIL_ASSOCIATION"
               bodyEs={trackByKind.CIVIL_ASSOCIATION.bodyEs}
@@ -146,23 +190,31 @@ export function AgmPacketDocument({ data }: { data: PacketData }) {
               noticeDateLabel={data.noticeDateLabel}
               signatories={data.signatories}
             />
+            <DocTag docKey="convocatoria-civil" />
           </section>
         )}
 
-        {/* ---- 4. Dues ---- */}
-        <section className="pk-section pk-last">
-          <Divider n={4} es={contents[3].es} en={contents[3].en} />
-          <DuesTableBody
-            fyLabel={data.dues.fyLabel}
-            unitLabel={data.dues.unitLabel}
-            currency={data.dues.currency}
-            totalFormatted={data.dues.totalFormatted}
-            rows={data.dues.rows}
-            totalPct={data.dues.totalPct}
-            totalAnnual={data.dues.totalAnnual}
-            sourceNote={data.dues.sourceNote}
-          />
-        </section>
+        {/* ---- Dues ---- */}
+        {included("dues") && (
+          <section className="pk-section pk-last">
+            <Divider
+              n={4}
+              es={`Cuotas ${data.dues.fyLabel} — calendario trimestral`}
+              en={`${data.dues.fyLabel} dues — quarterly schedule`}
+            />
+            <DuesTableBody
+              fyLabel={data.dues.fyLabel}
+              unitLabel={data.dues.unitLabel}
+              currency={data.dues.currency}
+              totalFormatted={data.dues.totalFormatted}
+              rows={data.dues.rows}
+              totalPct={data.dues.totalPct}
+              totalAnnual={data.dues.totalAnnual}
+              sourceNote={data.dues.sourceNote}
+            />
+            <DocTag docKey="dues" />
+          </section>
+        )}
       </div>
     </>
   )
@@ -225,6 +277,7 @@ export const PACKET_CSS = `
   .pk-divider-num { font-size:22pt; font-weight:700; color:#cbd5e1; line-height:1; }
   .pk-divider-es { margin:0; font-size:12pt; font-weight:700; color:#0f172a; }
   .pk-divider-en { margin:0; font-size:9pt; color:#64748b; }
+  .pk-doctag { font-size:7.5pt; color:#94a3b8; text-align:right; margin-top:18px; padding-top:6px; border-top:1px solid #e2e8f0; }
 
   /* force the real bilingual 2-column layout for the convocatoria body and
      its agenda (the md: breakpoint isn't reliably hit in print) */

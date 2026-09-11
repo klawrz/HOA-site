@@ -934,6 +934,7 @@ model User {
   agmParticipationResponses   AgmParticipation[]          @relation("AgmParticipationRespondedBy")
   agmProxyVerifications       AgmParticipation[]          @relation("AgmParticipationVerifiedBy")
   createdBoardIssues          BoardIssue[]
+  createdAgmDocumentItems     AgmDocumentItem[]
 }
 
 model Unit {
@@ -1121,8 +1122,9 @@ model Document {
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
-  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  meeting Meeting?     @relation(fields: [meetingId], references: [id])
+  org         Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  meeting     Meeting?          @relation(fields: [meetingId], references: [id])
+  agmDocumentItems AgmDocumentItem[]
 }
 
 // Tags a meeting's nature for the Meetings list and lets "New Meeting"
@@ -1928,8 +1930,48 @@ model Agm {
   tracks        AgmTrack[]
   participation AgmParticipation[]
   packageLinks  AgmPackageLink[]
+  documentItems AgmDocumentItem[]
 
   @@unique([orgId, year])
+}
+
+enum AgmDocumentSource {
+  GENERATED
+  UPLOADED
+}
+
+// The package preparer's manifest of every document that may go into this
+// AGM's package - some are HOPE-generated sections (source=GENERATED,
+// generatedKey identifies which one: "cover-letter" / "convocatoria-regime"
+// / "convocatoria-civil" / "dues" / "at-a-glance"), some are real uploaded
+// files (source=UPLOADED, documentId points at the filed Document - the
+// financial report, the proposed budget, anything else). Each carries its
+// own inventory number and revision so the preparer can add, remove, or
+// reorder what actually ships, independently per package (Detailed /
+// Summary) - editing a document's own content happens elsewhere (the
+// convocatoria/agenda editors, or the Document Library); this table only
+// controls what's included in assembly.
+model AgmDocumentItem {
+  id                String            @id @default(cuid())
+  agmId             String
+  number            Int
+  title             String
+  revision          String            @default("A")
+  source            AgmDocumentSource
+  generatedKey      String?
+  documentId        String?
+  includeInDetailed Boolean           @default(true)
+  includeInSummary  Boolean           @default(true)
+  notes             String?
+  createdById       String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  agm       Agm      @relation(fields: [agmId], references: [id], onDelete: Cascade)
+  document  Document? @relation(fields: [documentId], references: [id])
+  createdBy User     @relation(fields: [createdById], references: [id])
+
+  @@unique([agmId, number])
 }
 
 // A no-login-required, per-unit link to that unit's own personalized AGM

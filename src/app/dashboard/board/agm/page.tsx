@@ -15,7 +15,8 @@ export default async function BoardAgmPage() {
     session.user.role === "PROPERTY_MANAGER" ||
     session.user.isBoardMember === true
 
-  const { agm, ownerByUnit, tally, nextYear, checklist } = await getAgmConsoleData(session.user.orgId ?? "")
+  const { agm, ownerByUnit, tally, nextYear, checklist, documentItems, availableDocuments } =
+    await getAgmConsoleData(session.user.orgId ?? "")
 
   if (!agm || !tally) return <AgmEmptyState canManage={canManage} defaultYear={nextYear} />
 
@@ -27,6 +28,8 @@ export default async function BoardAgmPage() {
       canManage={canManage}
       docBasePath="/dashboard/board/agm"
       checklist={checklist}
+      documentItems={JSON.parse(JSON.stringify(documentItems))}
+      availableDocuments={availableDocuments}
     />
   )
 }

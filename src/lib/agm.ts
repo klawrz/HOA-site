@@ -237,7 +237,29 @@ export async function getAgmConsoleData(orgId: string) {
     ]
   }
 
-  return { agm, ownerByUnit, tally, nextYear, checklist }
+  // The package preparer's document manifest + what's available to add to
+  // it (org documents not already in the inventory).
+  let documentItems: Awaited<ReturnType<typeof loadAgmDocumentItems>> = []
+  let availableDocuments: { id: string; title: string; category: string }[] = []
+  if (agm) {
+    documentItems = await loadAgmDocumentItems(agm.id)
+    const usedDocumentIds = documentItems.filter((i) => i.documentId).map((i) => i.documentId as string)
+    availableDocuments = await db.document.findMany({
+      where: { orgId, id: { notIn: usedDocumentIds } },
+      select: { id: true, title: true, category: true },
+      orderBy: { createdAt: "desc" },
+    })
+  }
+
+  return { agm, ownerByUnit, tally, nextYear, checklist, documentItems, availableDocuments }
+}
+
+function loadAgmDocumentItems(agmId: string) {
+  return db.agmDocumentItem.findMany({
+    where: { agmId },
+    include: { document: { select: { id: true, title: true, fileUrl: true } } },
+    orderBy: { number: "asc" },
+  })
 }
 
 // One of the package links shown in the banner. `setPreference` is only
@@ -372,6 +394,41 @@ export async function getAgmPacketData(orgId: string) {
   if (!agm) return null
   units.sort(compareUnitNumbers)
 
+  const inventoryItems = await db.agmDocumentItem.findMany({
+    where: { agmId: agm.id },
+    include: { document: true },
+    orderBy: { number: "asc" },
+  })
+  const byKey: Record<
+    string,
+    { number: number; revision: string; includeInDetailed: boolean; includeInSummary: boolean }
+  > = {}
+  const attachmentsDetailed: { number: number; title: string; revision: string; fileUrl: string | null }[] = []
+  const attachmentsSummary: { number: number; title: string; revision: string; fileUrl: string | null }[] = []
+  for (const item of inventoryItems) {
+    if (item.source === "GENERATED" && item.generatedKey) {
+      byKey[item.generatedKey] = {
+        number: item.number,
+        revision: item.revision,
+        includeInDetailed: item.includeInDetailed,
+        includeInSummary: item.includeInSummary,
+      }
+    } else {
+      const row = { number: item.number, title: item.title, revision: item.revision, fileUrl: item.document?.fileUrl ?? null }
+      if (item.includeInDetailed) attachmentsDetailed.push(row)
+      if (item.includeInSummary) attachmentsSummary.push(row)
+    }
+  }
+  // A brand-new AGM (created before this feature, or never opened its
+  // package manager) has no inventory rows yet - default every generated
+  // section to included so nothing silently disappears from the package.
+  const sectionIncluded = (key: string, pkg: "detailed" | "summary") => {
+    const row = byKey[key]
+    if (!row) return true
+    return pkg === "detailed" ? row.includeInDetailed : row.includeInSummary
+  }
+  const sectionTag = (key: string) => (byKey[key] ? `#${byKey[key].number} · Rev ${byKey[key].revision}` : null)
+
   const md = agmMeetingDateStrings(agm.date)
   const noticeDateLabel = (agm.noticeIssuedOn ?? new Date()).toLocaleDateString("en-CA", {
     timeZone: "UTC",
@@ -457,6 +514,12 @@ export async function getAgmPacketData(orgId: string) {
       sourceNote: budget
         ? `From the ${budget.isProposed ? "proposed" : "approved"} ${budget.year} operating budget (${budget.version}).`
         : "No operating budget on file yet.",
+    },
+    inventory: {
+      sectionIncluded,
+      sectionTag,
+      attachmentsDetailed,
+      attachmentsSummary,
     },
   }
 }

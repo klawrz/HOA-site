@@ -30,6 +30,17 @@ export const AGM_DOCUMENT_PREFERENCE_LABEL: Record<AgmDocumentPreference, string
   FULL: "Full package",
 }
 
+// The HOPE-generated sections every new AGM starts with in its document
+// inventory (see AgmDocumentItem) - the package preparer can still exclude
+// any of these from either package, same as an uploaded document.
+export const GENERATED_AGM_DOCUMENT_DEFS: { key: string; title: string; number: number }[] = [
+  { key: "at-a-glance", title: "At-a-glance summary", number: 1 },
+  { key: "cover-letter", title: "Cover letter", number: 2 },
+  { key: "convocatoria-regime", title: "Convocatoria — Regime", number: 3 },
+  { key: "convocatoria-civil", title: "Convocatoria — Civil Association", number: 4 },
+  { key: "dues", title: "Dues schedule", number: 5 },
+]
+
 // Fraction of the total number of owners (villas) that may be represented
 // by proxy, per the 2013 Regime change of 22 Nov 1999, Motion #7.
 export const PROXY_CAP_FRACTION = 0.35

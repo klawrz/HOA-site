@@ -10,6 +10,7 @@ import {
   agendaSeedFor,
   convocatoriaFullText,
   agmMeetingDateStrings,
+  GENERATED_AGM_DOCUMENT_DEFS,
 } from "@/lib/agm-shared"
 import type { AgmTrackKind, AgmParticipationStatus, AgmProxyHolderType, AgmDocumentPreference } from "@/generated/prisma"
 
@@ -183,6 +184,15 @@ export async function ensureAgm(formData: FormData): Promise<Result> {
             },
           }
         }),
+      },
+      documentItems: {
+        create: GENERATED_AGM_DOCUMENT_DEFS.map((d) => ({
+          number: d.number,
+          title: d.title,
+          source: "GENERATED" as const,
+          generatedKey: d.key,
+          createdById: session.user.id,
+        })),
       },
     },
   })
@@ -579,6 +589,133 @@ export async function setProxyVerified(participationId: string, verified: boolea
       proxyVerifiedById: verified ? session.user.id : null,
     },
   })
+  revalidateAgmPaths()
+  return { success: true }
+}
+
+// ------------------------------------------------------------
+// Package document inventory - what the preparer adds/removes from the
+// AGM's Detailed/Summary packages. Editing a document's own content
+// (the convocatoria text, the agenda, an uploaded file) happens elsewhere;
+// these actions only manage the inventory row and its include flags.
+// ------------------------------------------------------------
+
+// Attach a new document to the inventory - either an existing filed
+// Document (documentId) or a freshly uploaded file (a "file" + "title" in
+// formData, which also creates the Document record). Auto-numbers after
+// the current highest inventory number.
+export async function addAgmDocumentItem(formData: FormData): Promise<Result> {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageAgm(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Not authorized" }
+  }
+  const orgId = session.user.orgId
+
+  const agm = await loadCurrentAgm(orgId)
+  if (!agm) return { success: false, error: "No AGM found" }
+
+  const existingDocumentId = (formData.get("documentId") as string) || null
+  let documentId = existingDocumentId
+  let title = (formData.get("title") as string)?.trim() || ""
+
+  if (!documentId) {
+    const uploaded = formData.get("file")
+    if (!(uploaded instanceof File) || uploaded.size === 0) {
+      return { success: false, error: "Choose an existing document or upload a file" }
+    }
+    if (!title) title = uploaded.name.replace(/\.[a-z0-9]+$/i, "")
+    const saved = await saveUploadedFile(uploaded, "documents")
+    if (!saved.success) return { success: false, error: saved.error }
+    const doc = await db.document.create({
+      data: {
+        orgId,
+        title,
+        category: "OTHER",
+        visibility: "OWNERS",
+        fileUrl: saved.url,
+        uploadedById: session.user.id,
+      },
+    })
+    documentId = doc.id
+  } else {
+    const doc = await db.document.findFirst({ where: { id: documentId, orgId } })
+    if (!doc) return { success: false, error: "Document not found" }
+    if (!title) title = doc.title
+  }
+
+  const top = await db.agmDocumentItem.aggregate({
+    where: { agmId: agm.id },
+    _max: { number: true },
+  })
+  const number = (top._max.number ?? 0) + 1
+
+  await db.agmDocumentItem.create({
+    data: {
+      agmId: agm.id,
+      number,
+      title,
+      source: "UPLOADED",
+      documentId,
+      createdById: session.user.id,
+    },
+  })
+
+  revalidateAgmPaths()
+  return { success: true }
+}
+
+export async function updateAgmDocumentItem(
+  itemId: string,
+  data: {
+    number?: number
+    title?: string
+    revision?: string
+    includeInDetailed?: boolean
+    includeInSummary?: boolean
+  }
+): Promise<Result> {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageAgm(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Not authorized" }
+  }
+  const item = await db.agmDocumentItem.findFirst({
+    where: { id: itemId, agm: { orgId: session.user.orgId } },
+  })
+  if (!item) return { success: false, error: "Document not found" }
+
+  await db.agmDocumentItem.update({
+    where: { id: itemId },
+    data: {
+      number: data.number,
+      title: data.title?.trim() || undefined,
+      revision: data.revision?.trim() || undefined,
+      includeInDetailed: data.includeInDetailed,
+      includeInSummary: data.includeInSummary,
+    },
+  })
+
+  revalidateAgmPaths()
+  return { success: true }
+}
+
+// Only an UPLOADED row can be removed outright - a GENERATED section is
+// structural (it exists as long as HOPE can build it); to drop one from
+// the package, exclude it via updateAgmDocumentItem instead.
+export async function removeAgmDocumentItem(itemId: string): Promise<Result> {
+  const session = await auth()
+  if (!session?.user.orgId || !canManageAgm(session.user.role, session.user.isBoardMember)) {
+    return { success: false, error: "Not authorized" }
+  }
+  const item = await db.agmDocumentItem.findFirst({
+    where: { id: itemId, agm: { orgId: session.user.orgId } },
+  })
+  if (!item) return { success: false, error: "Document not found" }
+  if (item.source !== "UPLOADED") {
+    return { success: false, error: "Generated sections can be excluded, not deleted" }
+  }
+
+  await db.agmDocumentItem.delete({ where: { id: itemId } })
+
   revalidateAgmPaths()
   return { success: true }
 }
