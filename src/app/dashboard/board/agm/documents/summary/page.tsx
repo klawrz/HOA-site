@@ -23,7 +23,7 @@ export default async function AgmLitePacketPage() {
 
   return (
     <PrintDocShell
-      title={`AGM ${data.agm.year} — quick summary`}
+      title={`AGM ${data.agm.year} — summary package`}
       subtitle="The essentials, both convocatorias, and a collapsed dues total - a shorter alternative to the full informative package."
       backHref="/dashboard/board/agm"
     >

@@ -41,8 +41,12 @@ export default async function OwnerAgmPacketPage({
 
   return (
     <PrintDocShell
-      title={`Your AGM ${data.agm.year} package`}
-      subtitle="Everything for the meeting plus your pre-filled proxy letters. You can come back to your unit and grab this any time."
+      title={`Your AGM ${data.agm.year} package — ${wantsFull ? "detailed" : "summary"}`}
+      subtitle={
+        wantsFull
+          ? "Everything for the meeting plus your pre-filled proxy letters. Prefer less detail? Switch to the summary from your unit page."
+          : "The essentials for the meeting plus your pre-filled proxy letters. Want the full detail? Switch to the detailed package from your unit page."
+      }
       backHref="/dashboard/owner/governance/agm"
     >
       {wantsFull ? <AgmPacketDocument data={data} /> : <AgmLitePacketDocument data={data} />}

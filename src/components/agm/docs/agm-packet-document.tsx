@@ -42,7 +42,7 @@ export function AgmPacketDocument({ data }: { data: PacketData }) {
             Reunión General Anual {data.agm.year}
             <span className="pk-title-sub">{data.agm.year} Annual General Meeting</span>
           </h1>
-          <p className="pk-kicker">Paquete Informativo · Informative Package</p>
+          <p className="pk-kicker">Paquete Detallado · Detailed Package</p>
 
           <table className="pk-meta">
             <tbody>

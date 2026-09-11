@@ -23,8 +23,11 @@ export function AgmLitePacketDocument({ data }: { data: PacketData }) {
         <section className="pk-section">
           <p className="pk-org">ASOCIACIÓN DE CONDÓMINOS SAMPAGUITA VILLAS A.C.</p>
           <p className="pk-lite-title">
-            Reunión General Anual {data.agm.year} — Resumen
-            <span className="pk-title-sub">{data.agm.year} Annual General Meeting — Summary</span>
+            Reunión General Anual {data.agm.year}
+            <span className="pk-title-sub">{data.agm.year} Annual General Meeting</span>
+          </p>
+          <p className="pk-kicker" style={{ textAlign: "center", marginBottom: "16px" }}>
+            Paquete Resumen · Summary Package
           </p>
           <AtAGlanceBody data={data} />
         </section>

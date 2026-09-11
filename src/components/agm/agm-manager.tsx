@@ -1,15 +1,49 @@
 "use client"
 
-import { CalendarDays, MapPin, User, Video, FileText } from "lucide-react"
+import { CalendarDays, MapPin, User, Video, FileText, CheckCircle2, Circle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTab, TabsIndicator, TabsPanel } from "@/components/ui/tabs"
 import { formatDateISO } from "@/lib/utils"
 import type { AgmTally } from "@/lib/agm-shared"
+import type { AgmChecklistItem } from "@/lib/agm"
 import { AGM_TRACK_LABEL } from "@/lib/agm-shared"
 import { AgmView, TRACK_SHORT, STATUS_LABEL } from "./types"
 import { AgmDetailsDialog } from "./agm-details-dialog"
 import { AgendaEditor } from "./agenda-editor"
 import { ParticipationConsole } from "./participation-console"
+
+function ChecklistStrip({ items }: { items: AgmChecklistItem[] }) {
+  const doneCount = items.filter((i) => i.done).length
+  return (
+    <div className="bg-white border rounded-xl p-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-700">Readiness checklist</h2>
+        <span className="text-xs text-gray-400">
+          {doneCount} of {items.length} ready
+        </span>
+      </div>
+      <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+        {items.map((item, i) => (
+          <div
+            key={item.key}
+            className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center ${
+              item.done ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+            }`}
+          >
+            {item.done ? (
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+            ) : (
+              <Circle className="h-5 w-5 text-gray-300" />
+            )}
+            <p className={`text-[11px] leading-tight ${item.done ? "text-green-800" : "text-gray-500"}`}>
+              {i + 1}. {item.label}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function KeyDate({ label, value }: { label: string; value: string | null }) {
   return (
@@ -28,6 +62,7 @@ export function AgmManager({
   ownerByUnit,
   canManage,
   docBasePath,
+  checklist,
 }: {
   agm: AgmView
   tally: AgmTally
@@ -35,6 +70,7 @@ export function AgmManager({
   canManage: boolean
   // When set (Board view), shows the "Meeting documents" generators.
   docBasePath?: string
+  checklist?: AgmChecklistItem[]
 }) {
   const meetingDate = new Date(agm.date)
 
@@ -88,6 +124,8 @@ export function AgmManager({
         </div>
       </div>
 
+      {canManage && checklist && checklist.length > 0 && <ChecklistStrip items={checklist} />}
+
       <ParticipationConsole
         agmId={agm.id}
         tally={tally}
@@ -105,7 +143,7 @@ export function AgmManager({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-md border border-gray-900 bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-800"
             >
-              <FileText className="h-3.5 w-3.5" /> Combined package (one PDF)
+              <FileText className="h-3.5 w-3.5" /> Detailed package (one PDF)
             </a>
             <a
               href={`${docBasePath}/documents/summary`}
@@ -113,11 +151,11 @@ export function AgmManager({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
             >
-              <FileText className="h-3.5 w-3.5 text-gray-400" /> Quick summary (one PDF)
+              <FileText className="h-3.5 w-3.5 text-gray-400" /> Summary package (one PDF)
             </a>
           </div>
           <p className="text-[11px] text-gray-400 mt-1.5 mb-2">
-            Full package: cover letter + both convocatorias + dues schedule. Quick summary: a
+            Detailed package: cover letter + both convocatorias + dues schedule. Summary package: a
             plain-language overview + both convocatorias + a collapsed dues total. Or open a single
             section:
           </p>

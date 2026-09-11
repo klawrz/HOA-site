@@ -170,6 +170,8 @@ export async function getDuesCurrentUnitIds(orgId: string): Promise<Set<string>>
 
 // Everything the Board / PM AGM console page needs - loaded once so the
 // role-scoped route files (board/agm, property-manager/agm) stay thin.
+export type AgmChecklistItem = { key: string; label: string; done: boolean }
+
 export async function getAgmConsoleData(orgId: string) {
   const [agm, units, unitLabel, duesCurrent] = await Promise.all([
     loadCurrentAgm(orgId),
@@ -196,7 +198,46 @@ export async function getAgmConsoleData(orgId: string) {
   const nextYear = now.getMonth() >= 11 ? now.getFullYear() + 1 : now.getFullYear()
   const tally = agm ? computeAgmTally(agm, unitInputs, duesCurrent) : null
 
-  return { agm, ownerByUnit, tally, nextYear }
+  // A quick "is everything ready" readiness strip for the Board/PM console -
+  // ten-ish prep steps at a glance rather than having to hunt through the
+  // page for each one.
+  let checklist: AgmChecklistItem[] = []
+  if (agm) {
+    const [budget, prevAgm] = await Promise.all([
+      db.budget.findFirst({
+        where: { orgId, year: agm.year + 1, type: "OPERATING" },
+        select: { id: true },
+      }),
+      db.agm.findUnique({
+        where: { orgId_year: { orgId, year: agm.year - 1 } },
+        select: { minutesFiledOn: true },
+      }),
+    ])
+    checklist = [
+      { key: "date-location", label: "Date & location", done: !!agm.location },
+      {
+        key: "call-documents",
+        label: "Call documents",
+        done: agm.tracks.every((t) => !!t.callBodyEs && !!t.callBodyEn),
+      },
+      { key: "agendas", label: "Agendas", done: agm.tracks.every((t) => t.items.length > 0) },
+      { key: "chairperson", label: "Chairperson", done: !!agm.chairpersonName },
+      { key: "budget", label: "Budget", done: !!budget },
+      {
+        key: "previous-minutes",
+        label: "Previous minutes",
+        done: prevAgm ? !!prevAgm.minutesFiledOn : true,
+      },
+      { key: "package-issuance", label: "Package issuance", done: !!agm.noticeIssuedOn },
+      {
+        key: "proxies",
+        label: "Proxies",
+        done: !!agm.proxyContactName && !!agm.proxyContactEmail,
+      },
+    ]
+  }
+
+  return { agm, ownerByUnit, tally, nextYear, checklist }
 }
 
 // One of the package links shown in the banner. `setPreference` is only

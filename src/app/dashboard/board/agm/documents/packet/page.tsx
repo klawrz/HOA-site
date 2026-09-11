@@ -23,7 +23,7 @@ export default async function AgmPacketPage() {
 
   return (
     <PrintDocShell
-      title={`AGM ${data.agm.year} — informative package`}
+      title={`AGM ${data.agm.year} — detailed package`}
       subtitle="Cover letter, both convocatorias and the dues schedule in one file. The financial report and proposed budget are attached separately."
       backHref="/dashboard/board/agm"
     >
