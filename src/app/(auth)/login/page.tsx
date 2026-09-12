@@ -187,22 +187,24 @@ function LoginForm() {
                   </Button>
                 </form>
 
-                <div className="mt-6">
-                  <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wide">
-                    Demo accounts (password: password123)
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {demoUsers.map((u) => (
-                      <button
-                        key={u.email}
-                        onClick={() => fillDemo(u.email)}
-                        className={`text-xs px-2 py-1 rounded-full font-medium cursor-pointer ${u.color}`}
-                      >
-                        {u.role}
-                      </button>
-                    ))}
+                {process.env.NODE_ENV !== "production" && (
+                  <div className="mt-6">
+                    <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wide">
+                      Demo accounts (password: password123)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {demoUsers.map((u) => (
+                        <button
+                          key={u.email}
+                          onClick={() => fillDemo(u.email)}
+                          className={`text-xs px-2 py-1 rounded-full font-medium cursor-pointer ${u.color}`}
+                        >
+                          {u.role}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </>
           )}
