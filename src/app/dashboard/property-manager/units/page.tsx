@@ -158,9 +158,13 @@ export default async function UnitAvailabilityPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sc.color}`}>
-                      {sc.label}
-                    </span>
+                    {unit.status === "OWNER_OCCUPIED" ? (
+                      <span className="text-gray-400">—</span>
+                    ) : (
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sc.color}`}>
+                        {sc.label}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 max-w-xs">
                     {ownership?.notes ?? "—"}

@@ -87,9 +87,11 @@ export default async function BoardUnitsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-4 shrink-0">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
-                      {u.status.replace(/_/g, " ")}
-                    </span>
+                    {u.status !== "OWNER_OCCUPIED" && (
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[u.status]}`}>
+                        {u.status.replace(/_/g, " ")}
+                      </span>
+                    )}
                     <div className="text-right text-xs">
                       {ownerNames && <p className="text-gray-600">{ownerNames}</p>}
                       {earliestSince && (
