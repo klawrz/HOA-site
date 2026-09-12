@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -20,7 +20,18 @@ const demoUsers = [
 
 type OrgChoice = { orgId: string; orgName: string; role: string }
 
+// useSearchParams() opts the page out of static rendering unless it's
+// wrapped in Suspense - without this, `next build` fails outright trying
+// to prerender /login (missing-suspense-with-csr-bailout).
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justReset = searchParams.get("reset") === "1"
